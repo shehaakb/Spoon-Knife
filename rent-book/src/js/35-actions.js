@@ -90,16 +90,18 @@ function recordPayment(tenantId, opts) {
 }
 
 /** Record payments for several tenants at once (full open balance each, today, last-used method). Single toast with Undo. */
-function recordPayments(tenantIds) {
+function recordPayments(tenantIds, opts) {
   if (!guard()) return Promise.resolve([]);
   const today = S().today();
+  const amounts = (opts && opts.amounts) || null; // optional {tenantId: cents} (capped at the balance), e.g. one past month's open amount
   const done = [];
   let total = 0;
   for (const tid of tenantIds) {
     const lg = S().ledger(tid); if (!lg || lg.balance <= 0) continue;
+    const amount = amounts && amounts[tid] > 0 ? Math.min(amounts[tid], lg.balance) : lg.balance;
     const id = RB.id();
-    S().addEntry(tid, { id, type: 'payment', date: today, amount: lg.balance, method: lastMethod(tid), ref: '', memo: '' }).catch(() => {});
-    done.push([tid, id]); total += lg.balance;
+    S().addEntry(tid, { id, type: 'payment', date: today, amount, method: lastMethod(tid), ref: '', memo: '' }).catch(() => {});
+    done.push([tid, id]); total += amount;
   }
   if (done.length) ui.toast('Recorded ' + RB.plural(done.length, 'payment') + ' · ' + M.fmt(total), { undo: () => done.forEach(([tid, id]) => S().undoEntry(tid, id)) });
   return Promise.resolve(done.map(d => d[1]));

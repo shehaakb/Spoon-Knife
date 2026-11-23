@@ -1,0 +1,76 @@
+/* Reports view. Tokens only. */
+.rp-head { gap: 10px 12px; }
+.rp-actions { display: flex; gap: 4px; }
+.rp-year .stepper-label { min-width: 64px; }
+.rp-meta { margin-bottom: var(--s4); color: var(--ink-2); font-size: var(--t-15); }
+.rp-meta strong { color: var(--ink); font-weight: 600; }
+.rp-note { margin-top: var(--s3); color: var(--ink-3); font-size: var(--t-12); }
+
+.rp-name { padding: 0; border: 0; background: none; color: var(--ink); font-weight: 500; text-align: left; max-width: 100%; }
+.rp-name:hover { text-decoration: underline; text-underline-offset: 2px; }
+.tbl tr.is-muted .rp-name { color: var(--ink-3); font-weight: 400; }
+.rp-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rp-who .plate { min-width: 52px; flex: none; }
+.rp-status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.rp-group-meta { font-weight: 400; }
+.rp-tbl .tbl-group td { border-top: 1px solid var(--line); }
+.rp-tbl tbody:first-of-type .tbl-group td { border-top: 0; }
+.rp-subtotal td { height: 34px; font-size: var(--t-12); font-weight: 500; color: var(--ink-2); border-bottom: 1px solid var(--line-2); }
+.rp-subtotal:hover td { background: transparent !important; }
+.rp-total td { font-size: var(--t-13); }
+.rp-tbl .plate { min-width: 52px; }
+
+/* scrolling table with sticky first column (phone) */
+.rp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.rp-sticky { min-width: 520px; }
+.rp-scroll .tbl thead th { top: auto; }
+@media (min-width: 760px) { .rp-scroll .tbl thead th { top: var(--sticky-top); } }
+.rp-sticky th:first-child, .rp-sticky td:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+.rp-sticky thead th:first-child { background: var(--sunk); z-index: 3; }
+.rp-sticky tbody tr:hover td:first-child { background: var(--hover); }
+@media (min-width: 760px) { .rp-sticky { min-width: 0; } .rp-scroll { overflow: visible; } }
+
+/* collection chart: bars drawn to scale with percentage heights against a nice axis */
+.rp-chart { margin: 0 0 var(--s5); }
+.rp-chart-plot { position: relative; height: 220px; margin: 12px 0 44px 52px; border-bottom: 1px solid var(--line-2); }
+.rp-tick { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line); }
+.rp-tick:first-child { border-top: 0; }
+.rp-tick-label { position: absolute; right: calc(100% + 8px); top: -8px; font-size: var(--t-12); line-height: 16px; color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rp-bars { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.rp-month { position: relative; height: 100%; }
+.rp-col { position: absolute; left: 22%; right: 22%; top: 0; bottom: 0; }
+.rp-charged, .rp-collected { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 2px 2px 0 0; }
+.rp-charged { border: 1.5px solid var(--ink-3); border-bottom: 0; background: var(--paper); }
+.rp-collected { left: 1.5px; right: 1.5px; background: var(--accent); border-radius: 1px 1px 0 0; }
+.rp-month.is-current .rp-charged { border-style: dashed; }
+.rp-rate { position: absolute; left: 50%; transform: translate(-50%, -4px); font-size: 11px; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rp-xlab { position: absolute; top: calc(100% + 6px); left: 0; right: 0; text-align: center; font-size: var(--t-12); color: var(--ink-3); line-height: 1.2; }
+.rp-xyear { display: block; font-size: 10.5px; color: var(--ink-3); opacity: .85; }
+.rp-month.is-current .rp-xlab { color: var(--ink); font-weight: 600; }
+.rp-legend { margin-top: 0; }
+.rp-key { display: inline-flex; align-items: center; gap: 6px; }
+.rp-key::before { content: ""; width: 10px; height: 10px; border-radius: 1px; }
+.rp-key-charged::before { border: 1.5px solid var(--ink-3); background: var(--paper); }
+.rp-key-collected::before { background: var(--accent); }
+
+/* phone rent roll */
+.rp-ph-group.sec { margin-top: var(--s5); }
+.rp-ph-group.sec:first-child { margin-top: 0; }
+.rp-ph-sub { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: var(--t-12); color: var(--ink-2); border-bottom: 1px solid var(--line-2); }
+.rp-ph-total { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin-top: var(--s5); padding-top: var(--s3); border-top: 1px solid var(--line-2); font-weight: 600; }
+.rp-ph-total > span { font-weight: 400; color: var(--ink-2); }
+.rp-past .crow-title .rp-name { color: var(--ink-3); }
+
+@media (max-width: 759.98px) {
+  .rp-head { margin-bottom: var(--s4); }
+  .rp-tabs { width: 100%; }
+  .rp-tabs > button { flex: 1 0 auto; }
+  .rp-head > .spacer { display: none; }
+  .rp-actions { margin-left: auto; }
+  .rp-meta { font-size: var(--t-13); }
+  .rp-chart-plot { height: 180px; margin-left: 40px; }
+  .rp-rate { display: none; }
+  .rp-col { left: 16%; right: 16%; }
+  .rp-xlab { font-size: 10.5px; }
+  .rp-xyear { display: none; }
+}

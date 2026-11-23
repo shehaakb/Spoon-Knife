@@ -996,6 +996,402 @@ th.num .th-sort { flex-direction: row-reverse; }
 .kit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px 24px; }
 .kit-swatch { display: flex; align-items: center; gap: 10px; font-size: var(--t-12); }
 .kit-swatch i { width: 28px; height: 28px; border-radius: var(--r-ctl); border: 1px solid var(--line-2); flex: none; }
+/* ---- 40-today.css ---- */
+/* Today view (#today). Layout only; components come from 20-components.css. */
+.td { max-width: 1040px; }
+
+/* ---- (1) collection header: one link to #rent ---- */
+.td-collect {
+  display: block; margin: -12px -16px 0; padding: 12px 16px 14px; border-radius: var(--r-panel);
+  color: inherit; text-decoration: none; transition: background-color 120ms;
+}
+.td-collect:hover { background: var(--hover); text-decoration: none; }
+.td-collect:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.td-collect-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.td-collect-go { display: inline-flex; align-items: center; gap: 2px; font-size: var(--t-12); font-weight: 500; color: var(--accent); opacity: .85; }
+.td-collect:hover .td-collect-go { opacity: 1; }
+.td-collect-sum { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
+.td-collect-of { color: var(--ink-2); font-size: var(--t-15); }
+.td-collect-of .money { color: var(--ink); }
+.td-bar { margin-top: 14px; }
+.td-bar .bar-seg + .bar-seg { box-shadow: -1px 0 0 var(--surface); }
+.td-legend { margin-top: 10px; }
+.td-key-amt { color: var(--ink); font-variant-numeric: tabular-nums; }
+.td-collect-meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 8px; font-size: var(--t-13); color: var(--ink-2); }
+.td-collect-meta strong { color: var(--ink); font-weight: 600; }
+.td-dotsep { color: var(--ink-3); }
+
+/* ---- (2) needs attention ---- */
+.td-attention > .sec { margin-top: var(--s6); }
+.td-group + .td-group { margin-top: var(--s5); }
+.td-group-label {
+  display: flex; align-items: baseline; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line-2);
+  font-size: var(--t-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+}
+.td-group-n { font-weight: 500; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.td-row { padding: 10px 0; min-height: 60px; }
+.td-row .lrow-lead { padding-top: 2px; min-width: 40px; }
+.td-main { min-width: 0; }
+.td-row .lrow-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.td-row .lrow-detail { padding-left: 19px; }
+.td-sev { flex: none; display: inline-grid; place-items: center; width: 12px; height: 12px; }
+.td-sev svg { width: 12px; height: 12px; }
+.td-sev-high { color: var(--bad); }
+.td-sev-medium { color: var(--warn); }
+.td-sev-low { color: var(--ink-3); }
+.td-subject {
+  min-width: 0; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 500; text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.td-subject:hover { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--ink-3); }
+.td-subject:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 3px; }
+.td-row .lrow-actions { gap: 14px; flex-wrap: nowrap; }
+.td-second { font-size: var(--t-12); white-space: nowrap; }
+.td-second:hover { color: var(--ink); }
+.td-lead-ico { display: inline-grid; place-items: center; min-width: 34px; height: 22px; color: var(--ink-3); }
+.td-more { display: inline-flex; align-items: center; min-height: 32px; margin-top: 4px; font-size: var(--t-13); }
+
+/* ---- (3) + (4) side by side on wide screens ---- */
+.td-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 0 40px; margin-top: var(--s6); }
+.td-split > section > .sec { margin-top: 0; }
+@media (max-width: 1099.98px) {
+  .td-split { grid-template-columns: minmax(0, 1fr); }
+  .td-activity { margin-top: var(--s6); }
+}
+
+.td-prop + .td-prop { margin-top: var(--s4); }
+.td-prop-label { margin-bottom: 8px; font-size: var(--t-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.td-plates { gap: 6px; }
+.td-keys { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: var(--s5); padding-top: var(--s3); border-top: 1px solid var(--line); }
+.td-keyitem { display: inline-flex; align-items: center; gap: 6px; }
+.td-keycount { font-size: var(--t-12); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.td-events { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.td-ev {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; align-items: start; width: 100%;
+  padding: 9px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); text-align: left; font: inherit;
+}
+.td-ev:hover { background: var(--hover); }
+.td-ev:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.td-ev-when { padding-top: 3px; font-family: var(--f-mono); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.td-ev-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.td-ev-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.td-ev-who .plate { min-width: 0; height: 20px; padding: 0 5px; font-size: 11px; }
+.td-ev-name { font-weight: 500; font-size: var(--t-13); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-ev-text { font-size: var(--t-12); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-ev-amt { padding-top: 2px; font-size: var(--t-13); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.td-ev-amt.is-in { color: var(--ok); }
+.td-ev-amt.is-in .cur { color: inherit; opacity: .7; }
+.td-ev.is-void .td-ev-amt { text-decoration: line-through; color: var(--ink-3); }
+
+/* ---- phone ---- */
+@media (max-width: 759.98px) {
+  .td-collect { margin: -8px -8px 0; padding: 8px; }
+  .td-collect-go { display: none; }
+  .td-dotsep { display: none; }
+  .td-collect-meta { flex-direction: column; gap: 2px; }
+  .td-collect-of { font-size: var(--t-13); }
+  .td-row { grid-template-columns: auto minmax(0, 1fr); row-gap: 8px; }
+  .td-row .lrow-detail { padding-left: 0; }
+  .td-row .lrow-actions { grid-column: 2; justify-content: flex-start; flex-wrap: wrap; gap: 4px 16px; flex-direction: row-reverse; justify-content: flex-end; }
+  .td-subject { white-space: normal; min-height: 24px; }
+  .td-second { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--t-13); }
+  .td-more { min-height: 44px; }
+  .td-plates { gap: 6px; }
+  .td-plates .plate-lg { min-width: 54px; }
+  .td-ev { grid-template-columns: 44px minmax(0, 1fr) auto; padding: 10px 0; min-height: 52px; }
+}
+/* ---- 41-rent.css ---- */
+/* Rent view (#rent): the monthly collection sheet. Layout only; components come from 20-components.css. */
+.rent-head { margin-bottom: var(--s3); gap: 8px 12px; }
+.rent-head .stepper { margin-left: -8px; }
+.rent-head .stepper-label { min-width: 160px; }
+.rent-now { font-size: var(--t-12); }
+.rent-groupby { font-size: var(--t-13); color: var(--ink-2); }
+.rent-tools { display: flex; align-items: center; gap: 8px; margin-bottom: var(--s4); min-width: 0; }
+.rent-tools .chips { min-width: 0; }
+
+/* ---- table ---- */
+.rent-tbl .rent-c-plate { width: 1%; padding-right: 4px; }
+.rent-tbl .rent-c-plate .plate { min-width: 52px; }
+.rent-tbl .rent-c-name { min-width: 0; }
+.rent-tbl td.num { width: 1%; padding-left: 20px; }
+.rent-tbl .rent-c-status { width: 1%; white-space: nowrap; padding-left: 24px; }
+.rent-tbl .rent-c-act { width: 1%; white-space: nowrap; padding-left: 16px; }
+.rent-status { display: inline-flex; align-items: center; gap: 10px; }
+.rent-act { display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 196px; }
+.rent-paidon { font-size: var(--t-12); color: var(--ink-3); padding-right: 6px; font-variant-numeric: tabular-nums; }
+.rent-fee { font-size: var(--t-12); white-space: nowrap; }
+.rent-fee:hover { color: var(--ink); }
+.rent-menu { color: var(--ink-3); }
+.rent-row { scroll-margin-top: calc(var(--sticky-top) + 44px); scroll-margin-bottom: 96px; }
+.rent-row .tbl-check input, .rent-tbl thead .tbl-check input { display: block; }
+.rent-tbl tbody tr.rent-row.is-focused td { background: var(--accent-soft); }
+.rent-tbl tbody tr.rent-row.is-focused td:first-child { box-shadow: inset 3px 0 0 var(--accent), inset 0 1px 0 var(--accent-line), inset 0 -1px 0 var(--accent-line); }
+.rent-tbl tbody tr.rent-row.is-focused td:not(:first-child) { box-shadow: inset 0 1px 0 var(--accent-line), inset 0 -1px 0 var(--accent-line); }
+.rent-tbl tbody tr.rent-row.is-focused td:last-child { box-shadow: inset 0 1px 0 var(--accent-line), inset 0 -1px 0 var(--accent-line), inset -1px 0 0 var(--accent-line); }
+.rent-gcount { margin-left: 8px; font-weight: 400; color: var(--ink-3); }
+
+/* ---- totals ---- */
+.rent-totals { margin-top: 0; align-items: flex-end; }
+.rent-rate { font-size: var(--t-15); font-weight: 600; font-variant-numeric: tabular-nums; }
+.rent-totals-note { margin-left: auto; align-self: flex-end; font-size: var(--t-12); color: var(--ink-3); }
+.rent.has-bar { padding-bottom: 72px; }
+
+/* ---- bulk bar ---- */
+.rent-bar { gap: 8px; }
+.rent-bar-n { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---- phone cards ---- */
+.rent-cards .crow { scroll-margin-bottom: 140px; scroll-margin-top: calc(var(--sticky-top) + 8px); }
+.rent-card-lead { display: flex; align-items: center; gap: 10px; }
+.rent-cchk { display: grid; place-items: center; width: 44px; height: 44px; margin: -11px -6px -11px -12px; }
+.rent-cchk input { width: 20px; height: 20px; }
+.rent-cact { align-items: center; gap: 4px; }
+.rent-cact .btn { flex: none; }
+.rent-cact .btn-group { flex: none; display: inline-flex; }
+.rent-cact .btn-group > .btn-caret { width: 40px; min-width: 40px; }
+.rent-cact .rent-fee { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--t-13); }
+.rent-cact .rent-menu { width: 44px; height: 44px; }
+.rent-card.is-cursor { box-shadow: inset 3px 0 0 var(--accent); margin: 0 calc(-1 * var(--gutter)); padding-left: var(--gutter); padding-right: var(--gutter); background: var(--accent-soft); }
+.rent-card.is-selected { margin: 0 calc(-1 * var(--gutter)); padding-left: var(--gutter); padding-right: var(--gutter); background: var(--accent-soft); }
+.rent-cgroup { padding: 16px 0 6px; border-bottom: 1px solid var(--line-2); font-size: var(--t-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.rent-cgroup:first-child { padding-top: 4px; }
+.rent-selall { margin: -4px 0 8px; }
+.rent-selall .check { min-height: 44px; font-size: var(--t-13); }
+
+@media (max-width: 759.98px) {
+  .rent-head { margin-bottom: var(--s2); }
+  .rent-head .stepper-label { min-width: 0; font-size: var(--t-18); }
+  .rent-groupby { min-height: 44px; }
+  .rent-head .spacer { display: none; }
+  .rent-groupby { margin-left: auto; }
+  .rent-now { display: none; }
+  .rent-tools { margin-bottom: var(--s3); }
+  .rent-tools .chips-scroll { margin-right: 0; padding-right: 0; flex: 1 1 auto; }
+  .rent-selectbtn { flex: none; }
+  .rent-cact { padding-left: 0; }
+  .rent-cact .btn-sm { --btn-h: 44px; font-size: var(--t-13); }
+  .rent-totals { padding-left: 0; padding-right: 0; gap: 12px 24px; }
+  .rent-totals-note { margin-left: 0; flex-basis: 100%; }
+  .rent.has-bar { padding-bottom: 88px; }
+  .rent-bar { justify-content: space-between; }
+  .rent-bar .btn-primary { flex: 1 1 auto; min-width: 0; }
+}
+.rent-caside-paid { flex-direction: row; align-items: center; gap: 0; margin-right: -10px; }
+.rent-caside-paid .rent-menu { width: 44px; height: 44px; }
+/* soft buttons must stay visible on tinted (selected / cursor) rows */
+.rent-row.is-selected .btn-soft, .rent-row.is-focused .btn-soft, .rent-card.is-selected .btn-soft, .rent-card.is-cursor .btn-soft { background: var(--surface); border-color: var(--accent-line); }
+/* ---- 43-leases.css ---- */
+/* Leases view: timeline + grouped list. Tokens only. */
+.view-leases { --lz-name-w: 232px; --lz-act-w: 124px; --lz-row-h: 48px; }
+.lz-head-row { margin-bottom: var(--s5); }
+.lz-summary { color: var(--ink-2); font-size: var(--t-15); }
+.lz-summary strong { color: var(--ink); font-weight: 600; }
+.lz-dot { color: var(--ink-3); }
+
+/* shared tenant cell */
+.lz-who { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; padding: 4px 6px; margin: -4px -6px; border: 0; border-radius: var(--r-ctl); background: none; text-align: left; }
+.lz-who:hover { background: var(--hover); }
+.lz-who:hover .lz-who-name { text-decoration: underline; text-underline-offset: 2px; }
+.lz-who .plate { min-width: 58px; flex: none; }
+.lz-who-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.lz-who-name { font-weight: 500; color: var(--ink); }
+.lz-who-sub { font-size: var(--t-12); color: var(--ink-3); }
+.lz-link { padding: 0; border: 0; background: none; font-weight: 500; color: var(--ink); text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.lz-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---- timeline ---- */
+.lz-tl { position: relative; border-top: 1px solid var(--line-2); }
+.lz-head, .lz-row { display: grid; grid-template-columns: var(--lz-name-w) minmax(0, 1fr) var(--lz-act-w); align-items: center; }
+.lz-head { position: sticky; top: var(--sticky-top); z-index: 3; height: 34px; background: var(--sunk); border-bottom: 1px solid var(--line-2); }
+.lz-head-name { padding-left: 12px; font-size: var(--t-12); color: var(--ink-3); font-weight: 500; }
+.lz-track { position: relative; height: 100%; min-width: 0; }
+.lz-months { height: 100%; }
+.lz-month { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding-left: 6px; border-left: 1px solid var(--line-2); font-size: var(--t-12); color: var(--ink-3); white-space: nowrap; overflow: hidden; }
+.lz-month.is-year { color: var(--ink-2); font-weight: 600; }
+
+.lz-body { position: relative; }
+.lz-grid { position: absolute; top: 0; bottom: 0; left: var(--lz-name-w); right: var(--lz-act-w); pointer-events: none; }
+.lz-gl { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--line); }
+.lz-gl.is-year { border-left-color: var(--line-2); }
+.lz-window { position: absolute; top: 0; bottom: 0; background: var(--warn-soft); opacity: .55; border-right: 1px dashed var(--warn-line); }
+.lz-grid i { font-style: normal; }
+.lz-today { position: absolute; top: 0; bottom: -10px; width: 0; border-left: 2px solid var(--accent); margin-left: -1px; z-index: 2; }
+.lz-foot { display: grid; grid-template-columns: var(--lz-name-w) minmax(0, 1fr) var(--lz-act-w); height: 34px; }
+.lz-foot .lz-track { position: relative; }
+.lz-today-label, .lz-window-label { position: absolute; top: 10px; white-space: nowrap; font-size: var(--t-12); line-height: 18px; }
+.lz-today-label { transform: translateX(-50%); padding: 0 6px; border-radius: 3px; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.lz-window-label { padding-left: 8px; color: var(--warn); font-weight: 500; border-left: 1px dashed var(--warn-line); line-height: 18px; }
+
+.lz-row { position: relative; height: var(--lz-row-h); border-bottom: 1px solid var(--line); }
+.lz-row:hover { background: var(--hover); }
+.lz-row .lz-name { padding: 0 12px; min-width: 0; }
+.lz-row .lz-act { display: flex; justify-content: flex-end; padding-right: 4px; }
+
+.lz-bar {
+  position: absolute; top: 50%; height: 20px; margin-top: -10px; z-index: 1;
+  display: flex; align-items: center; justify-content: flex-end;
+  background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 3px;
+}
+.lz-bar-due { background: var(--warn-soft); border-color: var(--warn); }
+.lz-bar-off { border-right: 0; border-radius: 3px 0 0 3px; }
+.lz-bar-mtm { background: transparent; border: 1.5px dashed var(--ink-3); border-right: 0; border-radius: 3px 0 0 3px; }
+.lz-bar-moving { background: var(--sunk); border-color: var(--line-2); }
+.lz-cap { position: absolute; right: -2px; top: -5px; bottom: -5px; width: 4px; border-radius: 1px; background: var(--ink); }
+.lz-arrow { position: absolute; right: 2px; color: var(--accent); }
+.lz-label { font-size: var(--t-12); color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lz-bar-in .lz-label { padding: 0 8px; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lz-bar-off .lz-label { padding-right: 20px; }
+.lz-bar-moving.lz-bar-in .lz-label { padding-right: 10px; }
+.lz-bar-due .lz-label { color: var(--warn); font-weight: 500; }
+.lz-label-out { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1; }
+.lz-bar-due + .lz-label-out { color: var(--warn); font-weight: 500; }
+
+@media (max-width: 1099.98px) { .view-leases { --lz-name-w: 190px; --lz-act-w: 112px; } .lz-who-sub { display: none; } }
+
+/* ---- list ---- */
+.lz-group.sec { margin-top: var(--s5); }
+.lz-group:first-of-type { margin-top: 0; }
+.lz-list-tbl th:nth-child(1) { width: 38%; }
+.lz-list-tbl td .lz-who { margin: -4px 0 -4px -6px; }
+.lz-decide-ph { margin-right: -8px; }
+@media (max-width: 759.98px) {
+  .lz-summary { font-size: var(--t-13); }
+  .lz-head-row { margin-bottom: var(--s4); }
+  .view-leases .crow-actions .btn-group > .btn:first-child { flex: 1 1 auto; }
+}
+/* ---- 44-upkeep.css ---- */
+/* Upkeep view: three status columns (desktop), one at a time under a segmented control (phone). Tokens only. */
+.uk-head { margin-bottom: var(--s4); }
+.uk-count { color: var(--ink-2); font-size: var(--t-15); }
+.uk-count strong { color: var(--ink); font-weight: 600; }
+.uk-filter { margin-bottom: var(--s5); }
+
+.uk-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); align-items: start; }
+.uk-col-head { display: flex; align-items: baseline; gap: 8px; padding-bottom: 8px; margin-bottom: var(--s3); border-bottom: 1px solid var(--line-2); }
+.uk-col-title { font-size: var(--t-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.uk-col-count { font-size: var(--t-12); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.uk-col-body { display: flex; flex-direction: column; gap: var(--s3); }
+.uk-empty { padding: 14px 0; color: var(--ink-3); font-size: var(--t-13); }
+.uk-older { align-self: flex-start; font-size: var(--t-12); padding: 4px 0; }
+
+.uk-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); }
+.uk-card:hover { border-color: var(--line-2); }
+.uk-card.is-urgent { border-color: var(--bad-line); }
+.uk-card-top { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.uk-plate { flex: none; padding-top: 1px; }
+.uk-title { flex: 1 1 auto; min-width: 0; padding: 0; border: 0; background: none; text-align: left; font-weight: 600; color: var(--ink); line-height: 1.35; overflow-wrap: anywhere; }
+.uk-title:hover { text-decoration: underline; text-underline-offset: 2px; }
+.uk-prio { flex: none; }
+.uk-prio-low { flex: none; display: inline-flex; align-items: center; gap: 2px; font-size: var(--t-12); color: var(--ink-3); padding-top: 2px; }
+.uk-meta { font-size: var(--t-12); color: var(--ink-3); overflow-wrap: anywhere; }
+.uk-meta:nth-of-type(1) { margin-top: 2px; }
+.uk-money { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; color: var(--ink-2); }
+.uk-money .money { color: var(--ink); font-weight: 500; }
+.uk-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.uk-actions:empty { display: none; }
+
+.uk-inline { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.uk-inline .row { gap: 6px; }
+.uk-inline input[type="date"].input { flex: 1 1 auto; }
+.uk-inline .input { height: var(--ctl-h-sm); }
+.uk-inline .money-input { min-width: 0; }
+.uk-inline-charge { font-size: var(--t-12); color: var(--ink-2); align-items: flex-start; }
+.uk-inline-charge input { margin-top: 2px; }
+
+.uk-tabs { margin-bottom: var(--s4); }
+@media (max-width: 1099.98px) { .uk-cols { gap: var(--s4); } }
+@media (max-width: 759.98px) {
+  .uk-count { font-size: var(--t-13); }
+  .uk-filter { margin-bottom: var(--s4); }
+  .uk-tabs { display: flex; width: 100%; }
+  .uk-tabs > button { flex: 1 1 0; justify-content: center; }
+  .uk-cols { grid-template-columns: minmax(0, 1fr); }
+  .uk-cols[data-tab="open"] > .uk-col:not([aria-labelledby="uk-col-open"]),
+  .uk-cols[data-tab="scheduled"] > .uk-col:not([aria-labelledby="uk-col-scheduled"]),
+  .uk-cols[data-tab="done"] > .uk-col:not([aria-labelledby="uk-col-done"]) { display: none; }
+  .uk-col-head { display: none; }
+  .uk-actions .btn { flex: 1 1 auto; }
+  .uk-inline .input { height: var(--ctl-h); }
+}
+/* ---- 45-reports.css ---- */
+/* Reports view. Tokens only. */
+.rp-head { gap: 10px 12px; }
+.rp-actions { display: flex; gap: 4px; }
+.rp-year .stepper-label { min-width: 64px; }
+.rp-meta { margin-bottom: var(--s4); color: var(--ink-2); font-size: var(--t-15); }
+.rp-meta strong { color: var(--ink); font-weight: 600; }
+.rp-note { margin-top: var(--s3); color: var(--ink-3); font-size: var(--t-12); }
+
+.rp-name { padding: 0; border: 0; background: none; color: var(--ink); font-weight: 500; text-align: left; max-width: 100%; }
+.rp-name:hover { text-decoration: underline; text-underline-offset: 2px; }
+.tbl tr.is-muted .rp-name { color: var(--ink-3); font-weight: 400; }
+.rp-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rp-who .plate { min-width: 52px; flex: none; }
+.rp-status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.rp-group-meta { font-weight: 400; }
+.rp-tbl .tbl-group td { border-top: 1px solid var(--line); }
+.rp-tbl tbody:first-of-type .tbl-group td { border-top: 0; }
+.rp-subtotal td { height: 34px; font-size: var(--t-12); font-weight: 500; color: var(--ink-2); border-bottom: 1px solid var(--line-2); }
+.rp-subtotal:hover td { background: transparent !important; }
+.rp-total td { font-size: var(--t-13); }
+.rp-tbl .plate { min-width: 52px; }
+
+/* scrolling table with sticky first column (phone) */
+.rp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.rp-sticky { min-width: 520px; }
+.rp-scroll .tbl thead th { top: auto; }
+@media (min-width: 760px) { .rp-scroll .tbl thead th { top: var(--sticky-top); } }
+.rp-sticky th:first-child, .rp-sticky td:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
+.rp-sticky thead th:first-child { background: var(--sunk); z-index: 3; }
+.rp-sticky tbody tr:hover td:first-child { background: var(--hover); }
+@media (min-width: 760px) { .rp-sticky { min-width: 0; } .rp-scroll { overflow: visible; } }
+
+/* collection chart: bars drawn to scale with percentage heights against a nice axis */
+.rp-chart { margin: 0 0 var(--s5); }
+.rp-chart-plot { position: relative; height: 220px; margin: 12px 0 44px 52px; border-bottom: 1px solid var(--line-2); }
+.rp-tick { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line); }
+.rp-tick:first-child { border-top: 0; }
+.rp-tick-label { position: absolute; right: calc(100% + 8px); top: -8px; font-size: var(--t-12); line-height: 16px; color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rp-bars { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.rp-month { position: relative; height: 100%; }
+.rp-col { position: absolute; left: 22%; right: 22%; top: 0; bottom: 0; }
+.rp-charged, .rp-collected { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 2px 2px 0 0; }
+.rp-charged { border: 1.5px solid var(--ink-3); border-bottom: 0; background: var(--paper); }
+.rp-collected { left: 1.5px; right: 1.5px; background: var(--accent); border-radius: 1px 1px 0 0; }
+.rp-month.is-current .rp-charged { border-style: dashed; }
+.rp-rate { position: absolute; left: 50%; transform: translate(-50%, -4px); font-size: 11px; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rp-xlab { position: absolute; top: calc(100% + 6px); left: 0; right: 0; text-align: center; font-size: var(--t-12); color: var(--ink-3); line-height: 1.2; }
+.rp-xyear { display: block; font-size: 10.5px; color: var(--ink-3); opacity: .85; }
+.rp-month.is-current .rp-xlab { color: var(--ink); font-weight: 600; }
+.rp-legend { margin-top: 0; }
+.rp-key { display: inline-flex; align-items: center; gap: 6px; }
+.rp-key::before { content: ""; width: 10px; height: 10px; border-radius: 1px; }
+.rp-key-charged::before { border: 1.5px solid var(--ink-3); background: var(--paper); }
+.rp-key-collected::before { background: var(--accent); }
+
+/* phone rent roll */
+.rp-ph-group.sec { margin-top: var(--s5); }
+.rp-ph-group.sec:first-child { margin-top: 0; }
+.rp-ph-sub { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: var(--t-12); color: var(--ink-2); border-bottom: 1px solid var(--line-2); }
+.rp-ph-total { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin-top: var(--s5); padding-top: var(--s3); border-top: 1px solid var(--line-2); font-weight: 600; }
+.rp-ph-total > span { font-weight: 400; color: var(--ink-2); }
+.rp-past .crow-title .rp-name { color: var(--ink-3); }
+
+@media (max-width: 759.98px) {
+  .rp-head { margin-bottom: var(--s4); }
+  .rp-tabs { width: 100%; }
+  .rp-tabs > button { flex: 1 0 auto; }
+  .rp-head > .spacer { display: none; }
+  .rp-actions { margin-left: auto; }
+  .rp-meta { font-size: var(--t-13); }
+  .rp-chart-plot { height: 180px; margin-left: 40px; }
+  .rp-rate { display: none; }
+  .rp-col { left: 16%; right: 16%; }
+  .rp-xlab { font-size: 10.5px; }
+  .rp-xyear { display: none; }
+}
 </style>
 <div class="app" id="rb-app">
   <aside class="rail" id="rb-rail" aria-label="Sections">
@@ -2028,6 +2424,49 @@ RB.model = {
   receiptText, statementText, csv, csvCell, ledgerCsv, rentRollCsv, agingCsv, collectionCsv, incomeCsv,
   parseDelimited, tenantSummary, unitLabel, sortTenants, tenantsArr, ticketsArr,
 };
+
+// ---------------------------------------------------------------- move-out & deposit settlement (Tenants view)
+/**
+ * Preview of a move-out on `moveOut` (pure). Builds the ledger as it will stand on the later of today and moveOut,
+ * with lease.moveOut set, assuming no further payments.
+ * → {moveOut, period, finalRows — generated rent+recurring rows of the final month (with prorate), finalTotal,
+ *    balance — owed at move-out (>0) or credit (<0), balanceNow, depositDueDate}
+ */
+function moveOutPreview(tenant, entries, settings, today, moveOut) {
+  settings = settingsWithDefaults(settings);
+  const t = RB.clone(tenant);
+  t.lease = Object.assign({}, t.lease || {}, { moveOut });
+  const asOf = D.max(today, moveOut);
+  const lg = buildLedger(t, entries, settings, asOf);
+  const period = D.monthKey(moveOut);
+  const finalRows = lg.rows.filter(r => r.generated && (r.kind === 'rent' || r.kind === 'recurring') && r.period === period);
+  const now = buildLedger(tenant, entries, settings, today);
+  return {
+    moveOut, period, finalRows, finalTotal: finalRows.reduce((s, r) => s + r.amount, 0),
+    balance: lg.balance, balanceNow: now.balance,
+    depositDueDate: D.addDays(moveOut, +settings.depositReturnDays || 0),
+  };
+}
+
+/**
+ * Deposit settlement arithmetic (pure). args: {deposit (cents), deductions:[{reason, amount}], balance (ledger balance,
+ * >0 owed), applyToBalance:bool}
+ * → {deposit, deducted, available, applied — deposit used to pay the unpaid balance, refund, shortfall — deductions
+ *    beyond the deposit, balanceAfter — ledger balance once `applied` is credited and `shortfall` charged, lines}
+ */
+function depositSettlement({ deposit, deductions, balance, applyToBalance }) {
+  const dep = Math.max(0, Math.round(+deposit || 0));
+  const lines = (deductions || []).filter(d => d && Math.round(+d.amount || 0) > 0).map(d => ({ reason: String(d.reason || '').trim(), amount: Math.round(+d.amount) }));
+  const deducted = lines.reduce((s, d) => s + d.amount, 0);
+  const available = Math.max(0, dep - deducted);
+  const shortfall = Math.max(0, deducted - dep);
+  const owed = Math.max(0, Math.round(+balance || 0));
+  const applied = applyToBalance ? Math.min(owed, available) : 0;
+  const refund = available - applied;
+  return { deposit: dep, deducted, available, applied, refund, shortfall, balanceAfter: Math.round(+balance || 0) - applied + shortfall, lines };
+}
+RB.model.moveOutPreview = moveOutPreview;
+RB.model.depositSettlement = depositSettlement;
 })();
 /* ---- js/20-store.js ---- */
 ;(function(){'use strict';
@@ -3583,16 +4022,18 @@ function recordPayment(tenantId, opts) {
 }
 
 /** Record payments for several tenants at once (full open balance each, today, last-used method). Single toast with Undo. */
-function recordPayments(tenantIds) {
+function recordPayments(tenantIds, opts) {
   if (!guard()) return Promise.resolve([]);
   const today = S().today();
+  const amounts = (opts && opts.amounts) || null; // optional {tenantId: cents} (capped at the balance), e.g. one past month's open amount
   const done = [];
   let total = 0;
   for (const tid of tenantIds) {
     const lg = S().ledger(tid); if (!lg || lg.balance <= 0) continue;
+    const amount = amounts && amounts[tid] > 0 ? Math.min(amounts[tid], lg.balance) : lg.balance;
     const id = RB.id();
-    S().addEntry(tid, { id, type: 'payment', date: today, amount: lg.balance, method: lastMethod(tid), ref: '', memo: '' }).catch(() => {});
-    done.push([tid, id]); total += lg.balance;
+    S().addEntry(tid, { id, type: 'payment', date: today, amount, method: lastMethod(tid), ref: '', memo: '' }).catch(() => {});
+    done.push([tid, id]); total += amount;
   }
   if (done.length) ui.toast('Recorded ' + RB.plural(done.length, 'payment') + ' · ' + M.fmt(total), { undo: () => done.forEach(([tid, id]) => S().undoEntry(tid, id)) });
   return Promise.resolve(done.map(d => d[1]));
@@ -4431,95 +4872,810 @@ RB.views.register('kit', {
 })();
 /* ---- js/views/leases.js ---- */
 ;(function(){'use strict';
-// views/leases.js — PLACEHOLDER (to be replaced wholesale by the Leases view author).
+// views/leases.js — Leases: 12-month timeline (desktop) / grouped list (phone + List mode), renew / month-to-month / notice.
+// Owns the RB.actions.renewLease hook.
 const RB = globalThis.RB;
-const { html: h, ui, date: D } = RB;
+const { html: h, ui, date: D, money: M } = RB;
+const S = () => RB.store;
 
+let mode = RB.prefs.get('leases:mode', 'timeline'); // 'timeline' | 'list'
+
+// ------------------------------------------------------------------ data
+/** Classify every current tenant's lease for the view. */
+function leaseRows(today, settings) {
+  return S().tenantsList({ includePast: false }).map(t => {
+    const ls = RB.model.leaseState(t, settings, today);
+    const l = t.lease || {};
+    let group, endDate = null;
+    if (ls.noticeGiven || t.status === 'notice' || (l.moveOut && ls.kind !== 'upcoming')) { group = 'moving'; endDate = l.moveOut || l.end; }
+    else if (ls.kind === 'mtm') group = 'mtm';
+    else { endDate = l.end; group = 'fixed'; }
+    const days = endDate ? D.diffDays(today, endDate) : null;
+    return { t, ls, group, endDate, days, rent: RB.model.rentOn(t, today) };
+  }).sort((a, b) => {
+    const ea = a.endDate || '9999-12-31', eb = b.endDate || '9999-12-31';
+    return D.cmp(ea, eb) || RB.natCmp(a.t.property, b.t.property) || RB.natCmp(a.t.unit, b.t.unit);
+  });
+}
+
+function bucket(r, noticeDays) {
+  if (r.group === 'moving') return 'moving';
+  if (r.group === 'mtm') return 'mtm';
+  if (r.days <= 30) return 'd30';
+  if (r.days <= 60) return 'd60';
+  if (r.days <= 90) return 'd90';
+  return 'later';
+}
+const GROUPS = [['d30', 'Ending in 30 days'], ['d60', 'Ending in 31–60 days'], ['d90', 'Ending in 61–90 days'], ['later', 'Later'], ['mtm', 'Month-to-month'], ['moving', 'Moving out']];
+
+/** "Renew" is the one primary for fixed leases in or near the notice window (within notice days + 30). */
+function isRenewDue(r, noticeDays) { return r.group === 'fixed' && r.days != null && r.days <= noticeDays + 30; }
+
+// ------------------------------------------------------------------ actions
+function noticeGiven(id) { if (typeof RB.actions.giveNotice === 'function') return RB.actions.giveNotice(id); return RB.actions.openTenant(id); }
+function moveOut(id) { if (typeof RB.actions.moveOut === 'function') return RB.actions.moveOut(id); return RB.actions.openTenant(id); }
+
+function goMonthToMonth(id) {
+  if (!S().canWrite()) { ui.toast('View only — you can’t change this rent book.', { tone: 'bad' }); return; }
+  const t = S().tenant(id); if (!t) return;
+  const prev = (t.lease || {}).end || null;
+  S().updateTenant(id, { lease: { end: null } }).catch(() => {});
+  ui.toast(RB.actions.who(t) + ' is now month-to-month', { undo: () => S().updateTenant(id, { lease: { end: prev } }) });
+}
+
+/** Renew sheet: new end date (+12 months), optional new rent from an effective date, one-line summary. Resolves true if saved. */
+function renewLease(tenantId) {
+  if (!S().canWrite()) { ui.toast('View only — you can’t change this rent book.', { tone: 'bad' }); return Promise.resolve(false); }
+  const t = S().tenant(tenantId); if (!t) return Promise.resolve(false);
+  const today = S().today();
+  const l = t.lease || {};
+  const curEnd = l.end && l.end >= today ? l.end : null;
+  const base = curEnd || today;
+  const defEnd = D.addMonths(base, 12);
+  const curRent = RB.model.rentOn(t, today);
+  const defFrom = curEnd ? D.addDays(curEnd, 1) : D.monthStart(D.addMonthKey(D.monthKey(today), 1));
+  const who = RB.actions.who(t);
+  return new Promise(resolve => {
+    let ok = false;
+    const summary = v => {
+      const parts = [];
+      parts.push(curEnd ? h`Lease end moves from <strong>${D.fmt(curEnd, today)}</strong> to <strong>${v.end ? D.fmt(v.end, today) : '…'}</strong>` : h`Lease becomes fixed-term, ending <strong>${v.end ? D.fmt(v.end, today) : '…'}</strong>`);
+      if (v.rent != null && v.rent !== curRent) parts.push(h`rent ${M.fmt(curRent)} → <strong>${M.fmt(v.rent)}</strong> from ${v.from ? D.fmt(v.from, today) : '…'}`);
+      else parts.push(h`rent stays ${M.fmt(curRent)}`);
+      if (l.noticeDate || t.status === 'notice') parts.push(h`notice is withdrawn`);
+      return RB.html.join(parts, ' · ');
+    };
+    ui.sheet({
+      title: 'Renew lease', sub: t.name + ' · ' + RB.model.unitLabel(t),
+      body: (el, sh) => {
+        el.innerHTML = String(h`<div class="form-grid">
+          ${ui.field({ name: 'end', id: 'lz-renew-end', label: 'New end date', type: 'date', value: defEnd, required: true, hint: curEnd ? 'Currently ' + D.fmt(curEnd, today) : 'Currently month-to-month' })}
+          <div class="field"></div>
+          ${ui.field({ name: 'rent', id: 'lz-renew-rent', label: 'New rent', type: 'money', optional: true, placeholder: M.input(curRent), hint: 'Leave empty to keep ' + M.fmt(curRent) })}
+          ${ui.field({ name: 'from', id: 'lz-renew-from', label: 'New rent starts', type: 'date', value: defFrom, hint: 'Added to the rent schedule; earlier months keep the old rent' })}
+        </div>
+        <p class="lz-renew-sum mt-4" id="lz-renew-sum"></p>`);
+        const upd = () => {
+          const r = ui.readForm(el).values;
+          el.querySelector('#lz-renew-sum').innerHTML = String(summary(r));
+          sh.setAction('save', { label: r.rent != null && r.rent !== curRent ? 'Renew at ' + M.fmt(r.rent) : 'Renew lease' });
+        };
+        el.addEventListener('input', upd); el.addEventListener('change', upd);
+        upd();
+      },
+      actions: [{ id: 'save', label: 'Renew lease', kind: 'primary', onClick: s => {
+        const v = ui.form(s.body, { validate: v => ({
+          end: v.end && v.end <= today ? 'Pick a date after today' : v.end && l.start && v.end <= l.start ? 'Must be after the lease start' : '',
+          rent: v.rent != null && v.rent <= 0 ? 'Enter an amount above zero' : '',
+          from: v.rent != null && !v.from ? 'When does the new rent start?' : '',
+        }) });
+        if (!v) return false;
+        const before = { lease: { end: l.end || null, noticeDate: l.noticeDate || null, moveOut: l.moveOut || null }, rent: RB.clone(t.rent || []), status: t.status || 'active' };
+        const patch = { lease: { end: v.end } };
+        if (v.rent != null && v.rent !== curRent) {
+          const sched = (t.rent || []).filter(r => r && r.from !== v.from).map(r => ({ from: r.from, amount: r.amount }));
+          sched.push({ from: v.from, amount: v.rent });
+          sched.sort((a, b) => D.cmp(a.from, b.from));
+          patch.rent = sched;
+        }
+        if (l.noticeDate || t.status === 'notice') { patch.lease.noticeDate = null; patch.lease.moveOut = null; patch.status = 'active'; }
+        S().updateTenant(tenantId, patch).catch(() => {});
+        ok = true;
+        ui.toast('Renewed ' + who + ' to ' + D.fmt(v.end, today) + (patch.rent ? ' at ' + M.fmt(v.rent) : ''), { undo: () => S().updateTenant(tenantId, before) });
+      } }],
+      onClose: () => resolve(ok),
+    });
+  });
+}
+RB.actions.renewLease = renewLease;
+
+function decideMenu(anchor, r) {
+  const id = r.t.id;
+  const items = [];
+  items.push({ label: r.group === 'mtm' ? 'Renew with an end date…' : 'Renew…', icon: 'calendar', write: true, onSelect: () => renewLease(id) });
+  if (r.group === 'fixed') items.push({ label: 'Go month-to-month', icon: 'sync', write: true, onSelect: () => goMonthToMonth(id) });
+  if (r.group !== 'moving') items.push({ label: 'Notice given…', icon: 'door', write: true, onSelect: () => noticeGiven(id) });
+  else items.push({ label: 'Plan move-out…', icon: 'door', write: true, onSelect: () => moveOut(id) });
+  items.push({ sep: true }, { label: 'Open tenant', icon: 'arrow-right', onSelect: () => RB.actions.openTenant(id) });
+  ui.menu(anchor, items, { align: 'end' });
+}
+
+// ------------------------------------------------------------------ rendering helpers
+function actionCell(r, noticeDays, phone) {
+  const id = r.t.id;
+  if (r.group === 'moving') return h`<button type="button" class="btn btn-sm${phone ? '' : ' btn-ghost'}" data-act="moveout" data-id="${id}" data-write>Plan move-out</button>`;
+  if (isRenewDue(r, noticeDays)) {
+    return h`<span class="btn-group"><button type="button" class="btn btn-sm btn-primary" data-act="renew" data-id="${id}" data-write>Renew</button><button type="button" class="btn btn-sm btn-primary btn-caret" data-act="decide" data-id="${id}" aria-label="Other choices for ${r.t.name}" aria-haspopup="menu" data-write>${ui.icon('chevron-down')}</button></span>`;
+  }
+  return h`<button type="button" class="btn btn-sm" data-act="decide" data-id="${id}" aria-haspopup="menu" data-write><span>Decide</span>${ui.icon('chevron-down')}</button>`;
+}
+
+function endText(r, today) {
+  if (r.group === 'mtm') return r.ls.holdover && r.t.lease.end ? 'month-to-month · lease ended ' + D.fmt(r.t.lease.end, today) : 'month-to-month';
+  if (r.group === 'moving') return 'moves out ' + D.fmt(r.endDate, today) + ' · ' + (r.days >= 0 ? r.days + ' d' : 'moved');
+  return D.fmt(r.endDate, today) + ' · ' + (r.days === 0 ? 'today' : r.days + ' d');
+}
+
+// ------------------------------------------------------------------ timeline
+function timeline(rows, today, settings) {
+  const curKey = D.monthKey(today);
+  const w0 = D.monthStart(curKey);
+  const w1 = D.monthStart(D.addMonthKey(curKey, 12));
+  const span = D.diffDays(w0, w1);
+  const pct = d => Math.max(0, Math.min(100, (D.diffDays(w0, d) / span) * 100));
+  const fx = n => n.toFixed(3) + '%';
+  const nd = settings.leaseNoticeDays;
+  const todayX = pct(today);
+  const nwEnd = D.addDays(today, nd);
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const k = D.addMonthKey(curKey, i);
+    const label = i === 0 || k.slice(5) === '01' ? D.fmtMonthShort(k, today, { year: true }) : D.MON[+k.slice(5, 7) - 1];
+    return { k, x: pct(D.monthStart(k)), w: (D.daysInMonth(k) / span) * 100, label };
+  });
+  const bar = r => {
+    const l = r.t.lease || {};
+    const startD = D.max(l.start || l.moveIn || w0, w0);
+    const left = pct(startD);
+    let right, cls = 'lz-bar', open = false, off = false;
+    if (r.group === 'mtm') { right = 100; cls += ' lz-bar-mtm'; open = true; }
+    else if (r.endDate >= w1) { right = 100; off = true; cls += ' lz-bar-off'; }
+    else { right = pct(D.addDays(r.endDate, 1)); }
+    if (r.group === 'moving') cls += ' lz-bar-moving';
+    else if (r.group === 'fixed' && r.days <= nd) cls += ' lz-bar-due';
+    const width = Math.max(0.6, right - left);
+    // label: after the bar if there is room, otherwise inside its right end
+    const label = r.group === 'mtm' ? 'month-to-month' : r.group === 'moving' ? 'Moves out ' + D.fmt(r.endDate, today) + ' · ' + r.days + ' d' : off ? 'ends ' + D.fmt(r.endDate, today) : D.fmt(r.endDate, today) + ' · ' + (r.days === 0 ? 'today' : r.days + ' d');
+    const inside = open || off || right > 78;
+    const title = r.t.name + ' — ' + (l.start ? D.fmt(l.start, today) : '?') + ' to ' + (r.group === 'mtm' ? 'month-to-month' : D.fmt(r.endDate, today));
+    return h`<div class="${cls}${inside ? ' lz-bar-in' : ''}" style="left:${fx(left)};width:${fx(width)}" data-start="${startD}" data-end="${r.group === 'mtm' ? '' : r.endDate}" title="${title}">
+        ${r.group === 'moving' ? h`<span class="lz-cap" aria-hidden="true"></span>` : ''}${off ? h`<span class="lz-arrow" aria-hidden="true">${ui.icon('arrow-right', { size: 12 })}</span>` : ''}
+        ${inside ? h`<span class="lz-label">${label}</span>` : ''}</div>
+      ${inside ? '' : h`<span class="lz-label lz-label-out" style="left:calc(${fx(right)} + 8px)">${label}</span>`}`;
+  };
+  return h`<div class="lz-tl" role="table" aria-label="Lease timeline, ${D.fmtMonth(curKey)} to ${D.fmtMonth(D.addMonthKey(curKey, 11))}">
+    <div class="lz-head" role="row">
+      <div class="lz-name lz-head-name" role="columnheader">${RB.plural(rows.length, 'lease')}</div>
+      <div class="lz-track lz-months" role="columnheader">${months.map(m => h`<span class="lz-month${m.k.slice(5) === '01' ? ' is-year' : ''}" style="left:${fx(m.x)};width:${fx(m.w)}">${m.label}</span>`)}</div>
+      <div class="lz-act"></div>
+    </div>
+    <div class="lz-body">
+      <div class="lz-grid" aria-hidden="true">
+        ${months.slice(1).map(m => h`<i class="lz-gl${m.k.slice(5) === '01' ? ' is-year' : ''}" style="left:${fx(m.x)}"></i>`)}
+        <i class="lz-window" style="left:${fx(todayX)};width:${fx(pct(nwEnd) - todayX)}"></i>
+        <i class="lz-today" style="left:${fx(todayX)}"></i>
+      </div>
+      ${rows.map(r => h`<div class="lz-row" role="row" data-tenant="${r.t.id}">
+        <div class="lz-name" role="cell"><button type="button" class="lz-who" data-act="open" data-id="${r.t.id}">${ui.plate(r.t.unit, { property: r.t.property })}<span class="lz-who-text"><span class="lz-who-name truncate">${r.t.name}</span><span class="lz-who-sub truncate">${r.t.property}</span></span></button></div>
+        <div class="lz-track" role="cell"><span class="vh">${endText(r, today)}</span>${bar(r)}</div>
+        <div class="lz-act" role="cell">${actionCell(r, settings.leaseNoticeDays)}</div>
+      </div>`)}
+    </div>
+    <div class="lz-foot" aria-hidden="true">
+      <div class="lz-name"></div>
+      <div class="lz-track">
+        <span class="lz-today-label" style="left:${fx(todayX)}">Today · ${D.fmt(today, today)}</span>
+        <span class="lz-window-label" style="left:${fx(pct(nwEnd))}">Notice window ends ${D.fmt(nwEnd, today)} (${nd} d)</span>
+      </div>
+      <div class="lz-act"></div>
+    </div>
+  </div>`;
+}
+
+// ------------------------------------------------------------------ list
+function list(rows, today, settings) {
+  const by = {};
+  rows.forEach(r => { (by[bucket(r, settings.leaseNoticeDays)] = by[bucket(r, settings.leaseNoticeDays)] || []).push(r); });
+  const rel = r => r.group === 'mtm' ? (r.ls.holdover ? 'lease ended ' + D.fmt(r.t.lease.end, today) : 'no end date') : r.days < 0 ? -r.days + ' d ago' : r.days === 0 ? 'today' : 'in ' + r.days + ' d';
+  const endCell = r => r.group === 'mtm' ? h`<span class="muted">Month-to-month</span>` : h`<span class="medium">${D.fmt(r.endDate, today)}</span>`;
+  const tone = r => (r.group === 'fixed' && r.days <= 30) || (r.group === 'moving' && r.days <= 30) ? ' tone-warn' : '';
+  return h`${GROUPS.filter(([k]) => by[k]).map(([k, label]) => h`
+    <div class="sec sec-sm lz-group"><h2 class="sec-title">${label}</h2><span class="sec-meta">${by[k].length}</span></div>
+    <div class="tbl-wrap hide-phone"><table class="tbl lz-list-tbl">
+      <thead><tr><th>Tenant</th><th>${k === 'moving' ? 'Moves out' : 'Lease ends'}</th><th></th><th class="num">Rent</th><th class="shrink"></th></tr></thead>
+      <tbody>${by[k].map(r => h`<tr data-tenant="${r.t.id}">
+        <td><button type="button" class="lz-who" data-act="open" data-id="${r.t.id}">${ui.plate(r.t.unit, { property: r.t.property })}<span class="lz-who-text"><span class="lz-who-name truncate">${r.t.name}</span><span class="lz-who-sub truncate">${r.t.property}</span></span></button></td>
+        <td>${endCell(r)}</td><td class="faint${tone(r)}">${rel(r)}</td>
+        <td class="num">${ui.money(r.rent)}</td>
+        <td class="shrink">${actionCell(r, settings.leaseNoticeDays)}</td></tr>`)}</tbody>
+    </table></div>
+    <div class="clist show-phone">${by[k].map(r => h`<div class="crow" data-tenant="${r.t.id}">
+      <span class="crow-lead">${ui.plate(r.t.unit)}</span>
+      <div class="crow-main"><div class="crow-title"><button type="button" class="lz-link" data-act="open" data-id="${r.t.id}">${r.t.name}</button></div>
+        <div class="crow-sub">${r.group === 'mtm' ? 'Month-to-month' : (r.group === 'moving' ? 'Moves out ' : 'Ends ') + D.fmt(r.endDate, today)} · <span class="${tone(r).trim()}">${rel(r)}</span></div></div>
+      ${r.group === 'moving' || isRenewDue(r, settings.leaseNoticeDays)
+        ? h`<div class="crow-aside"><span>${ui.money(r.rent)}<span class="faint t-12"> /mo</span></span></div>
+          <div class="crow-actions">${actionCell(r, settings.leaseNoticeDays, true)}</div>`
+        : h`<div class="crow-aside"><span>${ui.money(r.rent)}<span class="faint t-12"> /mo</span></span>
+          <button type="button" class="btn btn-sm btn-ghost lz-decide-ph" data-act="decide" data-id="${r.t.id}" aria-haspopup="menu" aria-label="Decide on ${r.t.name}’s lease" data-write><span>Decide</span>${ui.icon('chevron-down')}</button></div>`}
+    </div>`)}</div>`)}`;
+}
+
+// ------------------------------------------------------------------ view
 RB.views.register('leases', {
   title: 'Leases',
+  shortcuts: [['t', 'Timeline'], ['l', 'List']],
   render(el, ctx) {
-    const S = ctx.store;
-    const list = S.tenantsList({ includePast: false }).map(t => ({ t, ls: RB.model.leaseState(t, ctx.state.settings, ctx.today) }))
-      .sort((a, b) => (a.ls.end || '9999').localeCompare(b.ls.end || '9999'));
+    const settings = ctx.state.settings;
+    const rows = leaseRows(ctx.today, settings);
+    const nd = settings.leaseNoticeDays;
+    const ending = rows.filter(r => r.group === 'fixed' && r.days <= nd).length;
+    const mtm = rows.filter(r => r.group === 'mtm').length;
+    const moving = rows.filter(r => r.group === 'moving').length;
+    const parts = [h`<strong>${RB.plural(ending, 'lease')}</strong> ${ending === 1 ? 'ends' : 'end'} in the next ${nd} days`, h`<strong>${mtm}</strong> month-to-month`, h`<strong>${moving}</strong> moving out`];
     el.innerHTML = String(h`
-      <div class="sec"><h2 class="sec-title">By end date</h2><span class="sec-meta">Notice window ${ctx.state.settings.leaseNoticeDays} days</span></div>
-      <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>Tenant</th><th class="hide-phone">Start</th><th>Ends</th><th class="hide-phone">Through the term</th></tr></thead>
-        <tbody>${list.map(({ t, ls }) => h`<tr class="is-link" data-act="open" data-id="${t.id}"><td><span class="row">${ui.plate(t.unit)}<span class="cell-name truncate">${t.name}</span></span></td>
-          <td class="hide-phone muted">${ui.date(ls.start)}</td>
-          <td>${ls.kind === 'mtm' ? ui.tag('Month-to-month', 'quiet') : h`<span class="${ls.inNoticeWindow ? 'tone-warn medium' : ''}">${ls.label}</span>`}${ls.noticeGiven ? h` ${ui.tag('Notice', 'warn')}` : ''}</td>
-          <td class="hide-phone" style="width:30%">${ls.progress != null ? h`<div class="bar bar-thin"><span class="bar-seg${ls.inNoticeWindow ? ' bar-seg-warn' : ''}" style="width:${Math.round(ls.progress * 100)}%"></span></div>` : ''}</td></tr>`)}</tbody>
-      </table></div>`);
-    ui.bind(el, { open: b => RB.actions.openTenant(b.dataset.id) });
+      <div class="view-head lz-head-row">
+        <p class="lz-summary">${RB.html.join(parts, h`<span class="lz-dot" aria-hidden="true"> · </span>`)}</p>
+        <span class="spacer"></span>
+        <div class="seg hide-phone" role="group" aria-label="Layout">
+          <button type="button" id="lz-mode-timeline" data-act="mode" data-mode="timeline" aria-pressed="${String(mode === 'timeline')}">Timeline</button>
+          <button type="button" id="lz-mode-list" data-act="mode" data-mode="list" aria-pressed="${String(mode === 'list')}">List</button>
+        </div>
+      </div>
+      ${rows.length ? h`
+        ${mode === 'timeline' ? h`<div class="hide-phone">${timeline(rows, ctx.today, settings)}</div>` : ''}
+        <div class="${mode === 'timeline' ? 'show-phone' : ''}">${list(rows, ctx.today, settings)}</div>`
+        : ui.empty({ icon: 'leases', title: 'No current leases', body: 'Add a tenant with lease dates and it shows up here.' })}`);
+    const byId = id => rows.find(r => r.t.id === id);
+    ui.bind(el, {
+      mode: b => { mode = b.dataset.mode; RB.prefs.set('leases:mode', mode); RB.shell.refresh(); },
+      open: b => RB.actions.openTenant(b.dataset.id),
+      renew: b => renewLease(b.dataset.id),
+      decide: b => { const r = byId(b.dataset.id); if (r) decideMenu(b, r); },
+      moveout: b => moveOut(b.dataset.id),
+    });
+  },
+  onKey(e) {
+    if (e.key === 't' || e.key === 'l') { mode = e.key === 't' ? 'timeline' : 'list'; RB.prefs.set('leases:mode', mode); RB.shell.refresh(); return true; }
+    return false;
   },
 });
 })();
 /* ---- js/views/rent.js ---- */
 ;(function(){'use strict';
-// views/rent.js — PLACEHOLDER (to be replaced wholesale by the Rent view author). Exercises the foundation.
+// views/rent.js — Rent: the monthly collection sheet. Built for recording 20+ payments in a minute.
 const RB = globalThis.RB;
-const { html: h, ui, date: D } = RB;
-let period = null;
-let filter = 'all';
+const { html: h, ui, date: D, money: M } = RB;
+
+// ---- view state (module-level; survives re-renders) ----
+let period = null;                                   // 'YYYY-MM' shown
+let filter = RB.prefs.get('rent.filter', 'all');     // all | unpaid | late | partial | paid
+let grouped = !!RB.prefs.get('rent.group', false);   // group by property
+let cursorId = null;                                 // keyboard cursor (tenant id)
+let bulkMode = false;                                // phone: show tick boxes
+const selected = new Set();                          // tenant ids ticked for bulk payment
+let pendingFocus = null;                             // element id to focus after the next render
+let lastShown = [];                                  // tenant ids in display order (for keys)
+let lastRows = new Map();                            // tenant id → row model from the last render
+let lastCurrent = true;                              // whether the last render showed this month
+
+const FILTERS = [['all', 'All'], ['unpaid', 'Unpaid'], ['late', 'Late'], ['partial', 'Partial'], ['paid', 'Paid']];
+const PRED = {
+  all: () => true,
+  unpaid: r => r.unpaid,
+  late: r => r.m.status === 'late',
+  partial: r => r.m.status === 'partial',
+  paid: r => r.m.status === 'paid' || r.m.status === 'paid_late',
+};
+const RANK = { late: 0, partial: 1, due: 2 };
+if (!PRED[filter]) filter = 'all';
+
+/** Rows for a period: every tenant with a rent/recurring charge that month, with what Mark paid would record. */
+function buildRows(S, key, current) {
+  const out = [];
+  S.tenantsList().forEach((t, i) => {
+    const lg = S.ledger(t.id);
+    const m = lg && lg.months[key];
+    if (!m || !m.scheduled) return;
+    const unpaid = m.open > 0;
+    // This month: quick pay records the full open balance (spec). Past month: that month's open amount.
+    // Payments settle the oldest charge first, so clearing a past month means clearing everything up to it:
+    // the balance less whatever is still open in later months.
+    let later = 0;
+    if (!current) for (const k of Object.keys(lg.months)) if (k > key) later += lg.months[k].open;
+    const payAmount = unpaid ? (current ? Math.max(0, lg.balance) : Math.max(0, Math.min(lg.balance, lg.balance - later))) : 0;
+    out.push({ t, i, lg, m, unpaid, payAmount, rank: unpaid ? (RANK[m.status] !== undefined ? RANK[m.status] : 3) : 4 });
+  });
+  return out;
+}
+const byRank = (a, b) => a.rank - b.rank || a.i - b.i;
+
+/** Periods that have any rent charge (for the stepper bounds). */
+function periodBounds(S, today) {
+  const cur = D.monthKey(today);
+  let min = cur, max = cur;
+  const next = D.addMonthKey(cur, 1);
+  for (const t of S.tenantsList()) {
+    const lg = S.ledger(t.id); if (!lg) continue;
+    for (const k of Object.keys(lg.months)) {
+      if (!lg.months[k].scheduled) continue;
+      if (k < min) min = k;
+      if (k > max && k <= next) max = k;
+    }
+  }
+  return { min, max, cur };
+}
+
+/** The payment (or credit) row that settled a month — for "paid Nov 3 · Zelle", receipts and voiding. */
+function settledBy(lg, key) {
+  const ids = new Set(lg.rows.filter(r => r.type === 'charge' && !r.void && r.period === key && (r.kind === 'rent' || r.kind === 'recurring')).map(r => r.id));
+  let best = null;
+  for (const r of lg.rows) if (r.type !== 'charge' && !r.void && r.applied && r.applied.some(a => ids.has(a.id))) best = r;
+  return best;
+}
+
+// ------------------------------------------------------------------ pieces
+const lateFeeLink = (r, key, cls) => {
+  const s = r.lg.suggestedLateFee;
+  if (r.m.status !== 'late' || !s || s.period !== key) return '';
+  return h`<button type="button" class="linkbtn linkbtn-muted rent-fee ${cls || ''}" id="rent-fee-${cls ? 'c' : ''}${r.t.id}" data-act="fee" data-id="${r.t.id}" data-write aria-label="Add late fee ${M.fmt(s.amount)} for ${D.monthName(key)}, ${r.t.name}">+ late fee ${M.fmt(s.amount)}</button>`;
+};
+const payBtn = (r, pre) => h`<span class="btn-group rent-pay">
+  <button type="button" class="btn btn-sm btn-soft" id="rent-${pre}pay-${r.t.id}" data-act="pay" data-id="${r.t.id}" data-write title="Record ${M.fmt(r.payAmount)} today" aria-label="Mark paid: record ${M.fmt(r.payAmount)} from ${r.t.name} today">Mark paid</button><button type="button" class="btn btn-sm btn-soft btn-caret" id="rent-${pre}sheet-${r.t.id}" data-act="sheet" data-id="${r.t.id}" data-write aria-label="Payment details for ${r.t.name}" title="Amount, date, method…">${ui.icon('chevron-down')}</button>
+</span>`;
+const menuBtn = (r, pre) => h`<button type="button" class="btn btn-ghost btn-icon btn-sm rent-menu" id="rent-${pre}menu-${r.t.id}" data-act="menu" data-id="${r.t.id}" aria-label="More for ${r.t.name}" aria-haspopup="menu">${ui.icon('more')}</button>`;
+function paidNote(r, today) {
+  const p = settledBy(r.lg, r.m.period);
+  const when = r.m.paidOn ? D.fmt(r.m.paidOn, today) : '';
+  const how = p ? (p.type === 'credit' ? 'credit' : p.method || '') : '';
+  return [when, how].filter(Boolean).join(' · ');
+}
+const amt = (c, opts) => (c ? ui.money(c, opts) : h`<span class="faint" aria-label="none">—</span>`);
+
+function tableRow(r, key, today) {
+  const sel = selected.has(r.t.id), cur = cursorId === r.t.id;
+  return h`<tr class="rent-row${cur ? ' is-focused' : ''}${sel ? ' is-selected' : ''}" data-row="${r.t.id}" data-act="cursor" data-id="${r.t.id}"${cur ? RB.raw(' aria-current="true"') : ''}>
+    <td class="tbl-check">${r.unpaid ? h`<input type="checkbox" id="rent-chk-${r.t.id}" data-change="sel" data-id="${r.t.id}" aria-label="Select ${r.t.name}"${sel ? RB.raw(' checked') : ''} data-write>` : ''}</td>
+    <td class="rent-c-plate">${ui.plate(r.t.unit, { property: r.t.property })}</td>
+    <td class="rent-c-name"><span class="cell-name">${r.t.name}</span>${!grouped ? h`<span class="cell-sub">${r.t.property}${r.t.status === 'past' ? ' · moved out' : ''}</span>` : r.t.status === 'past' ? h`<span class="cell-sub">moved out</span>` : ''}</td>
+    <td class="num">${ui.money(r.m.charged)}</td>
+    <td class="num">${amt(r.m.paid)}</td>
+    <td class="num">${amt(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}</td>
+    <td class="rent-c-status"><span class="rent-status">${ui.pill(r.m.status, { daysLate: r.m.daysLate })}${lateFeeLink(r, key)}</span></td>
+    <td class="rent-c-act"><span class="rent-act">${r.unpaid ? payBtn(r, '') : h`<span class="rent-paidon">${paidNote(r, today)}</span>`}${menuBtn(r, '')}</span></td>
+  </tr>`;
+}
+
+function card(r, key, today) {
+  const sel = selected.has(r.t.id), cur = cursorId === r.t.id;
+  const showChk = (bulkMode || selected.size > 0) && r.unpaid;
+  const sub = r.unpaid
+    ? h`${ui.money(r.m.charged)} due${r.m.paid ? h` · ${ui.money(r.m.paid)} paid` : ''}`
+    : h`Paid ${paidNote(r, today)}`;
+  return h`<div class="crow rent-card${cur ? ' is-cursor' : ''}${sel ? ' is-selected' : ''}" data-row="${r.t.id}" data-act="cursor" data-id="${r.t.id}">
+    <span class="crow-lead rent-card-lead">${showChk ? h`<label class="rent-cchk"><input type="checkbox" id="rent-cchk-${r.t.id}" data-change="sel" data-id="${r.t.id}" aria-label="Select ${r.t.name}"${sel ? RB.raw(' checked') : ''} data-write></label>` : ''}${ui.plate(r.t.unit, { property: r.t.property })}</span>
+    <div class="crow-main"><div class="crow-title">${r.t.name}</div><div class="crow-sub">${sub}</div></div>
+    ${r.unpaid
+      ? h`<div class="crow-aside">${ui.pill(r.m.status, { daysLate: r.m.daysLate, size: 'sm' })}${ui.money(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}</div>
+        <div class="crow-actions rent-cact">${lateFeeLink(r, key, 'c')}<span class="spacer"></span>${menuBtn(r, 'c')}${payBtn(r, 'c')}</div>`
+      : h`<div class="crow-aside rent-caside-paid">${ui.pill(r.m.status, { daysLate: r.m.daysLate, size: 'sm' })}${menuBtn(r, 'c')}</div>`}
+  </div>`;
+}
+
+// ------------------------------------------------------------------ actions
+function rowOf(id) { return lastRows.get(id) || null; }
+function payOpts(r) { return lastCurrent ? { quick: true } : { quick: true, amount: r.payAmount }; }
+/** Quick pay, then move the cursor to the next unpaid row in the old order (the list re-sorts under it). */
+function markPaid(r) {
+  if (!r || !r.unpaid) return;
+  const ae = document.activeElement;
+  const wasBtn = ae && ae.id && /^rent-c?(pay|sheet|chk|cchk)-/.test(ae.id);
+  const phone = ae && ae.id && /^rent-c/.test(ae.id);
+  const i = lastShown.indexOf(r.t.id);
+  const unpaidAfter = lastShown.slice(i + 1).find(id => rowOf(id) && rowOf(id).unpaid);
+  const unpaidBefore = lastShown.slice(0, Math.max(0, i)).reverse().find(id => rowOf(id) && rowOf(id).unpaid);
+  const next = unpaidAfter || unpaidBefore || null;
+  if (cursorId === r.t.id || cursorId === null || wasBtn) cursorId = next || r.t.id;
+  if (wasBtn && next) pendingFocus = 'rent-' + (phone ? 'c' : '') + 'pay-' + next;
+  selected.delete(r.t.id);
+  RB.actions.recordPayment(r.t.id, payOpts(r));
+}
+function openSheet(r) {
+  if (!r) return;
+  cursorId = r.t.id;
+  RB.actions.recordPayment(r.t.id, lastCurrent || !r.unpaid || !r.payAmount ? {} : { amount: r.payAmount });
+}
+function rowMenu(anchor, r) {
+  const items = [];
+  if (r.unpaid) {
+    items.push({ label: 'Record payment…', icon: 'cash', write: true, onSelect: () => openSheet(r) });
+    const s = r.lg.suggestedLateFee;
+    if (r.m.status === 'late' && s && s.period === r.m.period) items.push({ label: 'Add late fee ' + M.fmt(s.amount), icon: 'plus', write: true, onSelect: () => RB.actions.addLateFee(r.t.id, r.m.period) });
+  } else {
+    const p = settledBy(r.lg, r.m.period);
+    if (p && p.kind === 'entry') {
+      items.push({ label: 'Copy receipt', icon: 'copy', onSelect: () => RB.actions.copyReceipt(r.t.id, p.id) });
+      if (p.type === 'payment') items.push({ label: 'Void ' + M.fmt(p.amount) + ' payment', icon: 'undo', danger: true, write: true, onSelect: () => RB.actions.voidEntry(r.t.id, p.id) });
+    }
+    items.push({ label: 'Record another payment…', icon: 'cash', write: true, onSelect: () => RB.actions.recordPayment(r.t.id) });
+  }
+  items.push({ sep: true });
+  items.push({ label: 'Add note…', icon: 'note', write: true, onSelect: () => RB.actions.addNote(r.t.id) });
+  items.push({ label: 'View tenant', icon: 'user', onSelect: () => RB.actions.openTenant(r.t.id) });
+  ui.menu(anchor, items, { align: 'end' });
+}
+function scrollToCursor() {
+  const els = document.querySelectorAll('[data-row="' + CSS.escape(cursorId || '') + '"]');
+  for (const el of els) if (el.offsetParent !== null) { el.scrollIntoView({ block: 'nearest' }); break; }
+}
+function moveCursor(d) {
+  if (!lastShown.length) return;
+  const i = lastShown.indexOf(cursorId);
+  cursorId = lastShown[i < 0 ? (d > 0 ? 0 : lastShown.length - 1) : Math.max(0, Math.min(lastShown.length - 1, i + d))];
+  RB.shell.refresh();
+  scrollToCursor();
+}
+function toggleSel(id, on) {
+  const r = rowOf(id); if (!r || !r.unpaid) return;
+  const v = on === undefined ? !selected.has(id) : on;
+  if (v) selected.add(id); else selected.delete(id);
+}
+function bulkRecord() {
+  const rows = Array.from(selected).map(rowOf).filter(r => r && r.unpaid);
+  if (!rows.length) return;
+  const amounts = {};
+  rows.forEach(r => { amounts[r.t.id] = r.payAmount; });
+  RB.actions.recordPayments(rows.map(r => r.t.id), lastCurrent ? undefined : { amounts });
+  selected.clear();
+  bulkMode = false;
+  RB.shell.refresh();
+}
+
+// ------------------------------------------------------------------ render
+function render(el, ctx) {
+  const S = ctx.store;
+  const today = ctx.today;
+  const b = periodBounds(S, today);
+  if (!period || period > b.max) period = b.cur;
+  if (period < b.min) period = b.min;
+  const current = period === b.cur;
+  lastCurrent = current;
+  const all = buildRows(S, period, current);
+  lastRows = new Map(all.map(r => [r.t.id, r]));
+  for (const id of Array.from(selected)) { const r = lastRows.get(id); if (!r || !r.unpaid) selected.delete(id); }
+
+  const counts = {}; FILTERS.forEach(([k]) => { counts[k] = all.filter(PRED[k]).length; });
+  const shown = all.filter(PRED[filter]).sort(byRank);
+  let groups;
+  if (grouped) {
+    const map = new Map();
+    for (const r of shown.slice().sort((a, b2) => a.i - b2.i)) { if (!map.has(r.t.property)) map.set(r.t.property, []); map.get(r.t.property).push(r); }
+    groups = Array.from(map.entries()).map(([prop, list]) => ({ prop, list: list.sort(byRank) }));
+  } else groups = [{ prop: null, list: shown }];
+  lastShown = groups.flatMap(g => g.list.map(r => r.t.id));
+  if (cursorId && !lastShown.includes(cursorId)) cursorId = null;
+
+  const p = S.portfolio(period);
+  const rate = p.charged ? Math.round((p.collected / p.charged) * 100) : null;
+  const unpaidShown = shown.filter(r => r.unpaid);
+  const allSel = unpaidShown.length > 0 && unpaidShown.every(r => selected.has(r.t.id));
+  const someSel = !allSel && unpaidShown.some(r => selected.has(r.t.id));
+  const selRows = Array.from(selected).map(rowOf).filter(Boolean);
+  const selTotal = selRows.reduce((a, r) => a + r.payAmount, 0);
+  const chip = ([k, label]) => h`<button type="button" class="chip" id="rent-f-${k}" aria-pressed="${filter === k ? 'true' : 'false'}" data-act="filter" data-k="${k}">${label}<span class="chip-count${k === 'late' && counts.late ? ' is-bad' : ''}">${counts[k]}</span></button>`;
+  const emptyMsg = { all: 'No rent was charged for ' + D.fmtMonth(period) + '.', unpaid: 'Everyone has paid ' + D.monthName(period) + ' rent.', late: 'No late rent for ' + D.fmtMonth(period) + '.', partial: 'No partial payments for ' + D.fmtMonth(period) + '.', paid: 'No one has paid ' + D.monthName(period) + ' rent yet.' }[filter];
+
+  el.innerHTML = String(h`<div class="rent${selected.size ? ' has-bar' : ''}">
+    <div class="view-head rent-head">
+      <div class="stepper" role="group" aria-label="Month">
+        <button type="button" class="btn btn-ghost btn-icon" id="rent-prev" data-act="step" data-d="-1" aria-label="Previous month"${period <= b.min ? RB.raw(' disabled') : ''}>${ui.icon('chevron-left')}</button>
+        <span class="stepper-label" aria-live="polite">${D.fmtMonth(period)}</span>
+        <button type="button" class="btn btn-ghost btn-icon" id="rent-next" data-act="step" data-d="1" aria-label="Next month"${period >= b.max ? RB.raw(' disabled') : ''}>${ui.icon('chevron-right')}</button>
+      </div>
+      ${current ? h`<span class="rent-now faint">This month</span>` : h`<button type="button" class="btn btn-sm" id="rent-today" data-act="now">${ui.icon('arrow-right')}<span>This month</span></button>`}
+      <span class="spacer"></span>
+      <label class="check rent-groupby"><input type="checkbox" id="rent-group" data-change="group"${grouped ? RB.raw(' checked') : ''}> <span><span class="hide-phone">Group by property</span><span class="show-phone">By property</span></span></label>
+    </div>
+    <div class="rent-tools">
+      <div class="chips chips-scroll" role="group" aria-label="Filter">${FILTERS.map(chip)}</div>
+      <span class="spacer"></span>
+      ${counts.unpaid ? h`<button type="button" class="btn btn-sm btn-ghost show-phone rent-selectbtn" id="rent-select" data-act="bulkmode" aria-pressed="${bulkMode || selected.size ? 'true' : 'false'}" data-write>${bulkMode || selected.size ? 'Done' : 'Select'}</button>` : ''}
+    </div>
+    ${(bulkMode || selected.size > 0) && unpaidShown.length ? h`<div class="show-phone rent-selall"><label class="check"><input type="checkbox" id="rent-call" data-change="all"${allSel ? RB.raw(' checked') : ''}> Select all unpaid (${unpaidShown.length})</label></div>` : ''}
+
+    ${shown.length ? h`
+    <div class="tbl-wrap hide-phone"><table class="tbl rent-tbl">
+      <thead><tr>
+        <th class="tbl-check">${unpaidShown.length ? h`<input type="checkbox" id="rent-all" data-change="all" aria-label="Select all unpaid"${allSel ? RB.raw(' checked') : ''} data-write>` : ''}</th>
+        <th class="rent-c-plate">Unit</th><th>Tenant</th><th class="num">Due</th><th class="num">Paid</th><th class="num">Open</th><th>Status</th><th class="rent-c-act"><span class="vh">Actions</span></th>
+      </tr></thead>
+      <tbody>${groups.map(g => h`${g.prop !== null ? h`<tr class="tbl-group"><td colspan="8">${g.prop || 'No property'} <span class="rent-gcount">${g.list.filter(r => r.unpaid).length ? g.list.filter(r => r.unpaid).length + ' unpaid' : 'all paid'}</span></td></tr>` : ''}${g.list.map(r => tableRow(r, period, today))}`)}</tbody>
+    </table></div>
+    <div class="clist show-phone rent-cards">${groups.map(g => h`${g.prop !== null ? h`<div class="rent-cgroup">${g.prop || 'No property'}</div>` : ''}${g.list.map(r => card(r, period, today))}`)}</div>`
+    : ui.empty({ quiet: true, title: emptyMsg })}
+
+    <div class="totals rent-totals" aria-label="${D.fmtMonth(period)} totals, all tenants">
+      <div><span class="micro">Charged</span>${ui.money(p.charged)}</div>
+      <div><span class="micro">Collected</span>${ui.money(p.collected)}</div>
+      <div><span class="micro">Outstanding</span>${ui.money(p.outstanding, { tone: p.outstanding ? 'owed' : '' })}</div>
+      <div><span class="micro">Collection rate</span><span class="rent-rate">${rate === null ? '—' : rate + '%'}</span></div>
+      <div class="rent-totals-note">${D.fmtMonth(period)} · all ${RB.plural(p.tenants, 'tenant')}${!current ? ' · payments recorded here are dated today' : ''}</div>
+    </div>
+
+    ${selected.size ? h`<div class="actionbar rent-bar" role="region" aria-label="Selected rows">
+      <span class="rent-bar-n">${selected.size} selected</span>
+      <button type="button" class="btn btn-ghost btn-sm" id="rent-clear" data-act="clear">Clear</button>
+      <button type="button" class="btn btn-primary" id="rent-bulk" data-act="bulk" data-write>Record ${RB.plural(selRows.length, 'payment')} · ${M.fmt(selTotal)}</button>
+    </div>` : ''}
+  </div>`);
+
+  const allBox = el.querySelector('#rent-all'); if (allBox) allBox.indeterminate = someSel;
+  const callBox = el.querySelector('#rent-call'); if (callBox) callBox.indeterminate = someSel;
+
+  ui.bind(el, {
+    filter: btn => { filter = btn.dataset.k; RB.prefs.set('rent.filter', filter); RB.shell.refresh(); },
+    step: btn => { const n = D.addMonthKey(period, +btn.dataset.d); period = n; selected.clear(); cursorId = null; RB.shell.refresh(); const same = document.getElementById(btn.id); if (same && same.disabled) { const o = document.getElementById(btn.dataset.d > 0 ? 'rent-prev' : 'rent-next'); if (o) o.focus(); } },
+    now: () => { period = null; selected.clear(); cursorId = null; RB.shell.refresh(); const s = document.getElementById('rent-prev'); if (s) s.focus(); },
+    group: inp => { grouped = inp.checked; RB.prefs.set('rent.group', grouped); RB.shell.refresh(); },
+    pay: btn => markPaid(rowOf(btn.dataset.id)),
+    sheet: btn => openSheet(rowOf(btn.dataset.id)),
+    fee: btn => { cursorId = btn.dataset.id; RB.actions.addLateFee(btn.dataset.id, period); },
+    menu: btn => { const r = rowOf(btn.dataset.id); if (r) { cursorId = r.t.id; rowMenu(btn, r); } },
+    sel: inp => { toggleSel(inp.dataset.id, inp.checked); if (inp.id.startsWith('rent-chk-')) cursorId = inp.dataset.id; RB.shell.refresh(); },
+    all: inp => { const on = inp.checked; unpaidShownIds().forEach(id => toggleSel(id, on)); RB.shell.refresh(); },
+    bulkmode: () => { if (bulkMode || selected.size) { bulkMode = false; selected.clear(); } else bulkMode = true; RB.shell.refresh(); },
+    clear: () => { selected.clear(); bulkMode = false; RB.shell.refresh(); },
+    bulk: () => bulkRecord(),
+    cursor: (row, e) => {
+      if (e.target.closest('input, button, a, label')) return;
+      const id = row.dataset.id;
+      if ((bulkMode || selected.size) && ui.isPhone()) { toggleSel(id); RB.shell.refresh(); return; }
+      if (cursorId !== id) { cursorId = id; RB.shell.refresh(); }
+    },
+  });
+  // Keys while a tick box has focus (the shell treats any input as typing): keep j/k/p/x/o/Enter working.
+  if (!el._rentKeys) {
+    el._rentKeys = true;
+    el.addEventListener('keydown', e => {
+      if (!e.target.matches || !e.target.matches('input[type="checkbox"]') || e.target.id === 'rent-group') return;
+      if (['j', 'k', 'p', 'o', 'x', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (handleKey(e)) { e.preventDefault(); e.stopPropagation(); }
+      }
+    });
+  }
+  if (pendingFocus) {
+    const f = document.getElementById(pendingFocus);
+    pendingFocus = null;
+    if (f && f.offsetParent !== null) try { f.focus({ preventScroll: true }); } catch (err) { /* ignore */ }
+  }
+}
+function unpaidShownIds() { return lastShown.filter(id => rowOf(id) && rowOf(id).unpaid); }
+
+function handleKey(e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return false;
+  const k = e.key;
+  if (k === 'j' || k === 'ArrowDown') { moveCursor(1); return true; }
+  if (k === 'k' || k === 'ArrowUp') { moveCursor(-1); return true; }
+  if (k === 'Escape' && (selected.size || bulkMode)) { selected.clear(); bulkMode = false; RB.shell.refresh(); return true; }
+  const r = rowOf(cursorId);
+  if (!r || !lastShown.includes(cursorId)) return false;
+  if (k === 'p') { if (r.unpaid && RB.store.canWrite()) markPaid(r); return true; }
+  if (k === 'Enter') {
+    if (e.target && e.target.closest && e.target.closest('button, a, select, textarea, input:not([type="checkbox"])')) return false;
+    openSheet(r); return true;
+  }
+  if (k === 'x') { if (r.unpaid) { toggleSel(r.t.id); RB.shell.refresh(); } return true; }
+  if (k === 'o') { RB.actions.openTenant(r.t.id); return true; }
+  return false;
+}
 
 RB.views.register('rent', {
   title: 'Rent',
-  shortcuts: [['j / k', 'Move between rows'], ['p', 'Mark paid'], ['Enter', 'Open payment sheet']],
-  render(el, ctx) {
-    const S = ctx.store;
-    period = period || D.monthKey(ctx.today);
-    const rows = S.tenantsList().map(t => ({ t, lg: S.ledger(t.id) })).map(x => ({ ...x, m: x.lg.months[period] })).filter(x => x.m && x.m.scheduled);
-    const counts = { all: rows.length, unpaid: rows.filter(x => x.m.rentOpen > 0).length, late: rows.filter(x => x.m.status === 'late').length, partial: rows.filter(x => x.m.status === 'partial').length, paid: rows.filter(x => x.m.status === 'paid' || x.m.status === 'paid_late').length };
-    const pred = { all: () => true, unpaid: x => x.m.rentOpen > 0, late: x => x.m.status === 'late', partial: x => x.m.status === 'partial', paid: x => x.m.status === 'paid' || x.m.status === 'paid_late' }[filter];
-    const shown = rows.filter(pred);
-    const tot = shown.reduce((a, x) => ({ c: a.c + x.m.charged, p: a.p + x.m.paid, o: a.o + x.m.open }), { c: 0, p: 0, o: 0 });
-    const chip = (k, label) => h`<button type="button" class="chip" aria-pressed="${filter === k}" data-act="filter" data-k="${k}">${label}<span class="chip-count${k === 'late' && counts.late ? ' is-bad' : ''}">${counts[k]}</span></button>`;
-    const action = x => x.m.open > 0 && x.lg.balance > 0
-      ? h`<span class="btn-group"><button type="button" class="btn btn-sm btn-primary" data-act="paid" data-id="${x.t.id}" data-write>Mark paid</button><button type="button" class="btn btn-sm btn-primary btn-caret" data-act="sheet" data-id="${x.t.id}" aria-label="Record payment details" data-write>${ui.icon('chevron-down')}</button></span>`
-      : h`<button type="button" class="btn btn-sm btn-ghost" data-act="sheet" data-id="${x.t.id}" data-write>Record</button>`;
-    el.innerHTML = String(h`
-      <div class="view-head">
-        <div class="stepper"><button type="button" class="btn btn-ghost btn-icon" data-act="step" data-d="-1" aria-label="Previous month">${ui.icon('chevron-left')}</button><span class="stepper-label">${D.fmtMonth(period)}</span><button type="button" class="btn btn-ghost btn-icon" data-act="step" data-d="1" aria-label="Next month"${period >= D.monthKey(ctx.today) ? RB.raw(' disabled') : ''}>${ui.icon('chevron-right')}</button></div>
-        <span class="spacer"></span>
-        <div class="chips chips-scroll">${chip('all', 'All')}${chip('unpaid', 'Unpaid')}${chip('late', 'Late')}${chip('partial', 'Partial')}${chip('paid', 'Paid')}</div>
-      </div>
-      <div class="tbl-wrap hide-phone"><table class="tbl">
-        <thead><tr><th>Tenant</th><th class="num">Due</th><th class="num">Paid</th><th class="num">Open</th><th>Status</th><th class="shrink"></th></tr></thead>
-        <tbody>${shown.map(x => h`<tr><td><span class="row">${ui.plate(x.t.unit)}<span class="cell-name">${x.t.name}</span></span></td><td class="num">${ui.money(x.m.charged)}</td><td class="num">${x.m.paid ? ui.money(x.m.paid) : h`<span class="faint">—</span>`}</td><td class="num">${x.m.open ? ui.money(x.m.open, { tone: x.m.status === 'late' ? 'owed' : '' }) : h`<span class="faint">—</span>`}</td><td>${ui.pill(x.m.status, { daysLate: x.m.daysLate })}</td><td class="shrink">${action(x)}</td></tr>`)}</tbody>
-      </table></div>
-      <div class="clist show-phone">${shown.map(x => h`<div class="crow"><span class="crow-lead">${ui.plate(x.t.unit)}</span><div class="crow-main"><div class="crow-title">${x.t.name}</div><div class="crow-sub">${ui.money(x.m.charged)} due${x.m.paid ? h` · ${ui.money(x.m.paid)} paid` : ''}</div></div><div class="crow-aside">${ui.pill(x.m.status, { daysLate: x.m.daysLate })}</div>${x.m.open > 0 ? h`<div class="crow-actions">${action(x)}</div>` : ''}</div>`)}</div>
-      <div class="totals"><div><span class="micro">Charged</span>${ui.money(tot.c)}</div><div><span class="micro">Collected</span>${ui.money(tot.p)}</div><div><span class="micro">Outstanding</span>${ui.money(tot.o, { tone: tot.o ? 'owed' : '' })}</div></div>
-    `);
-    ui.bind(el, {
-      filter: b => { filter = b.dataset.k; RB.shell.refresh(); },
-      step: b => { period = D.addMonthKey(period, +b.dataset.d); RB.shell.refresh(); },
-      paid: b => RB.actions.recordPayment(b.dataset.id, { quick: true }),
-      sheet: b => RB.actions.recordPayment(b.dataset.id),
-    });
-  },
+  shortcuts: [['j / ↓', 'Next row'], ['k / ↑', 'Previous row'], ['p', 'Mark paid'], ['Enter', 'Open payment sheet'], ['x', 'Select row'], ['o', 'Open tenant'], ['Esc', 'Clear selection']],
+  render,
+  onKey: e => handleKey(e),
+  destroy() { selected.clear(); bulkMode = false; },
 });
 })();
 /* ---- js/views/reports.js ---- */
 ;(function(){'use strict';
-// views/reports.js — PLACEHOLDER (to be replaced wholesale by the Reports view author).
+// views/reports.js — Rent roll · Aging · Collection by month · Income by year. Each with Download CSV and Copy.
 const RB = globalThis.RB;
-const { html: h, ui, date: D } = RB;
+const { html: h, ui, date: D, money: M } = RB;
+const S = () => RB.store;
+
+const TABS = [['roll', 'Rent roll'], ['aging', 'Aging'], ['collection', 'Collection'], ['income', 'Income by year']];
+let tab = RB.prefs.get('reports:tab', 'roll');
+if (!TABS.some(t => t[0] === tab)) tab = 'roll';
+let year = null; // income year (null → current year)
+
+const pctTxt = r => (r == null ? '—' : (r * 100).toFixed(1) + '%');
+
+/** CSV → tab-separated text that pastes straight into spreadsheet cells. */
+function csvToTsv(csv) { return RB.model.parseDelimited(csv).map(r => r.map(c => c.replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n'); }
+
+/** Nice axis maximum and step (cents) for a value. */
+function niceAxis(max, ticks) {
+  if (!(max > 0)) return { max: 100000, step: 25000 };
+  const raw = max / ticks;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * pow).find(s => s >= raw);
+  return { max: Math.ceil(max / step) * step, step };
+}
+function axisMoney(c) {
+  const d = c / 100;
+  if (d >= 1000) return M.symbol + (d / 1000).toFixed(d % 1000 === 0 ? 0 : 1).replace(/\.0$/, '') + 'k';
+  return M.symbol + Math.round(d);
+}
+
+// ------------------------------------------------------------------ report builders: {title, csvName, csv, body, meta}
+function rentRoll(today) {
+  const rr = S().rentRoll();
+  const groups = [];
+  rr.rows.forEach(r => { let g = groups.find(x => x.property === r.property); if (!g) groups.push(g = { property: r.property, rows: [] }); g.rows.push(r); });
+  groups.forEach(g => {
+    const cur = g.rows.filter(r => r.status !== 'past');
+    g.rent = cur.reduce((s, r) => s + r.rent, 0); g.deposit = g.rows.reduce((s, r) => s + r.deposit, 0); g.balance = g.rows.reduce((s, r) => s + r.balance, 0);
+    g.occupied = new Set(cur.map(r => r.unit)).size; g.units = new Set(g.rows.map(r => r.unit)).size;
+  });
+  const occ = rr.occupancy;
+  const end = r => r.status === 'past' ? h`<span class="faint">Moved out ${D.fmt(r.moveOut || r.leaseEnd, today)}</span>` : r.leaseEnd ? D.fmt(r.leaseEnd, today) : h`<span class="faint">Month-to-month</span>`;
+  const status = r => h`<span class="rp-status">${r.status === 'past' ? ui.tag('Past', 'quiet') : ui.pill(r.monthStatus, { size: 'sm' })}${r.status === 'notice' ? ui.tag('Notice', 'warn') : ''}</span>`;
+  const meta = h`<strong>${occ.occupied} of ${occ.units}</strong> units occupied (${Math.round(occ.rate * 100)}%) · ${ui.money(rr.totals.rent)} monthly rent · ${ui.money(rr.totals.deposit)} in deposits · ${rr.totals.balance > 0 ? h`${ui.money(rr.totals.balance)} owed` : 'nothing owed'}`;
+  const body = h`
+    <div class="tbl-wrap hide-phone"><table class="tbl tbl-compact rp-tbl" id="rp-roll">
+      <thead><tr><th>Unit</th><th>Tenant</th><th class="num">Rent</th><th>Lease start</th><th>Lease end</th><th class="num">Deposit</th><th class="num">Balance</th><th>This month</th></tr></thead>
+      ${groups.map(g => h`<tbody>
+        <tr class="tbl-group"><td colspan="8">${g.property || 'No property'} <span class="faint rp-group-meta">· ${g.occupied} of ${g.units} occupied</span></td></tr>
+        ${g.rows.map(r => h`<tr class="${r.status === 'past' ? 'is-muted' : ''}" data-tenant="${r.tenantId}">
+          <td>${ui.plate(r.unit)}</td><td><button type="button" class="rp-name" data-act="open" data-id="${r.tenantId}">${r.name}</button></td>
+          <td class="num">${r.status === 'past' ? h`<span class="faint">—</span>` : ui.money(r.rent)}</td>
+          <td>${r.leaseStart ? D.fmt(r.leaseStart, today) : '—'}</td><td>${end(r)}</td>
+          <td class="num">${r.deposit ? ui.money(r.deposit) : h`<span class="faint">—</span>`}</td>
+          <td class="num">${ui.balance(r.balance)}</td><td>${status(r)}</td></tr>`)}
+        <tr class="rp-subtotal"><td></td><td>${g.property} subtotal</td><td class="num">${ui.money(g.rent)}</td><td></td><td></td><td class="num">${ui.money(g.deposit)}</td><td class="num">${ui.balance(g.balance)}</td><td></td></tr>
+      </tbody>`)}
+      <tfoot><tr class="rp-total"><td></td><td>Total · ${RB.plural(rr.rows.length, 'tenant')}</td><td class="num" data-total="rent">${ui.money(rr.totals.rent)}</td><td></td><td></td><td class="num" data-total="deposit">${ui.money(rr.totals.deposit)}</td><td class="num" data-total="balance">${ui.balance(rr.totals.balance)}</td><td></td></tr></tfoot>
+    </table></div>
+    <div class="show-phone">
+      ${groups.map(g => h`<div class="sec sec-sm rp-ph-group"><h3 class="sec-title">${g.property}</h3><span class="sec-meta">${g.occupied} of ${g.units} occupied</span></div>
+        <div class="clist">${g.rows.map(r => h`<div class="crow${r.status === 'past' ? ' rp-past' : ''}">
+          <span class="crow-lead">${ui.plate(r.unit)}</span>
+          <div class="crow-main"><div class="crow-title"><button type="button" class="rp-name" data-act="open" data-id="${r.tenantId}">${r.name}</button></div>
+            <div class="crow-sub">${r.leaseStart ? D.fmt(r.leaseStart, today) : '?'} → ${end(r)}${r.deposit ? h` · dep. ${M.fmt(r.deposit)}` : ''}</div></div>
+          <div class="crow-aside">${r.status === 'past' ? h`<span class="faint">—</span>` : ui.money(r.rent)}${r.balance ? ui.balance(r.balance) : status(r)}</div>
+        </div>`)}
+        <div class="rp-ph-sub"><span>Subtotal</span><span>${ui.money(g.rent)} rent · ${ui.balance(g.balance, { zero: '$0 owed' })}</span></div></div>`)}
+      <div class="rp-ph-total"><span>Total rent</span>${ui.money(rr.totals.rent)}<span>Deposits</span>${ui.money(rr.totals.deposit)}<span>Balance</span>${ui.balance(rr.totals.balance, { zero: '$0' })}</div>
+    </div>`;
+  return { title: 'Rent roll', file: 'rent-roll', csv: () => RB.model.rentRollCsv(rr), meta, body };
+}
+
+function aging(today) {
+  const ag = S().aging();
+  const none = S().tenantsList().length - ag.rows.length;
+  const cell = v => v ? ui.money(v, { tone: 'owed' }) : h`<span class="faint">—</span>`;
+  const meta = ag.rows.length
+    ? h`<strong>${ui.money(ag.totals.total)}</strong> owed by ${RB.plural(ag.rows.length, 'tenant')}${ag.totals.d90 ? h` · <span class="tone-bad">${ui.money(ag.totals.d90)} over 90 days</span>` : ''} · ${RB.plural(none, 'tenant')} ${none === 1 ? 'owes' : 'owe'} nothing`
+    : h`Nobody owes anything · ${RB.plural(none, 'tenant')} all square`;
+  const body = ag.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-aging">
+      <thead><tr><th>Tenant</th><th class="num">0–30 days</th><th class="num">31–60</th><th class="num">61–90</th><th class="num">90+</th><th class="num">Total</th></tr></thead>
+      <tbody>${ag.rows.map(r => h`<tr data-tenant="${r.tenantId}"><td><span class="rp-who">${ui.plate(r.unit)}<button type="button" class="rp-name truncate" data-act="open" data-id="${r.tenantId}">${r.name}</button></span></td>
+        <td class="num">${cell(r.d0_30)}</td><td class="num">${cell(r.d31_60)}</td><td class="num">${cell(r.d61_90)}</td><td class="num">${cell(r.d90)}</td><td class="num strong">${ui.money(r.total, { tone: 'owed' })}</td></tr>`)}</tbody>
+      <tfoot><tr><td>Total</td><td class="num" data-total="d0_30">${ui.money(ag.totals.d0_30)}</td><td class="num" data-total="d31_60">${ui.money(ag.totals.d31_60)}</td><td class="num" data-total="d61_90">${ui.money(ag.totals.d61_90)}</td><td class="num" data-total="d90">${ui.money(ag.totals.d90)}</td><td class="num" data-total="total">${ui.money(ag.totals.total)}</td></tr></tfoot>
+    </table></div>
+    <p class="rp-note">${RB.plural(none, 'tenant')} ${none === 1 ? 'owes' : 'owe'} nothing and ${none === 1 ? 'is' : 'are'} left out. Ages count from each charge’s due date.</p>`
+    : ui.empty({ icon: 'check', title: 'Nobody owes anything', body: 'Every charge is paid. Tenants show up here as soon as something is overdue.' });
+  return { title: 'Aging', file: 'aging', csv: () => RB.model.agingCsv(ag), meta, body };
+}
+
+function collection(today) {
+  const rows = S().collectionByMonth(12);
+  const tot = rows.reduce((a, r) => ({ charged: a.charged + r.charged, collected: a.collected + r.collected, outstanding: a.outstanding + r.outstanding }), { charged: 0, collected: 0, outstanding: 0 });
+  const rate = tot.charged ? tot.collected / tot.charged : null;
+  const ax = niceAxis(Math.max(1, ...rows.map(r => Math.max(r.charged, r.collected))), 4);
+  const ticks = []; for (let v = 0; v <= ax.max + 1; v += ax.step) ticks.push(v);
+  const y = v => (v / ax.max) * 100;
+  const fx = n => n.toFixed(3) + '%';
+  const curKey = D.monthKey(today);
+  const meta = h`<strong>${pctTxt(rate)}</strong> collected over 12 months · ${ui.money(Math.round(tot.collected / 100) * 100)} of ${ui.money(Math.round(tot.charged / 100) * 100)}${tot.outstanding ? h` · ${ui.money(tot.outstanding)} still open` : ''}`;
+  const body = h`
+    <figure class="rp-chart" id="rp-chart" role="img" aria-label="Charged and collected by month, ${D.fmtMonth(rows[0].period)} to ${D.fmtMonth(rows[rows.length - 1].period)}">
+      <div class="rp-chart-plot" data-axis-max="${ax.max}">
+        ${ticks.map(v => h`<div class="rp-tick" style="bottom:${fx(y(v))}"><span class="rp-tick-label">${axisMoney(v)}</span></div>`)}
+        <div class="rp-bars">${rows.map(r => h`<div class="rp-month${r.period === curKey ? ' is-current' : ''}" title="${D.fmtMonth(r.period)}: ${M.fmt(r.collected)} of ${M.fmt(r.charged)} collected (${pctTxt(r.rate)})">
+          <div class="rp-col">
+            <span class="rp-charged" style="height:${fx(y(r.charged))}" data-v="${r.charged}"></span>
+            <span class="rp-collected" style="height:${fx(y(r.collected))}" data-v="${r.collected}"></span>
+            ${r.rate != null ? h`<span class="rp-rate" style="bottom:${fx(y(Math.max(r.charged, r.collected)))}">${Math.round(r.rate * 100)}%</span>` : ''}
+          </div>
+          <span class="rp-xlab">${D.MON[+r.period.slice(5, 7) - 1]}${r.period.slice(5) === '01' || r === rows[0] ? h`<span class="rp-xyear">${r.period.slice(0, 4)}</span>` : ''}</span>
+        </div>`)}</div>
+      </div>
+      <figcaption class="bar-legend rp-legend"><span class="rp-key rp-key-charged">Charged</span><span class="rp-key rp-key-collected">Collected</span><span class="faint">Percent = collected of charged</span></figcaption>
+    </figure>
+    <div class="rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-collection">
+      <thead><tr><th>Month</th><th class="num">Charged</th><th class="num">Collected</th><th class="num">Outstanding</th><th class="num">Rate</th></tr></thead>
+      <tbody>${rows.slice().reverse().map(r => h`<tr><td>${D.fmtMonth(r.period)}${r.period === curKey ? h` <span class="faint t-12">so far</span>` : ''}</td><td class="num">${ui.money(r.charged)}</td><td class="num">${ui.money(r.collected)}</td><td class="num">${r.outstanding ? ui.money(r.outstanding, { tone: 'owed' }) : h`<span class="faint">—</span>`}</td><td class="num">${pctTxt(r.rate)}</td></tr>`)}</tbody>
+      <tfoot><tr><td>12 months</td><td class="num" data-total="charged">${ui.money(tot.charged)}</td><td class="num" data-total="collected">${ui.money(tot.collected)}</td><td class="num">${ui.money(tot.outstanding)}</td><td class="num">${pctTxt(rate)}</td></tr></tfoot>
+    </table></div>`;
+  return { title: 'Collection by month', file: 'collection', csv: () => RB.model.collectionCsv(rows), meta, body };
+}
+
+function firstYear(today) {
+  let y = +today.slice(0, 4);
+  S().tenantsList().forEach(t => { const f = t.trackFrom || (t.lease || {}).moveIn; if (f && +f.slice(0, 4) < y) y = +f.slice(0, 4); });
+  return y;
+}
+function income(today) {
+  const cy = +today.slice(0, 4);
+  const lo = Math.min(firstYear(today), cy);
+  const yr = year == null ? cy : Math.max(lo, Math.min(cy, year));
+  const inc = S().incomeByYear(yr);
+  const ytd = yr === cy;
+  const meta = h`<strong>${ui.money(inc.totals.payments)}</strong> received in ${yr}${ytd ? ' so far' : ''} from ${RB.plural(inc.rows.length, 'tenant')}${inc.totals.credits ? h` · ${ui.money(inc.totals.credits)} in credits given` : ''}`;
+  const stepper = h`<div class="stepper rp-year" role="group" aria-label="Year">
+      <button type="button" class="btn btn-ghost btn-icon" id="rp-year-prev" data-act="year" data-d="-1" aria-label="Previous year"${yr <= lo ? RB.raw(' disabled') : ''}>${ui.icon('chevron-left')}</button>
+      <span class="stepper-label" id="rp-year-label">${yr}</span>
+      <button type="button" class="btn btn-ghost btn-icon" id="rp-year-next" data-act="year" data-d="1" aria-label="Next year"${yr >= cy ? RB.raw(' disabled') : ''}>${ui.icon('chevron-right')}</button></div>`;
+  const body = inc.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-income">
+      <thead><tr><th>Tenant</th><th class="hide-phone">Property</th><th class="num">Payments</th><th class="num">Received</th><th class="num">Credits given</th></tr></thead>
+      <tbody>${inc.rows.map(r => h`<tr data-tenant="${r.tenantId}"><td><span class="rp-who">${ui.plate(r.unit)}<button type="button" class="rp-name truncate" data-act="open" data-id="${r.tenantId}">${r.name}</button></span></td>
+        <td class="hide-phone muted">${r.property}</td><td class="num faint">${r.count}</td><td class="num">${ui.money(r.payments)}</td><td class="num">${r.credits ? ui.money(r.credits) : h`<span class="faint">—</span>`}</td></tr>`)}</tbody>
+      <tfoot><tr><td>Total</td><td class="hide-phone"></td><td class="num">${inc.rows.reduce((s, r) => s + r.count, 0)}</td><td class="num" data-total="payments">${ui.money(inc.totals.payments)}</td><td class="num" data-total="credits">${ui.money(inc.totals.credits)}</td></tr></tfoot>
+    </table></div>
+    <p class="rp-note">Cash basis: payments dated in ${yr}, whatever month they paid for. The CSV adds a column for each month.</p>`
+    : ui.empty({ icon: 'reports', title: 'No payments in ' + yr, body: 'Payments recorded with a date in ' + yr + ' add up here.' });
+  return { title: 'Income ' + yr, file: 'income-' + yr, csv: () => RB.model.incomeCsv(inc), meta, body, extra: stepper };
+}
+
+const BUILD = { roll: rentRoll, aging, collection, income };
 
 RB.views.register('reports', {
   title: 'Reports',
+  shortcuts: [['1 – 4', 'Switch report'], ['← / →', 'Change year (Income)']],
   render(el, ctx) {
-    const S = ctx.store;
-    const col = S.collectionByMonth(12);
-    const ag = S.aging();
+    const rep = BUILD[tab](ctx.today);
     el.innerHTML = String(h`
-      <div class="sec"><h2 class="sec-title">Collection by month</h2><div class="sec-actions"><button type="button" class="btn btn-sm btn-ghost" data-act="csv">${ui.icon('download')}Download CSV</button></div></div>
-      <div class="tbl-wrap"><table class="tbl tbl-compact"><thead><tr><th>Month</th><th class="num">Charged</th><th class="num">Collected</th><th class="num">Rate</th></tr></thead>
-        <tbody>${col.slice().reverse().map(c => h`<tr><td>${D.fmtMonth(c.period)}</td><td class="num">${ui.money(c.charged)}</td><td class="num">${ui.money(c.collected)}</td><td class="num">${c.rate == null ? '—' : (c.rate * 100).toFixed(1) + '%'}</td></tr>`)}</tbody></table></div>
-      <div class="sec"><h2 class="sec-title">Aging</h2><span class="sec-meta">${ag.rows.length} owing</span></div>
-      <div class="tbl-wrap"><table class="tbl tbl-compact"><thead><tr><th>Tenant</th><th class="num">0–30</th><th class="num hide-phone">31–60</th><th class="num hide-phone">61–90</th><th class="num hide-phone">90+</th><th class="num">Total</th></tr></thead>
-        <tbody>${ag.rows.map(r => h`<tr><td><span class="row">${ui.plate(r.unit)}<span class="truncate">${r.name}</span></span></td><td class="num">${ui.money(r.d0_30)}</td><td class="num hide-phone">${ui.money(r.d31_60)}</td><td class="num hide-phone">${ui.money(r.d61_90)}</td><td class="num hide-phone">${ui.money(r.d90)}</td><td class="num">${ui.money(r.total, { tone: 'owed' })}</td></tr>`)}</tbody>
-        <tfoot><tr><td>Total</td><td class="num">${ui.money(ag.totals.d0_30)}</td><td class="num hide-phone">${ui.money(ag.totals.d31_60)}</td><td class="num hide-phone">${ui.money(ag.totals.d61_90)}</td><td class="num hide-phone">${ui.money(ag.totals.d90)}</td><td class="num">${ui.money(ag.totals.total)}</td></tr></tfoot></table></div>`);
-    ui.bind(el, { csv: () => RB.actions.downloadFile('collection-' + ctx.today + '.csv', RB.model.collectionCsv(col), 'text/csv') });
+      <div class="view-head rp-head">
+        <div class="seg rp-tabs" role="tablist" aria-label="Report">${TABS.map(([k, label]) => h`<button type="button" role="tab" id="rp-tab-${k}" data-act="tab" data-tab="${k}" aria-selected="${String(tab === k)}" aria-pressed="${String(tab === k)}">${label}</button>`)}</div>
+        <span class="spacer"></span>
+        ${rep.extra || ''}
+        <div class="rp-actions">
+          <button type="button" class="btn btn-sm" id="rp-csv" data-act="csv">${ui.icon('download')}<span>Download CSV</span></button>
+          <button type="button" class="btn btn-sm btn-ghost" id="rp-copy" data-act="copy">${ui.icon('copy')}<span>Copy</span></button>
+        </div>
+      </div>
+      <section class="rp-report" role="tabpanel" aria-labelledby="rp-tab-${tab}" data-report="${tab}">
+        <p class="rp-meta" id="rp-meta">${rep.meta}</p>
+        ${rep.body}
+      </section>`);
+    ui.bind(el, {
+      tab: b => { tab = b.dataset.tab; RB.prefs.set('reports:tab', tab); RB.shell.refresh(); },
+      csv: () => RB.actions.downloadFile(rep.file + '-' + ctx.today + '.csv', rep.csv(), 'text/csv'),
+      copy: () => ui.copy(csvToTsv(rep.csv()), rep.title.toLowerCase() + ' — paste it into a spreadsheet'),
+      year: b => { const cy = +ctx.today.slice(0, 4); year = (year == null ? cy : year) + +b.dataset.d; RB.shell.refresh(); },
+      open: b => RB.actions.openTenant(b.dataset.id),
+    });
+  },
+  onKey(e) {
+    const i = ['1', '2', '3', '4'].indexOf(e.key);
+    if (i >= 0) { tab = TABS[i][0]; RB.prefs.set('reports:tab', tab); RB.shell.refresh(); return true; }
+    if (tab === 'income' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      const b = document.getElementById(e.key === 'ArrowLeft' ? 'rp-year-prev' : 'rp-year-next');
+      if (b && !b.disabled) b.click();
+      return true;
+    }
+    return false;
   },
 });
 })();
@@ -4559,6 +5715,406 @@ RB.views.register('setup', {
       <button type="button" class="btn btn-ghost" data-cmd="help:keys">${ui.icon('keyboard')}Show shortcuts ${ui.kbd('?')}</button>`);
   },
 });
+})();
+/* ---- js/views/tenant-detail.js ---- */
+;(function(){'use strict';
+// views/tenant-detail.js — the #t-<id> tenant detail drawer (right drawer on desktop, full page on phone).
+// Loaded before tenant-forms.js and tenants.js (name order); shares helpers with them through RB._tn.
+// Re-render contract: the drawer is patched part by part (data-part), so a store change never resets the drawer's
+// scroll position or the half-typed note in the composer (which is built once per tenant and never re-rendered).
+const RB = globalThis.RB;
+const { html: h, ui, date: D, money: M } = RB;
+const T = (RB._tn = RB._tn || {});
+const S = () => RB.store;
+
+// ------------------------------------------------------------------ shared helpers (used by forms + list)
+/** Same checks as the shared actions: read-only / still loading → toast, false. */
+T.guard = function guard() {
+  const st = S().state;
+  if (st.readOnly) { ui.toast('View only — you can’t change this rent book.', { tone: 'bad' }); return false; }
+  if (!st.mode || !st.ready) { ui.toast('Still loading — try again in a moment.'); return false; }
+  return true;
+};
+T.who = t => RB.actions.who(t);
+T.order = [];   // tenant ids in the list's current order (set by tenants.js) — j/k stepping follows it
+T.ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+/** "Owes $1,225" / "Paid up" / "$250 credit" (SafeHTML) */
+T.balanceWords = function balanceWords(bal, opts) {
+  const size = (opts && opts.size) || 'md';
+  if (bal > 0) return h`<span class="tn-balw tn-balw-owed">Owes ${ui.money(bal, { size, tone: 'owed' })}</span>`;
+  if (bal < 0) return h`<span class="tn-balw tn-balw-credit">${ui.money(-bal, { size })} credit</span>`;
+  return h`<span class="tn-balw tn-balw-zero">${ui.icon('check', { size: 14 })}Paid up</span>`;
+};
+T.place = t => [t.property, t.unit ? (/^[A-Za-z]?\d+[A-Za-z]?$/.test(t.unit) || /^\d?[A-Za-z]$/.test(t.unit) ? 'Unit ' + t.unit : t.unit) : ''].filter(Boolean).join(' · ');
+const localDay = iso => { const d = new Date(iso); return isNaN(d) ? null : D.make(d.getFullYear(), d.getMonth() + 1, d.getDate()); };
+T.localDay = localDay;
+T.logList = t => Object.keys(t.log || {}).filter(k => t.log[k]).map(k => Object.assign({ id: k }, t.log[k])).sort((a, b) => D.cmp(b.at || '', a.at || ''));
+T.KIND_ICON = { note: 'note', call: 'phone', text: 'mail', email: 'mail', visit: 'home', notice: 'door' };
+T.KIND_LABEL = { note: 'Note', call: 'Call', text: 'Text', email: 'Email', visit: 'Visit', notice: 'Notice' };
+
+/** Step to the previous/next tenant in the list's current order. */
+T.step = function step(dir) {
+  const id = RB.shell.current().param;
+  if (!id) return;
+  const list = T.order.includes(id) ? T.order : S().tenantsList().map(t => t.id);
+  const n = list[list.indexOf(id) + dir];
+  if (n) location.hash = 't-' + n;
+};
+
+// ------------------------------------------------------------------ drawer
+/** Open (or switch) the drawer to tenant `id`. */
+T.openDrawer = function openDrawer(id) {
+  return ui.drawer({
+    label: 'Tenant details',
+    scrim: false,
+    onClose: () => { if (/^#t-/.test(location.hash)) location.hash = 'tenants'; },
+    render: el => renderDrawer(el, id),
+  });
+};
+
+function renderDrawer(el, id) {
+  const t = S().tenant(id);
+  if (!t) {
+    el.dataset.tid = '';
+    el._tnParts = null;
+    el.innerHTML = String(h`<div class="drawer-head tn-dhead"><div class="tn-dhead-bar"><button type="button" class="btn btn-ghost btn-sm tn-back show-phone" data-drawer-close>${ui.icon('chevron-left')}<span>Tenants</span></button><span class="spacer"></span><span class="hide-phone">${ui.drawerClose()}</span></div><h2 class="drawer-title">Tenant not found</h2></div>
+      <div class="drawer-body">${ui.empty({ icon: 'user', title: 'No tenant at this link', body: 'They may have been deleted, or the link is from another rent book.', actions: [{ label: 'Back to tenants', kind: 'soft', act: 'back' }] })}</div>`);
+    ui.bind(el, { back: () => { location.hash = 'tenants'; } });
+    return;
+  }
+  if (el.dataset.tid !== id || !el._tnParts) {
+    el.dataset.tid = id;
+    el._tnParts = {};
+    el._tnShowAll = false;
+    el.innerHTML = String(h`<div class="drawer-head tn-dhead" data-part="head"></div>
+      <div class="drawer-body tn-dbody" id="tn-dbody">
+        <div data-part="alerts"></div>
+        <section class="tn-dsec" aria-labelledby="tn-h-contact"><div class="sec"><h3 class="sec-title" id="tn-h-contact">Contact</h3><div class="sec-actions"><button type="button" class="btn btn-ghost btn-sm" data-act="edit" data-sec="contact" data-write>${ui.icon('edit')}<span>Edit</span></button></div></div><div data-part="contact"></div></section>
+        <section class="tn-dsec" aria-labelledby="tn-h-lease"><div data-part="leasehead"></div><div data-part="lease"></div></section>
+        <section class="tn-dsec" aria-labelledby="tn-h-ledger"><div data-part="ledgerhead"></div><div data-part="ledger"></div></section>
+        <section class="tn-dsec" aria-labelledby="tn-h-notes"><div class="sec"><h3 class="sec-title" id="tn-h-notes">Notes &amp; timeline</h3><span class="sec-meta" data-part="notecount"></span></div>
+          ${composer()}
+          <div data-part="timeline"></div></section>
+      </div>`);
+    const ta = el.querySelector('#tn-note-text');
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submitNote(el, id); } });
+    ta.addEventListener('input', () => { const err = el.querySelector('#tn-note-text-err'); if (err) err.textContent = ''; });
+  }
+  const today = S().today();
+  const lg = S().ledger(id);
+  const settings = S().settings();
+  const ls = RB.model.leaseState(t, settings, today);
+  const parts = el._tnParts;
+  const set = (name, markup) => {
+    const s = String(markup);
+    if (parts[name] === s) return;
+    parts[name] = s;
+    const node = el.querySelector('[data-part="' + name + '"]');
+    if (node) node.innerHTML = s;
+  };
+  set('head', headPart(t, lg, ls, today));
+  set('alerts', alertsPart(t, lg, settings, today));
+  set('contact', contactPart(t));
+  set('leasehead', h`<div class="sec"><h3 class="sec-title" id="tn-h-lease">Lease</h3><div class="sec-actions">${t.status !== 'past' ? h`<button type="button" class="btn btn-ghost btn-sm" data-act="rent" data-write>Change rent</button><button type="button" class="btn btn-ghost btn-sm" data-act="renew" data-write>Renew</button>` : ''}<button type="button" class="btn btn-ghost btn-sm" data-act="edit" data-sec="lease" data-write>${ui.icon('edit')}<span>Edit</span></button></div></div>`);
+  set('lease', leasePart(t, lg, ls, settings, today));
+  set('ledgerhead', ledgerHead(t, lg));
+  set('ledger', ledgerPart(t, lg, today, el._tnShowAll));
+  const logs = T.logList(t);
+  set('notecount', logs.length ? String(logs.length) : '');
+  set('timeline', timelinePart(logs, today));
+  el.setAttribute('aria-labelledby', 'tn-dtitle');
+  ui.bind(el, handlers(el, id));
+}
+
+function headPart(t, lg, ls, today) {
+  const cur = lg.current;
+  const pos = T.order.indexOf(t.id);
+  const tags = [];
+  if (t.status === 'past') tags.push(ui.tag('Moved out' + (ls.moveOut ? ' ' + D.fmt(ls.moveOut, today) : ''), 'quiet', 'door'));
+  else if (t.status === 'notice') tags.push(ui.tag('Notice given' + (ls.moveOut ? ' · moves out ' + D.fmt(ls.moveOut, today) : ''), 'warn', 'door'));
+  if (t.status !== 'past') {
+    if (ls.kind === 'upcoming') tags.push(ui.tag(ls.label.replace(/^./, c => c.toUpperCase()), 'accent', 'calendar'));
+    else if (ls.kind === 'mtm') tags.push(ui.tag(ls.holdover ? 'Month-to-month (lease ended ' + D.fmt(ls.end, today) + ')' : 'Month-to-month', 'quiet'));
+    else if (ls.kind === 'fixed' && t.status !== 'notice') tags.push(ui.tag('Lease ends ' + D.fmt(ls.end, today) + ' · ' + ls.label, ls.inNoticeWindow ? 'warn' : 'quiet', 'leases'));
+  }
+  if (lg.delinquent) tags.push(ui.tag('Delinquent · since ' + D.fmt(lg.oldestOpenDate, today), 'bad', 'alert'));
+  const month = cur.status === 'none' ? null
+    : h`<span class="tn-dmonth"><span class="faint">${D.monthName(cur.period)}</span>${ui.pill(cur.status, { daysLate: cur.daysLate, label: cur.status === 'paid' || cur.status === 'paid_late' ? (cur.status === 'paid' ? 'Paid ' : 'Paid late ') + D.fmt(cur.paidOn, today) : cur.status === 'partial' ? M.fmt(cur.paid) + ' of ' + M.fmt(cur.charged) + ' paid' : cur.status === 'due' ? 'Due ' + D.fmt(cur.due, today) : null })}</span>`;
+  return h`<div class="tn-dhead-bar">
+      <button type="button" class="btn btn-ghost btn-sm tn-back show-phone" data-drawer-close>${ui.icon('chevron-left')}<span>Tenants</span></button>
+      <span class="spacer"></span>
+      ${pos >= 0 ? h`<span class="tn-pos faint hide-phone">${pos + 1} of ${T.order.length}</span>` : ''}
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-act="step" data-d="-1" aria-label="Previous tenant (k)" title="Previous tenant  k"${pos === 0 ? RB.raw(' disabled') : ''}>${ui.icon('chevron-up')}</button>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-act="step" data-d="1" aria-label="Next tenant (j)" title="Next tenant  j"${pos >= 0 && pos === T.order.length - 1 ? RB.raw(' disabled') : ''}>${ui.icon('chevron-down')}</button>
+      <span class="hide-phone">${ui.drawerClose()}</span>
+    </div>
+    <div class="tn-dident">
+      ${ui.plate(t.unit, { size: 'lg', status: cur.status, title: T.place(t) })}
+      <div class="grow">
+        <h2 class="drawer-title" id="tn-dtitle">${t.name || 'Unnamed tenant'}</h2>
+        <div class="tn-dplace">${T.place(t)}${(t.coTenants || []).filter(c => c && c.name).length ? h` <span class="faint">· with ${(t.coTenants || []).filter(c => c && c.name).map(c => c.name).join(', ')}</span>` : ''}</div>
+      </div>
+    </div>
+    ${tags.length ? h`<div class="tn-dtags">${tags}</div>` : ''}
+    <div class="tn-dstat">
+      <div class="tn-dbal">${T.balanceWords(lg.balance)}${month}</div>
+      <div class="tn-dacts">
+        <button type="button" class="btn btn-primary" data-act="pay" data-write data-autofocus>${ui.icon('cash')}<span>Record payment</span></button>
+        <button type="button" class="btn btn-icon" data-act="more" aria-label="More actions" aria-haspopup="menu" title="More actions">${ui.icon('more')}</button>
+      </div>
+    </div>`;
+}
+
+function alertsPart(t, lg, settings, today) {
+  const out = [];
+  const fee = lg.suggestedLateFee;
+  if (fee && t.status !== 'past') {
+    const m = lg.months[fee.period];
+    out.push(h`<div class="tn-alert">${ui.icon('triangle', { size: 12, cls: 'tone-bad' })}<span class="grow">${D.monthName(fee.period)} rent is ${m ? m.daysLate : ''} d late and has no late fee.</span><button type="button" class="linkbtn" data-act="fee" data-write>Add late fee ${M.fmt(fee.amount)}</button></div>`);
+  }
+  const dd = RB.model.depositDue(t, settings, today);
+  if (dd) out.push(h`<div class="tn-alert">${ui.icon('clock', { size: 14, cls: dd.overdue || dd.daysLeft <= 7 ? 'tone-bad' : 'tone-warn' })}<span class="grow">Deposit ${M.fmt(dd.amount)} due back ${dd.overdue ? h`<strong class="tone-bad">${-dd.daysLeft} d overdue</strong> (${D.fmt(dd.dueDate, today)})` : h`by ${D.fmt(dd.dueDate, today)} (${D.rel(dd.dueDate, today)})`}.</span><button type="button" class="linkbtn" data-act="settle" data-write>Settle deposit</button></div>`);
+  const ls = RB.model.leaseState(t, settings, today);
+  if (t.status === 'notice' && ls.moveOut && ls.moveOut <= today) out.push(h`<div class="tn-alert">${ui.icon('door', { size: 14, cls: 'tone-warn' })}<span class="grow">Move-out date ${D.fmt(ls.moveOut, today)} has passed.</span><button type="button" class="linkbtn" data-act="moveout" data-write>Finish move-out</button></div>`);
+  return out.length ? h`<div class="tn-alerts">${out}</div>` : '';
+}
+
+const addBtn = (label, sec) => h`<button type="button" class="linkbtn linkbtn-muted tn-add" data-act="edit" data-sec="${sec}" data-write>${ui.icon('plus', { size: 14 })}${label}</button>`;
+const telHref = p => { const d = String(p || '').replace(/[^\d+]/g, ''); return d.length >= 5 ? 'tel:' + d : null; };
+const mailHref = e => (/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(String(e || '').trim()) ? 'mailto:' + String(e).trim() : null);
+const phoneLine = p => ui.copyline(p, 'phone number', telHref(p) ? { href: telHref(p), hrefLabel: 'Call', hrefIcon: 'phone' } : null);
+const emailLine = e => ui.copyline(e, 'email address', mailHref(e) ? { href: mailHref(e), hrefLabel: 'Write an email', hrefIcon: 'mail' } : null);
+
+function contactPart(t) {
+  const co = (t.coTenants || []).filter(c => c && (c.name || c.phone || c.email));
+  const em = t.emergency || {};
+  return h`<dl class="kv tn-kv">
+    <dt>Phone</dt><dd>${t.phone ? phoneLine(t.phone) : addBtn('Add phone', 'contact')}</dd>
+    <dt>Email</dt><dd>${t.email ? emailLine(t.email) : addBtn('Add email', 'contact')}</dd>
+    <dt>Co-tenants</dt><dd>${co.length ? h`<div class="stack stack-1">${co.map(c => h`<div class="tn-person"><span class="medium">${c.name || 'Unnamed'}</span>${c.phone ? h`<span class="tn-person-line">${phoneLine(c.phone)}</span>` : ''}${c.email ? h`<span class="tn-person-line">${emailLine(c.email)}</span>` : ''}</div>`)}</div>` : addBtn('Add co-tenant', 'cotenants')}</dd>
+    <dt>Emergency</dt><dd>${em.name || em.phone ? h`<div class="tn-person">${em.name ? h`<span class="medium">${em.name}</span>` : ''}${em.phone ? h`<span class="tn-person-line">${phoneLine(em.phone)}</span>` : ''}</div>` : addBtn('Add emergency contact', 'emergency')}</dd>
+  </dl>`;
+}
+
+function leasePart(t, lg, ls, settings, today) {
+  const l = t.lease || {};
+  const rows = [];
+  // term
+  let term;
+  if (ls.kind === 'fixed' || (ls.kind === 'upcoming' && l.end)) {
+    const pct = Math.round((ls.progress || 0) * 1000) / 10;
+    term = h`<div>${D.fmt(l.start, today)} <span class="faint">→</span> ${D.fmt(l.end, today)}</div>
+      <div class="bar bar-thin tn-term" role="img" aria-label="${Math.round(pct)}% through the lease term"><span class="bar-seg${ls.inNoticeWindow ? ' bar-seg-warn' : ''}" style="width:${pct}%"></span></div>
+      <div class="tn-kv-sub">${ls.daysLeft === 0 ? 'Ends today' : ls.daysLeft + ' days left'}${ls.inNoticeWindow && !ls.noticeGiven ? h` · <span class="tone-warn">inside the ${settings.leaseNoticeDays}-day notice window</span>` : ''}</div>`;
+  } else if (ls.kind === 'mtm' || (ls.kind === 'upcoming' && !l.end)) {
+    term = h`<div>Month-to-month since ${D.fmt(ls.holdover ? D.addDays(l.end, 1) : l.start, today)}</div>${ls.holdover ? h`<div class="tn-kv-sub">Fixed term ${D.fmt(l.start, today)} → ${D.fmt(l.end, today)}</div>` : ''}`;
+  } else {
+    term = h`<div>${D.fmt(l.start, today)} <span class="faint">→</span> ${l.end ? D.fmt(l.end, today) : 'month-to-month'}</div>`;
+  }
+  rows.push(['Term', term]);
+  // move in / notice / move out
+  const dates = [h`Moved in ${D.fmt(l.moveIn, today) || '—'}`];
+  if (l.noticeDate) dates.push(h`notice given ${D.fmt(l.noticeDate, today)}`);
+  if (l.moveOut) dates.push(l.moveOut <= today || t.status === 'past' ? h`moved out ${D.fmt(l.moveOut, today)}` : h`<span class="tone-warn">moves out ${D.fmt(l.moveOut, today)} (${D.rel(l.moveOut, today)})</span>`);
+  rows.push(['Dates', h`${RB.html.join(dates, ' · ')}`]);
+  // rent with history
+  const sched = (t.rent || []).filter(r => r && D.isDate(r.from)).slice().sort((a, b) => D.cmp(a.from, b.from));
+  const nowIdx = sched.reduce((acc, r, i) => (r.from <= today ? i : acc), 0);
+  const curR = sched[nowIdx], prevR = sched[nowIdx - 1], next = sched.filter(r => r.from > today);
+  let rent = h`<div><strong class="medium">${ui.money(lg.rent)}</strong>${prevR && curR ? h` <span class="muted">since ${D.fmt(curR.from, today)}</span> <span class="faint">· was ${M.fmt(prevR.amount)}</span>` : ''}</div>`;
+  if (next.length) rent = h`${rent}<div class="tn-kv-sub tone-accent">${next.map(r => h`Changes to ${M.fmt(r.amount)} on ${D.fmt(r.from, today)}`)}</div>`;
+  if (sched.length > 2) rent = h`${rent}<details class="tn-hist"><summary>All ${sched.length} rent amounts</summary><ul>${sched.slice().reverse().map(r => h`<li><span class="mono">${D.fmt(r.from, today)}</span><span class="spacer"></span>${ui.money(r.amount)}</li>`)}</ul></details>`;
+  rows.push(['Rent', rent]);
+  const rec = (t.recurring || []).filter(r => r && r.amount);
+  rows.push(['Also monthly', rec.length ? h`<div class="stack stack-1">${rec.map(r => h`<div>${r.label || 'Recurring charge'} <span class="muted">${ui.money(r.amount)}/mo</span>${r.to && r.to < today ? h` <span class="faint">· ended ${D.fmt(r.to, today)}</span>` : r.from && r.from > today ? h` <span class="faint">· from ${D.fmt(r.from, today)}</span>` : r.to ? h` <span class="faint">· until ${D.fmt(r.to, today)}</span>` : ''}</div>`)}</div>` : addBtn('Add parking, pet rent…', 'recurring')]);
+  const terms = RB.model.termsOf(t, settings);
+  const custom = l.dueDay != null || l.graceDays != null;
+  rows.push(['Due', h`${T.ordinal(terms.dueDay)} of the month · ${RB.plural(terms.graceDays, 'day')} grace${custom ? h` <span class="faint">(this tenant)</span>` : ''}`]);
+  // deposit
+  const dep = t.deposit || {};
+  let depo;
+  if (!(+dep.amount > 0)) depo = addBtn('Add deposit', 'deposit');
+  else if (dep.returned) {
+    const kept = (dep.returned.deductions || []).reduce((s, d) => s + (+d.amount || 0), 0);
+    depo = h`<div>${ui.money(dep.amount)} <span class="muted">settled ${D.fmt(dep.returned.date, today)}</span></div><div class="tn-kv-sub">${M.fmt(dep.returned.refund || 0)} refunded${kept ? ' · ' + M.fmt(kept) + ' deducted' : ''}${dep.returned.applied ? ' · ' + M.fmt(dep.returned.applied) + ' applied to balance' : ''}</div>`;
+  } else {
+    const dd = RB.model.depositDue(t, settings, today);
+    depo = h`<div>${ui.money(dep.amount)}${dep.received ? h` <span class="muted">received ${D.fmt(dep.received, today)}</span>` : ''}${dep.heldAt ? h` <span class="faint">· held at ${dep.heldAt}</span>` : ''}</div>${dd ? h`<div class="tn-kv-sub ${dd.overdue ? 'tone-bad' : 'tone-warn'}">Return by ${D.fmt(dd.dueDate, today)} — ${dd.overdue ? -dd.daysLeft + ' d overdue' : D.rel(dd.dueDate, today)} <button type="button" class="linkbtn" data-act="settle" data-write>Settle deposit</button></div>` : ''}`;
+  }
+  rows.push(['Deposit', depo]);
+  rows.push(['Tracked from', h`${D.fmt(lg.trackFrom, today)}${t.opening && +t.opening.amount ? h` <span class="muted">· ${M.fmt(Math.abs(t.opening.amount))} ${t.opening.amount > 0 ? 'brought forward' : 'credit brought forward'}</span>` : ''}`]);
+  const ins = t.insurance;
+  rows.push(['Insurance', ins && (ins.carrier || ins.policy || ins.expires) ? h`<div>${ins.carrier || 'Insurer'}${ins.policy ? h` <span class="muted mono">${ins.policy}</span>` : ''}</div>${ins.expires ? h`<div class="tn-kv-sub ${ins.expires < today ? 'tone-bad' : D.diffDays(today, ins.expires) <= 30 ? 'tone-warn' : ''}">${ins.expires < today ? 'Expired' : 'Expires'} ${D.fmt(ins.expires, today)}</div>` : ''}` : addBtn('Add renter’s insurance', 'insurance')]);
+  const links = (t.links || []).filter(x => x && RB.safeUrl(x.url));
+  rows.push(['Links', links.length ? h`<div class="stack stack-1">${links.map(x => h`<a class="tn-link" href="${RB.safeUrl(x.url)}" target="_blank" rel="noopener noreferrer">${ui.icon('link', { size: 14 })}<span class="truncate">${x.label || x.url}</span>${ui.icon('external', { size: 12 })}</a>`)}</div>` : addBtn('Add a link to the lease', 'links')]);
+  rows.push(['About', t.about ? h`<div class="prewrap">${t.about}</div>` : addBtn('Add pets, vehicles, quirks…', 'about')]);
+  return h`<dl class="kv tn-kv">${rows.map(([k, v]) => h`<dt>${k}</dt><dd>${v}</dd>`)}</dl>`;
+}
+
+function ledgerHead(t, lg) {
+  return h`<div class="sec"><h3 class="sec-title" id="tn-h-ledger">Ledger</h3><span class="sec-meta">${lg.balance > 0 ? h`<span class="tone-bad">${M.fmt(lg.balance)} owed</span>` : lg.balance < 0 ? M.fmt(-lg.balance) + ' credit' : 'Paid up'}</span></div>
+    <div class="tn-ltools">
+      <button type="button" class="btn btn-sm btn-soft" data-act="pay" data-write>${ui.icon('cash')}<span>Record payment</span></button>
+      <button type="button" class="btn btn-sm" data-act="charge" data-write>${ui.icon('plus')}<span>Add charge</span></button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-sm btn-ghost" data-act="stmt">${ui.icon('copy')}<span>Copy statement</span></button>
+      <button type="button" class="btn btn-sm btn-ghost" data-act="csv" title="Download CSV">${ui.icon('download')}<span>CSV</span></button>
+    </div>`;
+}
+
+function rowSub(r, today) {
+  const bits = [];
+  if (r.void) bits.push('Voided');
+  if (r.prorate) bits.push(h`${r.prorate.days} of ${r.prorate.ofDays} days × ${M.fmt(r.prorate.full)}`);
+  if (r.kind === 'opening') bits.push('Owed before tracking began');
+  if (r.type === 'charge' && !r.void && r.amount > 0) {
+    if (r.open === 0 && r.paidOn && r.paidOn !== r.date) bits.push(h`<span class="tn-paidon">${ui.icon('check', { size: 12 })}paid ${D.fmt(r.paidOn, today)}</span>`);
+    else if (r.open > 0 && r.paid > 0) bits.push(h`<span class="tone-warn">${M.fmt(r.open)} still open</span>`);
+    else if (r.open > 0 && r.date < today && r.kind !== 'opening') bits.push(h`<span class="tone-bad">unpaid</span>`);
+  }
+  if (r.kind === 'entry') {
+    if (r.ref) bits.push(h`<span class="mono">Ref ${r.ref}</span>`);
+    if (r.type === 'payment' && r.memo) bits.push(r.memo);
+    if (r.type === 'charge' && r.category && r.memo) bits.push(RB.model.CATEGORY_LABEL[r.category] || '');
+    if (r.type !== 'charge' && !r.void && r.unapplied > 0) bits.push(h`${M.fmt(r.unapplied)} to credit`);
+  }
+  const b = bits.filter(Boolean);
+  return b.length ? h`<span class="l-sub">${RB.html.join(b, ' · ')}</span>` : '';
+}
+
+function ledgerPart(t, lg, today, showAll) {
+  const cutoff = D.monthStart(D.addMonthKey(D.monthKey(today), -11));
+  const all = lg.rows.slice().reverse();
+  const shown = showAll ? all : all.filter(r => r.date >= cutoff);
+  const hidden = all.length - shown.length;
+  if (!all.length) return ui.empty({ quiet: true, title: 'No charges yet — rent starts ' + D.fmt(lg.trackFrom, today) + '.' });
+  let last = null;
+  const out = [];
+  for (const r of shown) {
+    const mk = D.monthKey(r.date);
+    if (mk !== last) { out.push(h`<tr class="ledger-month"><td colspan="6">${D.fmtMonth(mk)}</td></tr>`); last = mk; }
+    const stored = r.kind === 'entry';
+    out.push(h`<tr class="${r.void ? 'is-void' : ''}" data-row="${r.id}"><td class="l-date">${D.fmtNum(r.date, { mon: true })}</td><td class="l-desc"><span class="l-desc-text">${r.label}</span>${rowSub(r, today)}</td><td class="l-amt">${r.type === 'charge' ? ui.money(r.amount) : ''}</td><td class="l-amt l-pay">${r.type !== 'charge' ? ui.money(r.amount) : ''}</td><td class="l-bal"><span class="tn-bal-lbl">bal </span>${ui.money(r.balance)}</td><td class="l-act">${stored ? h`<button type="button" class="btn btn-ghost btn-icon btn-sm" data-act="lmenu" data-eid="${r.id}" aria-label="Actions for ${r.label} ${D.fmt(r.date, today)}" aria-haspopup="menu">${ui.icon('more')}</button>` : ''}</td></tr>`);
+  }
+  return h`<table class="ledger tn-ledger"><thead><tr><th>Date</th><th>Description</th><th class="l-amt">Charge</th><th class="l-amt">Payment</th><th class="l-bal">Balance</th><th class="l-act"><span class="vh">Actions</span></th></tr></thead><tbody>${out}</tbody></table>
+    ${hidden > 0 ? h`<div class="tn-more-rows"><button type="button" class="btn btn-sm btn-ghost" data-act="earlier">${ui.icon('chevron-down')}<span>Show ${RB.plural(hidden, 'earlier entry', 'earlier entries')}</span></button></div>`
+      : showAll && all.some(r => r.date < cutoff) ? h`<div class="tn-more-rows"><button type="button" class="btn btn-sm btn-ghost" data-act="earlier">${ui.icon('chevron-up')}<span>Show the last 12 months only</span></button></div>` : ''}`;
+}
+
+function composer() {
+  const kinds = RB.actions.LOG_KINDS || [];
+  return h`<form class="tn-composer" id="tn-note-form" data-submit="note" novalidate autocomplete="off" data-write>
+    <label class="vh" for="tn-note-text">Add a note</label>
+    <textarea class="input textarea tn-note-text" id="tn-note-text" name="text" rows="2" placeholder="Add a note — a call, a text, a visit…" aria-describedby="tn-note-text-err"></textarea>
+    <div class="field-error" id="tn-note-text-err" aria-live="polite"></div>
+    <div class="tn-composer-row">
+      <input type="hidden" id="tn-note-kind" name="kind" value="note" data-kind="seg">
+      <div class="seg" role="radiogroup" aria-label="Kind of note" data-seg-for="tn-note-kind">${kinds.map(k => h`<button type="button" role="radio" data-value="${k.value}" aria-checked="${k.value === 'note'}" aria-pressed="${k.value === 'note'}">${k.label}</button>`)}</div>
+      <label class="tn-follow"><span class="faint">${ui.icon('calendar', { size: 14 })}</span><span class="vh">Follow up on</span><input class="input" type="date" id="tn-note-follow" name="followUp" data-kind="date" title="Follow up on (optional)"></label>
+      <span class="spacer"></span>
+      <button type="submit" class="btn btn-sm btn-primary">Add note</button>
+    </div>
+  </form>`;
+}
+
+function timelinePart(logs, today) {
+  if (!logs.length) return ui.empty({ quiet: true, title: 'No notes yet. Calls, texts and visits you log here show up newest first.' });
+  return h`<div class="tl tn-tl">${logs.map(e => {
+    const day = localDay(e.at);
+    const when = day ? (day.slice(0, 4) === today.slice(0, 4) ? D.fmtNum(day, { mon: true }) : D.MON[+day.slice(5, 7) - 1] + ' ’' + day.slice(2, 4)) : '';
+    const fu = e.followUp;
+    const fuText = fu ? (e.done ? h`Follow-up done · was due ${D.fmt(fu, today)}` : fu < today ? h`<span class="tone-bad">Follow up ${D.fmt(fu, today)} · ${D.rel(fu, today, { style: 'late' })}</span>` : fu === today ? h`<span class="tone-warn">Follow up today</span>` : h`Follow up ${D.fmt(fu, today)} · ${D.rel(fu, today)}`) : null;
+    return h`<div class="tl-item${e.done && fu ? ' is-done' : ''}" data-lid="${e.id}">
+      <span class="tl-when" title="${day ? D.fmtLong(day) : ''}">${when}</span>
+      <div class="tl-body"><span class="tn-kind">${ui.icon(T.KIND_ICON[e.kind] || 'note', { size: 12 })}${T.KIND_LABEL[e.kind] || 'Note'}</span><span class="prewrap">${e.text}</span>${fuText ? h`<div class="tl-meta">${ui.icon('calendar', { size: 12 })}${fuText}</div>` : ''}</div>
+      <div class="tn-tl-act">${fu ? h`<label class="tn-tick" title="${e.done ? 'Reopen follow-up' : 'Mark follow-up done'}"><input type="checkbox" data-change="fudone" data-lid="${e.id}"${e.done ? RB.raw(' checked') : ''} data-write><span class="vh">Follow-up done</span></label>` : ''}<button type="button" class="btn btn-ghost btn-icon btn-sm" data-act="logmenu" data-lid="${e.id}" aria-label="Actions for this note" aria-haspopup="menu">${ui.icon('more')}</button></div>
+    </div>`;
+  })}</div>`;
+}
+
+function submitNote(el, id) {
+  if (!T.guard()) return;
+  const form = el.querySelector('#tn-note-form');
+  const ta = form.querySelector('#tn-note-text');
+  const text = ta.value.trim();
+  const err = form.querySelector('#tn-note-text-err');
+  if (!text) { err.textContent = 'Write what happened first.'; ta.focus(); return; }
+  const fu = form.querySelector('#tn-note-follow').value || null;
+  if (fu && !D.valid(fu)) { err.textContent = 'That follow-up date isn’t valid — pick one from the calendar.'; return; }
+  const kind = form.querySelector('#tn-note-kind').value || 'note';
+  const lid = RB.id();
+  S().addLog(id, { id: lid, kind, text, followUp: fu, done: false }).catch(() => {});
+  ta.value = ''; form.querySelector('#tn-note-follow').value = ''; err.textContent = '';
+  ui.setValue(form, 'kind', 'note');
+  ui.toast(fu ? 'Note added · follow up ' + D.fmt(fu, S().today()) : 'Note added', { undo: () => S().deleteLog(id, lid) });
+}
+
+function handlers(el, id) {
+  const A = RB.actions;
+  return {
+    step: b => T.step(+b.dataset.d),
+    pay: () => A.recordPayment(id),
+    charge: () => A.addCharge(id),
+    fee: () => A.addLateFee(id),
+    settle: () => A.settleDeposit(id),
+    moveout: () => A.moveOut(id),
+    rent: () => A.changeRent(id),
+    renew: () => A.renewLease(id),
+    edit: b => A.editTenant(id, b.dataset.sec),
+    stmt: () => A.copyStatement(id),
+    csv: () => A.downloadLedgerCsv(id),
+    more: b => T.overflowMenu(b, id),
+    earlier: () => { el._tnShowAll = !el._tnShowAll; renderDrawer(el, id); },
+    note: () => submitNote(el, id),
+    fudone: b => { const done = b.checked; A.followupDone(id, b.dataset.lid, done); },
+    lmenu: b => {
+      const e = S().entries(id)[b.dataset.eid];
+      if (!e) return;
+      const eid = b.dataset.eid;
+      const items = [{ label: 'Edit', icon: 'edit', write: true, onSelect: () => A.editEntry(id, eid) }];
+      if (e.void) items.push({ label: 'Restore', icon: 'undo', write: true, onSelect: () => { if (!T.guard()) return; S().unvoidEntry(id, eid).catch(() => {}); ui.toast('Restored ' + M.fmt(e.amount) + ' ' + (e.type === 'charge' ? 'charge' : e.type), { undo: () => S().voidEntry(id, eid) }); } });
+      else items.push({ label: 'Void', icon: 'x', write: true, onSelect: () => A.voidEntry(id, eid) });
+      if (e.type !== 'charge') items.push({ sep: true }, { label: e.type === 'payment' ? 'Copy receipt' : 'Copy credit note', icon: 'copy', onSelect: () => A.copyReceipt(id, eid) });
+      ui.menu(b, items, { align: 'end' });
+    },
+    logmenu: b => {
+      const lid = b.dataset.lid;
+      ui.menu(b, [
+        { label: 'Edit note', icon: 'edit', write: true, onSelect: () => T.editNote(id, lid) },
+        { label: 'Delete note', icon: 'trash', danger: true, write: true, onSelect: () => {
+          if (!T.guard()) return;
+          const t = S().tenant(id); const prev = t && t.log && t.log[lid] ? RB.clone(t.log[lid]) : null;
+          if (!prev) return;
+          S().deleteLog(id, lid).catch(() => {});
+          ui.toast('Note deleted', { undo: () => S().updateLog(id, lid, prev) });
+        } },
+      ], { align: 'end' });
+    },
+  };
+}
+
+/** The header's overflow menu. */
+T.overflowMenu = function overflowMenu(anchor, id) {
+  const A = RB.actions;
+  const t = S().tenant(id); if (!t) return;
+  const items = [
+    { label: 'Add charge', icon: 'plus', write: true, onSelect: () => A.addCharge(id) },
+    { label: 'Add credit', icon: 'undo', write: true, onSelect: () => A.addCredit(id) },
+    { label: 'Add note', icon: 'note', write: true, onSelect: () => { const ta = document.getElementById('tn-note-text'); if (ta) { ta.scrollIntoView({ block: 'center' }); ta.focus(); } else A.addNote(id); } },
+    { sep: true },
+    { label: 'Edit details', icon: 'edit', hint: 'e', write: true, onSelect: () => A.editTenant(id) },
+  ];
+  if (t.status !== 'past') {
+    items.push(
+      { label: 'Change rent', icon: 'cash', write: true, onSelect: () => A.changeRent(id) },
+      { label: 'Renew lease', icon: 'leases', write: true, onSelect: () => A.renewLease(id) });
+    if (t.status !== 'notice') items.push({ label: 'Give notice', icon: 'calendar', write: true, onSelect: () => A.giveNotice(id) });
+    items.push({ label: 'Move out', icon: 'door', write: true, onSelect: () => A.moveOut(id) });
+  }
+  if (t.deposit && +t.deposit.amount > 0 && !t.deposit.returned && t.lease && t.lease.moveOut) items.push({ label: 'Settle deposit', icon: 'key', write: true, onSelect: () => A.settleDeposit(id) });
+  items.push({ sep: true }, { label: 'Delete tenant', icon: 'trash', danger: true, write: true, onSelect: () => T.deleteTenant(id) });
+  ui.menu(anchor, items, { align: 'end' });
+};
 })();
 /* ---- js/views/tenants.js ---- */
 ;(function(){'use strict';
@@ -4637,41 +6193,187 @@ RB.views.register('tenants', {
 })();
 /* ---- js/views/today.js ---- */
 ;(function(){'use strict';
-// views/today.js — PLACEHOLDER (to be replaced wholesale by the Today view author). Exercises the foundation.
+// views/today.js — Today: this month's collection, needs attention, the month at a glance, recent activity.
 const RB = globalThis.RB;
 const { html: h, ui, date: D, money: M } = RB;
+
+const SHOW = 6;                 // rows per attention group before "Show n more"
+const expanded = {};            // group key → true when the user asked to see every row
+
+const GROUPS = [
+  { key: 'rent', label: 'Rent', kinds: ['delinquent', 'late', 'partial'] },
+  { key: 'upkeep', label: 'Upkeep', kinds: ['ticket'] },
+  { key: 'leases', label: 'Leases & move-outs', kinds: ['lease', 'moveout', 'movein', 'deposit'] },
+  { key: 'follow', label: 'Follow-ups', kinds: ['followup', 'insurance'] },
+];
+const SEV = {
+  high: { icon: 'triangle', label: 'Urgent' },
+  medium: { icon: 'alert', label: 'Soon' },
+  low: { icon: 'circle', label: 'When you can' },
+};
+const KIND_WORD = { note: 'Note', call: 'Call', text: 'Text', email: 'Email', visit: 'Visit', notice: 'Notice' };
+
+/** Plain words for a month status, for accessible labels: "22 days late", "paid Nov 3". */
+function statusWords(m, today) {
+  if (!m || !m.scheduled) return 'no charge this month';
+  switch (m.status) {
+    case 'paid': return 'paid' + (m.paidOn ? ' ' + D.fmt(m.paidOn, today) : '');
+    case 'paid_late': return 'paid late, ' + D.fmt(m.paidOn, today);
+    case 'partial': return 'partly paid, ' + M.fmt(m.rentOpen) + ' open';
+    case 'due': return 'due ' + D.fmt(m.due, today);
+    case 'late': return RB.plural(m.daysLate, 'day') + ' late';
+    default: return 'no charge this month';
+  }
+}
+
+// ------------------------------------------------------------------ (1) collection header
+function collection(S, today) {
+  const p = S.portfolio();
+  const open = { partial: 0, late: 0, due: 0 };
+  for (const t of S.tenantsList()) {
+    const m = (S.ledger(t.id) || { months: {} }).months[p.period];
+    if (!m || !m.scheduled || !m.open) continue;
+    open[m.status === 'late' ? 'late' : m.status === 'partial' ? 'partial' : 'due'] += m.open;
+  }
+  const pct = v => (p.charged ? Math.max(0, Math.min(100, (v / p.charged) * 100)) : 0);
+  const graceTxt = today <= p.graceEnd
+    ? h`Grace ends ${D.fmt(p.graceEnd, today)} · ${D.rel(p.graceEnd, today)}`
+    : h`Grace ended ${D.fmt(p.graceEnd, today)} — unpaid rent is now late`;
+  const key = (cls, label, cents) => (cents ? h`<span class="bar-key bar-key-${cls}">${label} <span class="td-key-amt">${M.fmt(cents)}</span></span>` : '');
+  return h`<a class="td-collect" href="#rent" aria-label="${D.fmtMonth(p.period)}: ${M.fmt(p.collected)} of ${M.fmt(p.charged)} collected, ${p.paidCount} of ${p.tenants} paid. Open Rent.">
+    <div class="td-collect-top">
+      <span class="micro">${D.fmtMonth(p.period)} rent</span>
+      <span class="td-collect-go">Open Rent ${ui.icon('chevron-right', { size: 14 })}</span>
+    </div>
+    <div class="td-collect-sum">${ui.money(p.collected, { size: 'lg' })}<span class="td-collect-of">of ${ui.money(p.charged)} collected</span></div>
+    <div class="bar bar-lg td-bar" aria-hidden="true">
+      <span class="bar-seg bar-seg-ok" style="width:${pct(p.collected)}%"></span>
+      <span class="bar-seg bar-seg-warn" style="width:${pct(open.partial)}%"></span>
+      <span class="bar-seg bar-seg-bad" style="width:${pct(open.late)}%"></span>
+    </div>
+    <div class="bar-legend td-legend">${key('ok', 'Collected', p.collected)}${key('warn', 'Partly paid, still open', open.partial)}${key('bad', 'Late', open.late)}${key('soft', 'Not due yet', open.due)}</div>
+    <div class="td-collect-meta"><span><strong>${p.paidCount}</strong> of ${p.tenants} paid</span><span class="td-dotsep" aria-hidden="true">·</span><span>${graceTxt}</span></div>
+  </a>`;
+}
+
+// ------------------------------------------------------------------ (2) needs attention
+function plateFor(S, a) {
+  if (a.ticketId) { const k = S.ticket(a.ticketId); return k && k.unit ? ui.plate(k.unit, { property: k.property }) : h`<span class="td-lead-ico">${ui.icon('wrench')}</span>`; }
+  const t = a.tenantId && S.tenant(a.tenantId);
+  return t ? ui.plate(t.unit, { property: t.property }) : h`<span class="td-lead-ico">${ui.icon('dot')}</span>`;
+}
+function attRow(S, a) {
+  const sev = SEV[a.severity] || SEV.low;
+  const primaryKind = a.action.type === 'recordPayment' ? 'btn-soft' : '';
+  const writeAct = t => !['openTenant', 'openTicket', 'renewLease', 'settleDeposit'].includes(t);
+  return h`<div class="lrow td-row" data-item="${a.id}">
+    <span class="lrow-lead">${plateFor(S, a)}</span>
+    <div class="td-main">
+      <div class="lrow-title"><span class="td-sev td-sev-${a.severity}">${ui.icon(sev.icon, { size: 12, label: sev.label })}</span><button type="button" class="td-subject" id="td-s-${a.id}" data-act="subject" data-id="${a.id}">${a.title}</button></div>
+      <div class="lrow-detail">${a.detail}</div>
+    </div>
+    <div class="lrow-actions">
+      ${a.secondary ? h`<button type="button" class="linkbtn linkbtn-muted td-second" id="td-2-${a.id}" data-act="run" data-which="secondary" data-id="${a.id}"${writeAct(a.secondary.type) ? RB.raw(' data-write') : ''}>${a.secondary.label}</button>` : ''}
+      <button type="button" class="btn btn-sm ${primaryKind}" id="td-1-${a.id}" data-act="run" data-which="action" data-id="${a.id}"${writeAct(a.action.type) ? RB.raw(' data-write') : ''}>${a.action.label}</button>
+    </div>
+  </div>`;
+}
+function attention(S, att) {
+  if (!att.length) return h`<div class="sec"><h2 class="sec-title">Needs attention</h2></div>${ui.empty({ quiet: true, title: 'Nothing needs you today.' })}`;
+  const known = new Set(GROUPS.flatMap(g => g.kinds));
+  const groups = GROUPS.map(g => ({ g, items: att.filter(a => g.kinds.includes(a.kind) || (g.key === 'follow' && !known.has(a.kind))) })).filter(x => x.items.length);
+  return h`<div class="sec"><h2 class="sec-title">Needs attention</h2><span class="sec-meta">${att.length}</span></div>
+    ${groups.map(({ g, items }) => {
+      const open = expanded[g.key] || items.length <= SHOW;
+      const shown = open ? items : items.slice(0, SHOW);
+      return h`<section class="td-group" aria-labelledby="td-g-${g.key}">
+        <h3 class="td-group-label" id="td-g-${g.key}">${g.label}<span class="td-group-n">${items.length}</span></h3>
+        <div class="td-rows">${shown.map(a => attRow(S, a))}</div>
+        ${items.length > SHOW ? h`<button type="button" class="linkbtn td-more" id="td-more-${g.key}" data-act="more" data-g="${g.key}" aria-expanded="${open ? 'true' : 'false'}">${open ? 'Show fewer' : 'Show ' + (items.length - SHOW) + ' more'}</button>` : ''}
+      </section>`;
+    })}`;
+}
+
+// ------------------------------------------------------------------ (3) the month at a glance
+function glance(S, today) {
+  const period = D.monthKey(today);
+  const byProp = new Map();
+  const counts = { paid: 0, paid_late: 0, partial: 0, due: 0, late: 0 };
+  for (const t of S.tenantsList({ includePast: false })) {
+    const m = (S.ledger(t.id) || { months: {} }).months[period];
+    const st = m && m.scheduled ? m.status : 'none';
+    if (counts[st] !== undefined) counts[st]++;
+    if (!byProp.has(t.property)) byProp.set(t.property, []);
+    byProp.get(t.property).push({ t, st, m });
+  }
+  const keys = ['paid', 'paid_late', 'partial', 'due', 'late'];
+  return h`<section class="td-glance" aria-labelledby="td-glance-t">
+    <div class="sec"><h2 class="sec-title" id="td-glance-t">The month at a glance</h2></div>
+    ${Array.from(byProp.entries()).map(([prop, list]) => h`<div class="td-prop">
+      <div class="td-prop-label">${prop || 'No property'}</div>
+      <div class="plates td-plates">${list.map(({ t, st, m }) => {
+        const label = (t.unit || '—') + ', ' + t.name + ', ' + statusWords(m, today);
+        return ui.plate(t.unit, { size: 'lg', status: st, button: true, title: label, attrs: { 'data-act': 'open', 'data-id': t.id, id: 'td-p-' + t.id, 'aria-label': label } });
+      })}</div>
+    </div>`)}
+    <div class="td-keys" aria-label="Legend">${keys.map(k => h`<span class="td-keyitem">${ui.pill(k, { size: 'sm' })}${counts[k] ? h`<span class="td-keycount">${counts[k]}</span>` : ''}</span>`)}</div>
+  </section>`;
+}
+
+// ------------------------------------------------------------------ (4) recent activity
+function events(S) {
+  const out = [];
+  for (const t of S.tenantsList()) {
+    const ents = S.entries(t.id) || {};
+    for (const id of Object.keys(ents)) {
+      const e = ents[id];
+      if (!e || e.undone) continue;
+      let text;
+      if (e.type === 'payment') text = 'Payment' + (e.method ? ' · ' + e.method : '');
+      else if (e.type === 'credit') text = 'Credit' + (e.memo ? ' · ' + e.memo : '');
+      else text = e.category === 'late_fee' ? 'Late fee' : 'Charge' + (e.memo ? ' · ' + e.memo : '');
+      out.push({ id: 'e-' + id, at: e.createdAt || e.date, date: e.date, t, text, amount: e.amount, pay: e.type !== 'charge', void: !!e.void });
+    }
+    const log = t.log || {};
+    for (const id of Object.keys(log)) {
+      const l = log[id];
+      if (!l || !l.at) continue;
+      out.push({ id: 'l-' + id, at: l.at, date: String(l.at).slice(0, 10), t, text: (KIND_WORD[l.kind] || 'Note') + ' · ' + (l.text || '') });
+    }
+  }
+  out.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  return out.slice(0, 8);
+}
+function activity(S, today) {
+  const list = events(S);
+  return h`<section class="td-activity" aria-labelledby="td-act-t">
+    <div class="sec"><h2 class="sec-title" id="td-act-t">Recent activity</h2></div>
+    ${list.length ? h`<ul class="td-events">${list.map(ev => h`<li><button type="button" class="td-ev${ev.void ? ' is-void' : ''}" id="td-ev-${ev.id}" data-act="open" data-id="${ev.t.id}">
+      <span class="td-ev-when">${D.fmt(ev.date, today)}</span>
+      <span class="td-ev-main"><span class="td-ev-who">${ui.plate(ev.t.unit)}<span class="td-ev-name">${ev.t.name}</span></span><span class="td-ev-text">${ev.void ? 'Voided · ' : ''}${ev.text}</span></span>
+      ${ev.amount ? h`<span class="td-ev-amt${ev.pay && !ev.void ? ' is-in' : ''}">${ui.money(ev.amount)}</span>` : h`<span></span>`}
+    </button></li>`)}</ul>` : ui.empty({ quiet: true, title: 'No payments or notes yet.' })}
+  </section>`;
+}
 
 RB.views.register('today', {
   title: 'Today',
   render(el, ctx) {
     const S = ctx.store;
-    const p = S.portfolio();
     const att = S.attention();
-    const tenants = S.tenantsList({ includePast: false });
-    const pct = v => (p.charged ? Math.min(100, (v / p.charged) * 100) : 0);
-    const graceTxt = ctx.today <= p.graceEnd ? 'grace ends ' + D.rel(p.graceEnd, ctx.today) : 'grace ended ' + D.fmt(p.graceEnd, ctx.today);
-    const byProp = {};
-    tenants.forEach(t => { (byProp[t.property] = byProp[t.property] || []).push(t); });
-    el.innerHTML = String(h`
-      <section>
-        <div class="micro">${D.fmtMonth(p.period)}</div>
-        <div class="row row-base gap-3 mt-2 row-wrap"><span>${ui.money(p.collected, { size: 'lg' })}</span><span class="muted t-15">of ${ui.money(p.charged)} collected</span></div>
-        <div class="bar bar-lg mt-4" role="img" aria-label="${M.fmt(p.collected)} of ${M.fmt(p.charged)} collected">
-          <span class="bar-seg bar-seg-ok" style="width:${pct(p.collected)}%"></span>
-        </div>
-        <div class="row row-wrap gap-4 mt-2 muted"><span><strong>${p.paidCount}</strong> of ${p.tenants} paid</span><span>${ui.money(p.outstanding)} outstanding</span><span>${graceTxt}</span></div>
-      </section>
-      <div class="sec"><h2 class="sec-title">Needs attention</h2><span class="sec-meta">${att.length || ''}</span></div>
-      ${att.length ? h`<div class="rule">${att.slice(0, 12).map((a, i) => h`<div class="lrow">
-          <span class="lrow-lead">${a.unit ? ui.plate((S.tenant(a.tenantId) || {}).unit || a.unit.split(' ').pop()) : ui.icon('wrench')}</span>
-          <div><div class="lrow-title"><span class="lrow-sev sev-${a.severity}"></span> ${a.title}</div><div class="lrow-detail">${a.detail}</div></div>
-          <div class="lrow-actions">${a.secondary ? h`<button type="button" class="btn btn-sm btn-ghost" data-act="run" data-i="${i}" data-which="secondary" data-write>${a.secondary.label}</button>` : ''}<button type="button" class="btn btn-sm${a.action.type === 'recordPayment' ? ' btn-primary' : ''}" data-act="run" data-i="${i}" data-which="action">${a.action.label}</button></div>
-        </div>`)}</div>` : ui.empty({ quiet: true, title: 'Nothing needs you today.' })}
-      <div class="sec"><h2 class="sec-title">The month at a glance</h2></div>
-      ${Object.keys(byProp).map(prop => h`<div class="micro mt-4 mb-2">${prop}</div><div class="plates">${byProp[prop].map(t => { const lg = S.ledger(t.id); return ui.plate(t.unit, { size: 'lg', status: lg.current.status, button: true, title: t.name + ' — ' + RB.model.STATUS_LABEL[lg.current.status], attrs: { 'data-act': 'open', 'data-id': t.id } }); })}</div>`)}
-    `);
+    const byId = new Map(att.map(a => [a.id, a]));
+    el.innerHTML = String(h`<div class="td">
+      ${collection(S, ctx.today)}
+      <div class="td-attention">${attention(S, att)}</div>
+      <div class="td-split">${glance(S, ctx.today)}${activity(S, ctx.today)}</div>
+    </div>`);
     ui.bind(el, {
-      run: b => { const a = att[+b.dataset.i]; RB.actions.run(a && a[b.dataset.which]); },
+      run: b => { const a = byId.get(b.dataset.id); if (a) RB.actions.run(a[b.dataset.which]); },
+      subject: b => {
+        const a = byId.get(b.dataset.id); if (!a) return;
+        if (a.ticketId) RB.actions.openTicket(a.ticketId); else if (a.tenantId) RB.actions.openTenant(a.tenantId);
+      },
+      more: b => { expanded[b.dataset.g] = !expanded[b.dataset.g]; RB.shell.refresh(); },
       open: b => RB.actions.openTenant(b.dataset.id),
     });
   },
@@ -4679,24 +6381,310 @@ RB.views.register('today', {
 })();
 /* ---- js/views/upkeep.js ---- */
 ;(function(){'use strict';
-// views/upkeep.js — PLACEHOLDER (to be replaced wholesale by the Upkeep view author).
+// views/upkeep.js — Upkeep: Open · Scheduled · Done columns (desktop) / segmented list (phone); add/edit sheet.
+// Owns the RB.actions.addTicket and RB.actions.openTicket hooks.
 const RB = globalThis.RB;
-const { html: h, ui, date: D } = RB;
+const { html: h, ui, date: D, money: M } = RB;
+const S = () => RB.store;
 
-const PRIO = { urgent: ['Urgent', 'bad'], normal: ['Normal', ''], low: ['Low', 'quiet'] };
+let phoneTab = RB.prefs.get('upkeep:tab', 'open');   // open | scheduled | done
+let propFilter = RB.prefs.get('upkeep:prop', '');
+let showOlder = false;
+let inline = null;                                     // {id, kind:'schedule'|'done', date, cost, charge}
+
+const PRIO = { urgent: 'Urgent', normal: 'Normal', low: 'Low' };
+const STATUS = [['open', 'Open'], ['scheduled', 'Scheduled'], ['done', 'Done']];
+
+function guard() {
+  if (!S().canWrite()) { ui.toast('View only — you can’t change this rent book.', { tone: 'bad' }); return false; }
+  return true;
+}
+const where = k => [k.property, k.unit].filter(Boolean).join(' ') || 'Common area';
+const tenantName = k => { const t = k.tenantId && S().tenant(k.tenantId); return t ? t.name : ''; };
+const canCharge = k => k.paidBy === 'tenant' && k.tenantId && S().tenant(k.tenantId) && k.cost > 0 && !k.chargeId;
+
+/** Post the ticket's cost to the tenant ledger as a damage charge. Returns the entry id. */
+function postCharge(k, cost, date) {
+  const id = RB.id();
+  S().addEntry(k.tenantId, { id, type: 'charge', category: 'damage', date, period: D.monthKey(date), amount: cost, memo: (k.title || 'Repair') + ' (upkeep)' }).catch(() => {});
+  return id;
+}
+
+// ------------------------------------------------------------------ status moves (Undo, not confirm)
+function snapshot(k) { return { status: k.status, scheduled: k.scheduled || null, completed: k.completed || null, cost: k.cost == null ? null : k.cost, chargeId: k.chargeId || null }; }
+function schedule(id, date) {
+  if (!guard()) return;
+  const k = S().ticket(id); if (!k) return;
+  const before = snapshot(k);
+  S().updateTicket(id, { status: 'scheduled', scheduled: date }).catch(() => {});
+  ui.toast('Scheduled “' + k.title + '” for ' + D.fmt(date, S().today()), { undo: () => S().updateTicket(id, before) });
+}
+function markDone(id, cost, charge) {
+  if (!guard()) return;
+  const k = S().ticket(id); if (!k) return;
+  const today = S().today();
+  const before = snapshot(k);
+  const patch = { status: 'done', completed: today };
+  if (cost !== undefined) patch.cost = cost;
+  let chargeId = null;
+  const after = Object.assign({}, k, patch);
+  if (charge && canCharge(after)) { chargeId = postCharge(after, after.cost, today); patch.chargeId = chargeId; }
+  S().updateTicket(id, patch).catch(() => {});
+  const t = chargeId && S().tenant(k.tenantId);
+  ui.toast(chargeId ? 'Done · added ' + M.fmt(after.cost) + ' charge to ' + RB.actions.who(t) : 'Marked “' + k.title + '” done', {
+    undo: () => { S().updateTicket(id, before); if (chargeId) S().undoEntry(k.tenantId, chargeId); },
+  });
+}
+function reopen(id) {
+  if (!guard()) return;
+  const k = S().ticket(id); if (!k) return;
+  const before = snapshot(k);
+  S().updateTicket(id, { status: k.scheduled ? 'scheduled' : 'open', completed: null }).catch(() => {});
+  ui.toast('Reopened “' + k.title + '”', { undo: () => S().updateTicket(id, before) });
+}
+function chargeTenant(id) {
+  if (!guard()) return;
+  const k = S().ticket(id); if (!k || !canCharge(k)) return;
+  const cid = postCharge(k, k.cost, k.completed || S().today());
+  S().updateTicket(id, { chargeId: cid }).catch(() => {});
+  const t = S().tenant(k.tenantId);
+  ui.toast('Added ' + M.fmt(k.cost) + ' charge to ' + RB.actions.who(t), { undo: () => { S().undoEntry(k.tenantId, cid); S().updateTicket(id, { chargeId: null }); } });
+}
+
+// ------------------------------------------------------------------ add / edit sheet
+function ticketSheet(id, prefill) {
+  if (!guard()) return Promise.resolve(null);
+  const today = S().today();
+  const k = id ? S().ticket(id) : null;
+  if (id && !k) { ui.toast('That upkeep request no longer exists.'); return Promise.resolve(null); }
+  const p = Object.assign({ tenantId: null, property: '', unit: '', title: '', detail: '', priority: 'normal', status: 'open', reported: today, scheduled: null, completed: null, vendor: '', cost: null, paidBy: 'owner' }, k || prefill || {});
+  if (!k && p.tenantId) { const t = S().tenant(p.tenantId); if (t) { p.property = p.property || t.property; p.unit = p.unit || t.unit; } }
+  const tenants = S().tenantsList({ includePast: false });
+  if (p.tenantId && !tenants.some(t => t.id === p.tenantId)) { const t = S().tenant(p.tenantId); if (t) tenants.push(t); }
+  const props = Array.from(new Set(S().tenantsList().map(t => t.property).concat(S().ticketsList().map(x => x.property)).filter(Boolean))).sort(RB.natCmp);
+  return new Promise(resolve => {
+    let saved = null;
+    ui.sheet({
+      title: k ? 'Edit upkeep request' : 'New upkeep request', size: 'wide',
+      sub: k ? where(k) + ' · reported ' + D.fmt(k.reported, today) : '',
+      body: (el, sh) => {
+        el.innerHTML = String(h`<fieldset class="fieldset"><legend class="fieldset-title">What and where</legend><div class="form-grid">
+            ${ui.field({ name: 'title', id: 'uk-title', label: 'What needs doing', value: p.title, required: true, placeholder: 'No hot water, leaking tap…', span: 2 })}
+            ${ui.field({ name: 'tenantId', id: 'uk-tenant', label: 'Tenant', type: 'select', value: p.tenantId || '', span: 2,
+              options: [{ value: '', label: 'No tenant — common area or vacant unit' }].concat(tenants.map(t => ({ value: t.id, label: t.name + ' · ' + RB.model.unitLabel(t) }))) })}
+            ${ui.field({ name: 'property', id: 'uk-property', label: 'Property', value: p.property, attrs: { list: 'uk-props' }, required: true })}
+            ${ui.field({ name: 'unit', id: 'uk-unit', label: 'Unit or area', value: p.unit, placeholder: '2B, basement, roof…', optional: true })}
+            ${ui.field({ name: 'detail', id: 'uk-detail', label: 'Details', type: 'textarea', value: p.detail, optional: true, rows: 3, span: 2 })}
+            ${ui.field({ name: 'priority', id: 'uk-priority', label: 'Priority', type: 'seg', value: p.priority, options: [{ value: 'urgent', label: 'Urgent', icon: 'triangle' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }] })}
+            ${ui.field({ name: 'reported', id: 'uk-reported', label: 'Reported', type: 'date', value: p.reported, required: true, max: today })}
+          </div><datalist id="uk-props">${props.map(x => h`<option value="${x}"></option>`)}</datalist></fieldset>
+          <fieldset class="fieldset"><legend class="fieldset-title">Progress and cost</legend><div class="form-grid">
+            ${ui.field({ name: 'status', id: 'uk-status', label: 'Status', type: 'seg', value: p.status, options: STATUS.map(([value, label]) => ({ value, label })), span: 2 })}
+            ${ui.field({ name: 'scheduled', id: 'uk-scheduled', label: 'Scheduled for', type: 'date', value: p.scheduled || '', optional: true })}
+            ${ui.field({ name: 'completed', id: 'uk-completed', label: 'Done on', type: 'date', value: p.completed || '', optional: true })}
+            ${ui.field({ name: 'vendor', id: 'uk-vendor', label: 'Vendor', value: p.vendor, optional: true, placeholder: 'Who is doing the work' })}
+            ${ui.field({ name: 'cost', id: 'uk-cost', label: 'Cost', type: 'money', value: p.cost, optional: true })}
+            ${ui.field({ name: 'paidBy', id: 'uk-paidby', label: 'Who pays', type: 'seg', value: p.paidBy, options: [{ value: 'owner', label: 'Owner' }, { value: 'tenant', label: 'Tenant' }], span: 2 })}
+            <div class="span-2" id="uk-charge-slot"></div>
+          </div></fieldset>`);
+        const slot = el.querySelector('#uk-charge-slot');
+        let chargeChecked = true;
+        const sync = e => {
+          const v = ui.readForm(el).values;
+          if (e && e.target && e.target.id === 'uk-tenant') {
+            const t = S().tenant(v.tenantId);
+            if (t) { ui.setValue(el, 'property', t.property); ui.setValue(el, 'unit', t.unit); }
+          }
+          el.querySelector('[data-field="completed"]').hidden = v.status !== 'done';
+          el.querySelector('[data-field="scheduled"]').hidden = v.status === 'open' && !v.scheduled;
+          const t = v.tenantId && S().tenant(v.tenantId);
+          const already = k && k.chargeId;
+          const offer = v.status === 'done' && v.paidBy === 'tenant' && v.cost > 0 && t && !already;
+          const cb = slot.querySelector('#uk-charge'); if (cb) chargeChecked = cb.checked;
+          slot.innerHTML = offer ? String(ui.field({ name: 'charge', id: 'uk-charge', type: 'checkbox', value: chargeChecked, label: h`Add ${M.fmt(v.cost)} charge to ${t.name}’s ledger` })) : already && v.paidBy === 'tenant' ? String(h`<div class="form-note">${ui.icon('check', { size: 12 })} Already charged to the tenant’s ledger.</div>`) : v.paidBy === 'tenant' && !t ? String(h`<div class="form-note">Pick a tenant to charge the cost to their ledger.</div>`) : '';
+          sh.setAction('save', { label: k ? 'Save changes' : v.status === 'done' ? 'Add as done' : 'Add request' });
+        };
+        el.addEventListener('change', sync);
+        el.addEventListener('input', e => { if (e.target.id === 'uk-cost') sync(e); });
+        sync();
+      },
+      actions: [].concat(k ? [{ id: 'delete', label: 'Delete', kind: 'danger-soft', onClick: () => { del(k.id); } }] : [], [{ id: 'save', label: k ? 'Save changes' : 'Add request', kind: 'primary', onClick: s => {
+        const v = ui.form(s.body, { validate: v => ({
+          cost: v.cost != null && v.cost < 0 ? 'Cost can’t be negative' : '',
+          scheduled: v.status === 'scheduled' && !v.scheduled ? 'When is it booked for?' : '',
+        }) });
+        if (!v) return false;
+        const data = { tenantId: v.tenantId || null, property: v.property, unit: v.unit, title: v.title, detail: v.detail, priority: v.priority || 'normal',
+          status: v.status || 'open', reported: v.reported, scheduled: v.scheduled || null, completed: v.status === 'done' ? (v.completed || today) : null,
+          vendor: v.vendor, cost: v.cost, paidBy: v.paidBy || 'owner' };
+        let chargeId = null;
+        if (v.charge && canCharge(Object.assign({}, k || {}, data))) { chargeId = postCharge(data, data.cost, data.completed); data.chargeId = chargeId; }
+        const undoCharge = () => { if (chargeId) S().undoEntry(data.tenantId, chargeId); };
+        if (k) {
+          const before = {}; Object.keys(data).forEach(key => { before[key] = k[key] === undefined ? null : k[key]; });
+          S().updateTicket(k.id, data).catch(() => {});
+          saved = k.id;
+          ui.toast('Saved “' + data.title + '”' + (chargeId ? ' · charged ' + M.fmt(data.cost) : ''), { undo: () => { S().updateTicket(k.id, before); undoCharge(); } });
+        } else {
+          const nid = RB.id();
+          S().addTicket(Object.assign({ id: nid }, data)).catch(() => {});
+          saved = nid;
+          ui.toast('Added “' + data.title + '”' + (chargeId ? ' · charged ' + M.fmt(data.cost) : ''), { undo: () => { S().deleteTicket(nid); undoCharge(); } });
+        }
+      } }]),
+      initialFocus: k ? '#uk-title' : '#uk-title',
+      onClose: () => resolve(saved),
+    });
+  });
+}
+function del(id) {
+  if (!guard()) return;
+  const k = S().ticket(id); if (!k) return;
+  const copy = RB.clone(k);
+  S().deleteTicket(id).catch(() => {});
+  ui.toast('Deleted “' + k.title + '”', { undo: () => S().addTicket(copy) });
+}
+RB.actions.addTicket = prefill => ticketSheet(null, prefill);
+RB.actions.openTicket = id => ticketSheet(id);
+
+// ------------------------------------------------------------------ rendering
+function sorted(list, status, today) {
+  if (status === 'done') return list.slice().sort((a, b) => D.cmp(b.completed || '', a.completed || '') || D.cmp(b.reported, a.reported));
+  if (status === 'scheduled') return list.slice().sort((a, b) => (a.priority === 'urgent' ? 0 : 1) - (b.priority === 'urgent' ? 0 : 1) || D.cmp(a.scheduled || '9', b.scheduled || '9') || D.cmp(a.reported, b.reported));
+  return list.slice().sort((a, b) => (a.priority === 'urgent' ? 0 : 1) - (b.priority === 'urgent' ? 0 : 1) || D.cmp(a.reported, b.reported) || (a.priority === 'low') - (b.priority === 'low'));
+}
+
+function card(k, today) {
+  const age = k.reported ? D.diffDays(k.reported, today) : 0;
+  const tn = tenantName(k);
+  let when;
+  if (k.status === 'done') when = h`Done ${D.fmt(k.completed, today)}${k.reported && k.completed ? ' · took ' + Math.max(0, D.diffDays(k.reported, k.completed)) + ' d' : ''}`;
+  else if (k.status === 'scheduled') when = h`<span class="${k.scheduled && k.scheduled < today ? 'tone-warn medium' : ''}">${k.scheduled ? (k.scheduled < today ? 'Was due ' : 'Booked ') + D.fmt(k.scheduled, today) + ' · ' + D.rel(k.scheduled, today) : 'No date'}</span> · ${age} d open`;
+  else when = h`<span class="${age >= 7 ? 'tone-warn medium' : ''}">${age === 0 ? 'Reported today' : age + ' d open'}</span>`;
+  const isInline = inline && inline.id === k.id;
+  const chargeOffer = k.status === 'done' && canCharge(k);
+  return h`<article class="uk-card${k.priority === 'urgent' && k.status !== 'done' ? ' is-urgent' : ''}" data-ticket="${k.id}">
+    <div class="uk-card-top">
+      <span class="uk-plate">${ui.plate(k.unit || '—', { property: k.property })}</span>
+      <button type="button" class="uk-title" data-act="edit" data-id="${k.id}">${k.title || 'Untitled request'}</button>
+      ${k.priority === 'urgent' && k.status !== 'done' ? h`<span class="tag tag-bad uk-prio">${ui.icon('triangle', { size: 12 })}Urgent</span>` : k.priority === 'low' ? h`<span class="uk-prio-low" title="Low priority">${ui.icon('chevron-down', { size: 12 })}Low</span>` : ''}
+    </div>
+    <div class="uk-meta">${k.property || 'No property'}${tn ? h` · ${tn}` : ''}</div>
+    <div class="uk-meta">${when}</div>
+    ${k.vendor || k.cost != null ? h`<div class="uk-meta uk-money">${k.vendor ? h`<span>${k.vendor}</span>` : ''}${k.cost != null ? h`<span>${ui.money(k.cost)}${k.paidBy === 'tenant' ? h` <span class="faint">· tenant pays${k.chargeId ? ', charged' : ''}</span>` : ''}</span>` : ''}</div>` : ''}
+    ${isInline ? inlineForm(k, today) : h`<div class="uk-actions">
+      ${k.status === 'open' ? h`<button type="button" class="btn btn-sm" data-act="sched" data-id="${k.id}" data-write>${ui.icon('calendar')}<span>Schedule</span></button><button type="button" class="btn btn-sm btn-ghost" data-act="done" data-id="${k.id}" data-write>${ui.icon('check')}<span>Mark done</span></button>` : ''}
+      ${k.status === 'scheduled' ? h`<button type="button" class="btn btn-sm" data-act="done" data-id="${k.id}" data-write>${ui.icon('check')}<span>Mark done</span></button><button type="button" class="btn btn-sm btn-ghost" data-act="sched" data-id="${k.id}" data-write>Reschedule</button>` : ''}
+      ${k.status === 'done' ? h`${chargeOffer ? h`<button type="button" class="btn btn-sm btn-soft" data-act="charge" data-id="${k.id}" data-write>Charge ${M.fmt(k.cost)} to tenant</button>` : ''}<button type="button" class="btn btn-sm btn-ghost" data-act="reopen" data-id="${k.id}" data-write>Reopen</button>` : ''}
+    </div>`}
+  </article>`;
+}
+
+function inlineForm(k, today) {
+  if (inline.kind === 'schedule') {
+    return h`<form class="uk-inline" data-submit="inlineSave" data-id="${k.id}">
+      <label class="field-label" for="uk-in-date">Booked for</label>
+      <div class="row"><input class="input" type="date" id="uk-in-date" data-kind="date" value="${inline.date}" min="${k.reported || ''}" data-input="inlineDate" required>
+        <button type="submit" class="btn btn-sm btn-primary" data-write>Schedule</button>
+        <button type="button" class="btn btn-sm btn-ghost btn-icon" data-act="inlineCancel" aria-label="Cancel">${ui.icon('x')}</button></div>
+    </form>`;
+  }
+  const t = k.tenantId && S().tenant(k.tenantId);
+  const offer = k.paidBy === 'tenant' && t && !k.chargeId;
+  const c = M.parse(inline.cost);
+  return h`<form class="uk-inline" data-submit="inlineSave" data-id="${k.id}">
+    <label class="field-label" for="uk-in-cost">Final cost <span class="opt">optional</span></label>
+    <div class="row"><span class="money-input grow"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input" type="text" inputmode="decimal" data-kind="money" id="uk-in-cost" value="${inline.cost}" placeholder="0.00" data-input="inlineCost" autocomplete="off"></span>
+      <button type="submit" class="btn btn-sm btn-primary" data-write>Mark done</button>
+      <button type="button" class="btn btn-sm btn-ghost btn-icon" data-act="inlineCancel" aria-label="Cancel">${ui.icon('x')}</button></div>
+    ${offer ? h`<label class="check uk-inline-charge"><input type="checkbox" id="uk-in-charge" data-change="inlineCharge"${inline.charge ? RB.raw(' checked') : ''}><span id="uk-in-charge-label">${c > 0 ? 'Add ' + M.fmt(c) + ' charge to ' + t.name + '’s ledger' : 'Charge the cost to ' + t.name + '’s ledger'}</span></label>` : ''}
+  </form>`;
+}
+
+function column(status, label, items, today, extra) {
+  return h`<section class="uk-col" aria-labelledby="uk-col-${status}">
+    <div class="uk-col-head"><h2 class="uk-col-title" id="uk-col-${status}">${label}</h2><span class="uk-col-count">${items.length}</span></div>
+    <div class="uk-col-body">${items.length ? items.map(k => card(k, today)) : h`<div class="uk-empty">${status === 'open' ? 'Nothing waiting. ' : status === 'scheduled' ? 'Nothing booked.' : 'Nothing finished in the last 30 days.'}</div>`}${extra || ''}</div>
+  </section>`;
+}
+
 RB.views.register('upkeep', {
   title: 'Upkeep',
   firstRun: false,
+  shortcuts: [['c', 'New upkeep request']],
   render(el, ctx) {
-    const list = ctx.store.ticketsList().sort((a, b) => (a.status === 'done') - (b.status === 'done') || D.cmp(b.reported, a.reported));
+    const today = ctx.today;
+    const all = S().ticketsList();
+    const props = Array.from(new Set(all.map(k => k.property).filter(Boolean))).sort(RB.natCmp);
+    if (propFilter && !props.includes(propFilter)) propFilter = '';
+    const list = all.filter(k => !propFilter || k.property === propFilter);
+    const by = { open: [], scheduled: [], done: [] };
+    list.forEach(k => (by[k.status] || by.open).push(k));
+    const cutoff = D.addDays(today, -30);
+    const doneRecent = by.done.filter(k => (k.completed || k.reported) >= cutoff);
+    const older = by.done.length - doneRecent.length;
+    const doneShown = sorted(showOlder ? by.done : doneRecent, 'done', today);
+    const notDone = by.open.concat(by.scheduled);
+    const urgent = notDone.filter(k => k.priority === 'urgent').length;
+    const oldest = notDone.reduce((m, k) => Math.max(m, k.reported ? D.diffDays(k.reported, today) : 0), 0);
+    const cols = { open: sorted(by.open, 'open', today), scheduled: sorted(by.scheduled, 'scheduled', today), done: doneShown };
+    const olderBtn = older ? h`<button type="button" class="linkbtn linkbtn-muted uk-older" data-act="older">${showOlder ? 'Hide older' : 'Show ' + RB.plural(older, 'older request')}</button>` : '';
+    const countLine = notDone.length ? h`<strong>${notDone.length}</strong> open${by.scheduled.length ? h` (${by.scheduled.length} scheduled)` : ''}${urgent ? h` · <span class="tone-bad medium">${urgent} urgent</span>` : ''} · oldest ${oldest} d` : h`Nothing open`;
+    const chipCount = p => all.filter(k => k.status !== 'done' && (!p || k.property === p)).length;
     el.innerHTML = String(h`
-      <div class="sec"><h2 class="sec-title">Requests</h2><span class="sec-meta">${list.filter(k => k.status !== 'done').length} open</span></div>
-      ${list.length ? h`<div class="rule">${list.map(k => h`<div class="lrow"><span class="lrow-lead">${ui.plate(k.unit)}</span>
-        <div><div class="lrow-title">${k.title}</div><div class="lrow-detail">${k.property} · ${k.status === 'done' ? 'done ' + D.fmt(k.completed, ctx.today) : D.diffDays(k.reported, ctx.today) + ' d open'}${k.vendor ? ' · ' + k.vendor : ''}${k.cost ? h` · ${ui.money(k.cost)}` : ''}</div></div>
-        <div class="lrow-actions">${ui.tag(PRIO[k.priority][0], PRIO[k.priority][1])}${ui.tag(k.status === 'open' ? 'Open' : k.status === 'scheduled' ? 'Scheduled ' + D.fmt(k.scheduled, ctx.today) : 'Done', k.status === 'done' ? 'ok' : k.status === 'scheduled' ? 'accent' : '')}</div></div>`)}</div>`
-        : ui.empty({ icon: 'wrench', title: 'No upkeep requests', body: 'Log repairs and maintenance here so nothing slips.' })}`);
+      <div class="view-head uk-head">
+        <p class="uk-count" id="uk-count">${countLine}</p>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-primary" data-act="add" id="uk-add" data-write>${ui.icon('plus')}<span>New request</span></button>
+      </div>
+      ${props.length > 1 ? h`<div class="chips chips-scroll uk-filter" role="group" aria-label="Filter by property">
+        <button type="button" class="chip" data-act="prop" data-prop="" aria-pressed="${String(!propFilter)}">All properties<span class="chip-count">${chipCount('')}</span></button>
+        ${props.map(p => h`<button type="button" class="chip" data-act="prop" data-prop="${p}" aria-pressed="${String(propFilter === p)}">${p}<span class="chip-count">${chipCount(p)}</span></button>`)}
+      </div>` : ''}
+      ${all.length ? h`
+        <div class="seg uk-tabs show-phone" role="group" aria-label="Status">${STATUS.map(([s, label]) => h`<button type="button" data-act="tab" data-tab="${s}" aria-pressed="${String(phoneTab === s)}">${label} <span class="faint">${s === 'done' ? cols.done.length : cols[s].length}</span></button>`)}</div>
+        <div class="uk-cols" data-tab="${phoneTab}">
+          ${column('open', 'Open', cols.open, today)}
+          ${column('scheduled', 'Scheduled', cols.scheduled, today)}
+          ${column('done', showOlder ? 'Done' : 'Done · last 30 days', cols.done, today, olderBtn)}
+        </div>`
+        : ui.empty({ icon: 'wrench', title: 'No upkeep requests', body: 'Log repairs and maintenance here so nothing slips — who reported it, who’s fixing it, what it cost.', actions: [{ label: 'New request', kind: 'primary', act: 'add', icon: 'plus', write: true }] })}`);
+    ui.bind(el, {
+      add: () => ticketSheet(null, propFilter ? { property: propFilter } : null),
+      edit: b => ticketSheet(b.dataset.id),
+      prop: b => { propFilter = b.dataset.prop; RB.prefs.set('upkeep:prop', propFilter); RB.shell.refresh(); },
+      tab: b => { phoneTab = b.dataset.tab; RB.prefs.set('upkeep:tab', phoneTab); RB.shell.refresh(); },
+      older: () => { showOlder = !showOlder; RB.shell.refresh(); },
+      sched: b => { const k = S().ticket(b.dataset.id); inline = { id: b.dataset.id, kind: 'schedule', date: (k && k.scheduled) || D.addDays(today, 2) }; RB.shell.refresh(); focusInline(el, '#uk-in-date'); },
+      done: b => { const k = S().ticket(b.dataset.id); inline = { id: b.dataset.id, kind: 'done', cost: k && k.cost != null ? M.input(k.cost) : '', charge: true }; RB.shell.refresh(); focusInline(el, '#uk-in-cost'); },
+      inlineCancel: () => { inline = null; RB.shell.refresh(); },
+      inlineDate: b => { if (inline) inline.date = b.value; },
+      inlineCost: b => {
+        if (!inline) return; inline.cost = b.value;
+        const lab = el.querySelector('#uk-in-charge-label'); const k = S().ticket(inline.id); const t = k && S().tenant(k.tenantId); const c = M.parse(b.value);
+        if (lab && t) lab.textContent = c > 0 ? 'Add ' + M.fmt(c) + ' charge to ' + t.name + '’s ledger' : 'Charge the cost to ' + t.name + '’s ledger';
+      },
+      inlineCharge: b => { if (inline) inline.charge = b.checked; },
+      inlineSave: f => {
+        const id = f.dataset.id; const cur = inline; if (!cur) return;
+        if (cur.kind === 'schedule') {
+          if (!D.valid(cur.date || '')) { el.querySelector('#uk-in-date').focus(); return; }
+          inline = null; schedule(id, cur.date);
+        } else {
+          const raw = String(cur.cost || '').trim(); const c = raw ? M.parse(raw) : undefined;
+          if (raw && (c === null || c < 0)) { ui.toast('Enter a cost like 185.50', { tone: 'bad' }); return; }
+          inline = null; markDone(id, c === undefined ? undefined : c, cur.charge);
+        }
+        RB.shell.refresh();
+      },
+      reopen: b => reopen(b.dataset.id),
+      charge: b => chargeTenant(b.dataset.id),
+    });
   },
+  onKey(e) { if (e.key === 'c') { ticketSheet(null); return true; } return false; },
+  destroy() { inline = null; },
 });
+function focusInline(el, sel) { const x = el.querySelector(sel); if (x) { x.focus(); if (x.select && x.type !== 'date') x.select(); } }
 })();
 /* ---- js/99-boot.js ---- */
 ;(function(){'use strict';

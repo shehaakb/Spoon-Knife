@@ -692,3 +692,46 @@ RB.model = {
   receiptText, statementText, csv, csvCell, ledgerCsv, rentRollCsv, agingCsv, collectionCsv, incomeCsv,
   parseDelimited, tenantSummary, unitLabel, sortTenants, tenantsArr, ticketsArr,
 };
+
+// ---------------------------------------------------------------- move-out & deposit settlement (Tenants view)
+/**
+ * Preview of a move-out on `moveOut` (pure). Builds the ledger as it will stand on the later of today and moveOut,
+ * with lease.moveOut set, assuming no further payments.
+ * → {moveOut, period, finalRows — generated rent+recurring rows of the final month (with prorate), finalTotal,
+ *    balance — owed at move-out (>0) or credit (<0), balanceNow, depositDueDate}
+ */
+function moveOutPreview(tenant, entries, settings, today, moveOut) {
+  settings = settingsWithDefaults(settings);
+  const t = RB.clone(tenant);
+  t.lease = Object.assign({}, t.lease || {}, { moveOut });
+  const asOf = D.max(today, moveOut);
+  const lg = buildLedger(t, entries, settings, asOf);
+  const period = D.monthKey(moveOut);
+  const finalRows = lg.rows.filter(r => r.generated && (r.kind === 'rent' || r.kind === 'recurring') && r.period === period);
+  const now = buildLedger(tenant, entries, settings, today);
+  return {
+    moveOut, period, finalRows, finalTotal: finalRows.reduce((s, r) => s + r.amount, 0),
+    balance: lg.balance, balanceNow: now.balance,
+    depositDueDate: D.addDays(moveOut, +settings.depositReturnDays || 0),
+  };
+}
+
+/**
+ * Deposit settlement arithmetic (pure). args: {deposit (cents), deductions:[{reason, amount}], balance (ledger balance,
+ * >0 owed), applyToBalance:bool}
+ * → {deposit, deducted, available, applied — deposit used to pay the unpaid balance, refund, shortfall — deductions
+ *    beyond the deposit, balanceAfter — ledger balance once `applied` is credited and `shortfall` charged, lines}
+ */
+function depositSettlement({ deposit, deductions, balance, applyToBalance }) {
+  const dep = Math.max(0, Math.round(+deposit || 0));
+  const lines = (deductions || []).filter(d => d && Math.round(+d.amount || 0) > 0).map(d => ({ reason: String(d.reason || '').trim(), amount: Math.round(+d.amount) }));
+  const deducted = lines.reduce((s, d) => s + d.amount, 0);
+  const available = Math.max(0, dep - deducted);
+  const shortfall = Math.max(0, deducted - dep);
+  const owed = Math.max(0, Math.round(+balance || 0));
+  const applied = applyToBalance ? Math.min(owed, available) : 0;
+  const refund = available - applied;
+  return { deposit: dep, deducted, available, applied, refund, shortfall, balanceAfter: Math.round(+balance || 0) - applied + shortfall, lines };
+}
+RB.model.moveOutPreview = moveOutPreview;
+RB.model.depositSettlement = depositSettlement;
