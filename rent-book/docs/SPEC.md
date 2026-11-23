@@ -261,3 +261,106 @@ and a realistic spread *relative to today*: most paid on time this month, 3 unpa
 1 delinquent two months, 1 with credit on account, 2 leases ending inside 60 days, 3 month-to-month, 1 notice given
 with move-out next month, 1 moved out last month with a deposit due back, a few rent increases, late-payers with
 `paid_late` history, 6 upkeep tickets across statuses, some log notes with one follow-up due. Invented, varied names.
+
+## 8. Ease of use — the core of the product (added in v2; overrides anything above that conflicts)
+
+The person using this is 50+, not technical, and may be on a phone with reading glasses off. They must never
+feel lost, never need a manual, and never fear breaking something. If a screen needs explaining, it is wrong.
+Every screen must pass: "Could my mother record a rent payment here, first try, without asking anyone?"
+
+**Rules**
+1. **Big and readable.** Body text 16px on desktop, 17px on phone; nothing a person must read is under 14px.
+   Secondary text uses `--ink-2`, not `--ink-3`, wherever it carries meaning. Line height ≥ 1.45. Table rows ≥ 52px.
+   Every tappable thing is ≥ 48px tall on phone, ≥ 40px on desktop, with ≥ 8px between neighbours.
+2. **Text size control.** "Text size: Normal · Large · Extra large" (100% / 112% / 125%), visible in the sidebar
+   footer and in Settings and in the phone More sheet, remembered per device. Everything scales (type, controls,
+   spacing) and nothing overflows at 390px on Extra large.
+3. **Words, not symbols.** No icon-only buttons anywhere a person must act: every button has a word ("More",
+   "Close", "Copy", "Call", "Edit", "Back"). Icons may accompany words. No abbreviations: "22 days late", "in 128
+   days", "credit" not "cr", "per month" not "/mo". Dates always include the month name.
+4. **Plain language glossary — use exactly these words everywhere (UI, toasts, CSV headings, help):**
+   - Upkeep / maintenance / ticket / request → **Repairs** / **repair** (nav label "Repairs")
+   - Setup → **Settings** (nav label; the route stays `#setup`)
+   - Ledger → **Payment history**; ledger entry → **entry**; statement stays **statement**
+   - Charge → **charge** ("Add a charge"); Credit → **money off** in buttons ("Take money off what they owe"),
+     "credit" only as the label for money a tenant has paid ahead ("$250 paid ahead")
+   - Void → **Remove** ("Remove this payment — it was a mistake"), restored with Undo / "Put back"
+   - Delinquent → **Behind on rent**; Aging report → **Who owes, and for how long**
+   - Rent roll → **Rent roll** with the subtitle "Every unit, tenant and rent on one page"
+   - Balance owed → **Owes $X**; zero → **All paid up**; negative → **$X paid ahead**
+   - Partial → **Part paid**; Due → **Not paid yet**; Paid late → **Paid late**; Late → **Late**
+   - Month-to-month stays; "Notice given" → **Moving out**; Past tenant → **Moved out**
+   - Opening balance → **What they already owed**; "Start tracking rent from" → **Start counting rent from**
+   - Recurring charges → **Other monthly charges** (pet, parking); Prorated → show the sum in words
+     ("15 of 31 days")
+   - Command palette / search → **Find** ("Find a tenant or do something…")
+   - Import → **Bring in my tenants**; Backup → **Save a copy** / **Restore from a copy**; CSV download →
+     **Download for Excel**
+5. **Start from what they want to do.** Today opens with three large, labelled action buttons before anything
+   else: **Record a rent payment**, **Log a repair**, **Add a tenant** (each ≥ 64px tall, icon + words, one line of
+   help beneath: "Someone paid you — write it down"). Each starts a short guided flow that first asks "Which
+   tenant?" with a big searchable list (name + unit), then shows one simple form.
+6. **One thing at a time.** Forms are single-column with large fields, a plain question as the label ("How much did
+   they pay?"), an example in the hint, and at most ~5 fields visible; everything optional sits behind one clearly
+   worded "Add more details (optional)". Long forms (Add a tenant) are a 3-step guide with "Step 2 of 3", Back and
+   Next, and a summary sentence before saving ("Maya Okafor, Unit 1A at Alder Court, $1,325 a month from March 1").
+7. **Nothing hidden.** No action reachable only by hover, right-click, keyboard, swipe or a bare "⋯". Row menus
+   become a labelled "More" button. Keyboard shortcuts stay for those who want them but are never the only way and
+   are not advertised in the main UI (only in Settings → "Keyboard shortcuts").
+8. **Safe to try.** Every change says what happened in a large, plain confirmation that stays 10 seconds with a big
+   **Undo** button ("Recorded $1,385 from Claire Dubois. Undo"). Destructive actions explain consequences in a
+   sentence and require typing nothing — just a clearly labelled red button and a larger "Keep it" button.
+9. **Always a way home and a way out.** Every sheet/drawer has a visible "Close" or "Back" with a word. The app name
+   in the corner returns to Today. A visible **Help** button (sidebar + More sheet) opens "How do I…?" — eight plain
+   answers, each with a button that starts that task (record a payment, fix a mistake, add a tenant, log a repair,
+   see who owes, raise the rent, a tenant is moving out, see a property's repair history).
+10. **Explain numbers where they appear.** Short plain captions under figures and charts ("Green = paid on time").
+    The 12-month strip always has a caption on first appearance in a view. Status pills use the glossary words.
+11. **Calm, not clever.** Keep the visual identity (paper, ink blue, door plates, ledger rules) but with more air:
+    fewer columns on screen (move detail into the tenant page), generous spacing, strong contrast (text ≥ 7:1 for
+    primary, ≥ 4.5:1 for everything else), focus rings obvious. Compact density is removed from the main UI.
+
+## 9. Repairs and repair history by property (added in v2)
+
+"Upkeep" becomes **Repairs** (`#repairs`; keep `#upkeep` working as an alias). Two tabs with words:
+**To do** (the existing Open / Scheduled / Done board, relabelled per §8) and **History by property**.
+
+Data: a repair (ticket doc) gains `category` — one of `plumbing`, `electrical`, `heating` (Heating & cooling),
+`appliance`, `roof` (Roof & outside), `doors` (Doors, windows & locks), `pest`, `painting` (Painting & floors),
+`other` — suggested automatically from the title while typing ("leak" → Plumbing) and changeable with one tap;
+plus optional `warrantyUntil` (date) and `notes` (what was done). `unit` may be empty with `scope:"building"` for
+whole-building work (roof, boiler, gutters), shown as "Whole building". Missing `category` on old docs reads as
+`other`. All maths lives in `RB.model` (pure, tested): `repairHistory(state, property, filters)`,
+`repairTotals(...)` (by year, by category, by unit), `repeatProblems(...)`, CSV builder.
+
+**History by property — landing**: one large card per property (from tenants' and repairs' `property` values):
+name, number of units, repairs this year and what they cost, the most recent repair in words ("Last: smoke
+detector, Unit 101, Nov 17"), and anything still open. Tapping a card opens that property's history
+(`#p-<slug>`, slug from the property name; unknown slug → a tidy "not found").
+
+**A property's repair history** (the page):
+- Header: property name, "42 repairs since 2023 · $18,460 spent", and two buttons: **Log a repair** (new or still to
+  do) and **Add a past repair** (a 4-field quick form — What was fixed? When? Which unit? What did it cost? — plus
+  optional who fixed it / category / notes — built for typing in years of old history quickly: after saving it
+  stays open with "Saved. Add another?" and keeps the date).
+- "Spending by year" — a small bar chart drawn to scale with the amount written on each bar and a plain caption.
+- "What the money went on" — categories as labelled horizontal bars with amounts and counts, largest first.
+- "Keep an eye on" — repeat problems in plain sentences: "Unit 2B has had 3 plumbing repairs in the last 12
+  months ($640)". Rule: ≥ 3 repairs of the same category in the same unit within 12 months, or ≥ 2 within 90 days.
+  Also warranties: "The dishwasher in 3A is under warranty until March 2027".
+- The history itself: a timeline, newest first, grouped by year with a year heading and year total. Each entry in
+  large plain text: date, what was fixed, door plate (or "Whole building"), category, who fixed it, cost, who paid,
+  and the notes. Tapping an entry opens it to edit. Simple filters with words: "Which unit?" (All units / each
+  unit / Whole building), "What kind?" (categories), "Which year?", and a find box. A line states what is shown:
+  "Showing 9 plumbing repairs in Unit 2B — $1,940".
+- **Download for Excel** and **Copy** for the filtered list (for insurance, tax, or selling the building).
+- By-unit view toggle: "Show by unit" lists each unit with its count, total and last repair, largest first.
+
+Also: the tenant page gets a short "Repairs in this unit" section (last 3 + "See all repairs for Unit 2B", which
+opens the property history filtered to that unit). Today's "Log a repair" action and the Help answers link here.
+
+Sample data: add ~45 completed past repairs across the three sample properties over the last three years, with
+realistic categories, vendors, costs and notes, including one clear repeat problem (plumbing in Alder Court 2B),
+some whole-building work (roof, gutters, boiler service) and one item under warranty. Generate them with a SEPARATE
+seeded PRNG, appended after everything else, so the ids and contents of the existing sample tenants, ledgers and
+six tickets do not change; the existing six tickets just gain a `category`.
