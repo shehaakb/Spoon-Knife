@@ -1,0 +1,160 @@
+/* Design tokens. Every colour lives here; component rules use var(--token) only.
+   Light on bare :root, dark under prefers-color-scheme (unless data-theme="light"), and again for data-theme="dark". */
+:root {
+  --paper: #F5F6F9;
+  --surface: #FFFFFF;
+  --sunk: #ECEEF3;
+  --ink: #131A26;
+  --ink-2: #485163;
+  --ink-3: #636C7D;            /* spec says #6F7889, but that is 4.11:1 on paper; darkened to meet the spec's own ≥4.5:1 rule (4.89 paper, 5.29 surface, 4.55 sunk) */
+  --line: #E0E4EB;
+  --line-2: #C9CFDA;
+  --accent: #2A47C4;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E7EBFA;
+  --ok: #1B7448;
+  --ok-soft: #E2F2E9;
+  --warn: #9A5D07;
+  --warn-soft: #FAEFD9;
+  --bad: #B4362E;
+  --bad-soft: #FAE6E4;
+
+  /* derived (still tokens: no literal colours outside this file) */
+  --hover: #EEF0F5;            /* row / ghost-button hover */
+  --accent-line: #B7C3F1;      /* border of accent-soft things */
+  --accent-hover: #2139A6;
+  --ok-line: #A8D4BB;
+  --warn-line: #E6C78C;
+  --bad-line: #EBB3AD;
+  --bad-ink: #FFFFFF;          /* text on solid --bad */
+  --faint: #D5DAE3;            /* empty strip dots, skeletons */
+  --scrim: rgba(19, 26, 38, .28);
+  --toast-bg: #131A26;
+  --toast-ink: #EEF1F6;
+  --toast-accent: #A9B8FF;
+  --toast-hover: rgba(255, 255, 255, .12);
+  --shadow-float: 0 1px 2px rgba(19, 26, 38, .06), 0 10px 28px rgba(19, 26, 38, .12);
+  --shadow-modal: 0 2px 6px rgba(19, 26, 38, .08), 0 24px 60px rgba(19, 26, 38, .22);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  color-scheme: light;
+
+  /* type */
+  --f-display: "Newsreader", "Iowan Old Style", "Charter", Georgia, "Times New Roman", serif;
+  --f-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --t-12: 12px;
+  --t-13: 13.5px;
+  --t-15: 15px;
+  --t-18: 18px;
+  --t-24: 24px;
+  --t-34: 34px;
+  --t-body: 13.5px;
+  --t-micro: 11px;
+
+  /* space, radius, sizes */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+  --r-ctl: 6px;
+  --r-panel: 10px;
+  --r-plate: 3px;
+  --rail-w: 208px;
+  --top-h: 56px;
+  --tab-h: 56px;
+  --ctl-h: 32px;
+  --ctl-h-sm: 28px;
+  --ctl-h-lg: 40px;
+  --row-h: 44px;
+  --gutter: 32px;
+  --sticky-top: calc(env(safe-area-inset-top, 0px) + var(--top-h));
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --dur: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0E1116;
+    --surface: #151920;
+    --sunk: #0A0C10;
+    --ink: #E7EAF0;
+    --ink-2: #A8B0BE;
+    --ink-3: #7E8797;
+    --line: #232933;
+    --line-2: #343C49;
+    --accent: #8FA4FF;
+    --accent-ink: #0E1116;
+    --accent-soft: #1A2244;
+    --ok: #5BC08C;
+    --ok-soft: #11301F;
+    --warn: #E2AA4C;
+    --warn-soft: #33260D;
+    --bad: #F0857D;
+    --bad-soft: #3A1715;
+    --hover: #1B2029;
+    --accent-line: #2E3C78;
+    --accent-hover: #A9B8FF;
+    --ok-line: #1F5838;
+    --warn-line: #5E461A;
+    --bad-line: #6B2B26;
+    --bad-ink: #0E1116;
+    --faint: #2A303B;
+    --scrim: rgba(0, 0, 0, .55);
+    --toast-bg: #E7EAF0;
+    --toast-ink: #131A26;
+    --toast-accent: #2A47C4;
+    --toast-hover: rgba(19, 26, 38, .08);
+    --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px rgba(0, 0, 0, .45);
+    --shadow-modal: 0 2px 6px rgba(0, 0, 0, .5), 0 28px 70px rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #0E1116;
+  --surface: #151920;
+  --sunk: #0A0C10;
+  --ink: #E7EAF0;
+  --ink-2: #A8B0BE;
+  --ink-3: #7E8797;
+  --line: #232933;
+  --line-2: #343C49;
+  --accent: #8FA4FF;
+  --accent-ink: #0E1116;
+  --accent-soft: #1A2244;
+  --ok: #5BC08C;
+  --ok-soft: #11301F;
+  --warn: #E2AA4C;
+  --warn-soft: #33260D;
+  --bad: #F0857D;
+  --bad-soft: #3A1715;
+  --hover: #1B2029;
+  --accent-line: #2E3C78;
+  --accent-hover: #A9B8FF;
+  --ok-line: #1F5838;
+  --warn-line: #5E461A;
+  --bad-line: #6B2B26;
+  --bad-ink: #0E1116;
+  --faint: #2A303B;
+  --scrim: rgba(0, 0, 0, .55);
+  --toast-bg: #E7EAF0;
+  --toast-ink: #131A26;
+  --toast-accent: #2A47C4;
+  --toast-hover: rgba(19, 26, 38, .08);
+  --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px rgba(0, 0, 0, .45);
+  --shadow-modal: 0 2px 6px rgba(0, 0, 0, .5), 0 28px 70px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+
+@media (max-width: 1099.98px) {
+  :root { --rail-w: 60px; --gutter: 24px; }
+}
+@media (max-width: 759.98px) {
+  :root {
+    --t-body: 15px;
+    --ctl-h: 44px;
+    --ctl-h-sm: 36px;
+    --ctl-h-lg: 48px;
+    --row-h: 52px;
+    --gutter: 16px;
+    --rail-w: 0px;
+    --top-h: 52px;
+  }
+}

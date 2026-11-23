@@ -1,0 +1,39 @@
+<title>Rent Book</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;display=swap">
+<style>
+<!--CSS-->
+</style>
+<div class="app" id="rb-app">
+  <aside class="rail" id="rb-rail" aria-label="Sections">
+    <a class="rail-brand" href="#today" id="rb-brand">
+      <span class="rail-mark" aria-hidden="true">RB</span>
+      <span class="rail-brand-text"><span class="rail-title">Rent Book</span><span class="rail-sub" id="rb-portfolio"></span></span>
+    </a>
+    <nav class="rail-nav" id="rb-nav"></nav>
+    <div class="rail-foot" id="rb-sync" aria-live="polite"></div>
+  </aside>
+  <div class="work" id="rb-work">
+    <div class="banner" id="rb-banner" hidden></div>
+    <header class="topbar" id="rb-topbar">
+      <div class="topbar-inner">
+        <h1 class="topbar-title" id="rb-title">Today</h1>
+        <span class="topbar-note" id="rb-topnote" hidden></span>
+        <span class="spacer"></span>
+        <label class="search topbar-search" for="rb-search">
+          <span class="search-icon" id="rb-search-icon"></span>
+          <input class="input search-input" id="rb-search" type="search" placeholder="Search tenants, units…" autocomplete="off" spellcheck="false" aria-label="Search tenants and commands">
+          <kbd class="kbd search-kbd">/</kbd>
+        </label>
+        <button class="btn btn-ghost btn-icon topbar-findbtn" id="rb-find" type="button" aria-label="Search"></button>
+        <button class="btn btn-primary btn-icon" id="rb-add" type="button" aria-label="Add" aria-haspopup="menu"></button>
+      </div>
+    </header>
+    <main class="view" id="rb-view" tabindex="-1" aria-live="off"></main>
+  </div>
+  <nav class="tabbar" id="rb-tabbar" aria-label="Sections"></nav>
+</div>
+<div class="layer" id="rb-layer"></div>
+<script>
+<!--JS-->
+</script>
