@@ -55,7 +55,12 @@ test('depositSettlement: deductions, apply to balance, refund', () => {
 
 test('depositSettlement: not applied, credit balance, shortfall', () => {
   assert.equal(depositSettlement({ deposit: 100000, deductions: [], balance: 30000, applyToBalance: false }).refund, 100000);
-  assert.equal(depositSettlement({ deposit: 100000, deductions: [], balance: -5000, applyToBalance: true }).applied, 0);
+  const cr = depositSettlement({ deposit: 100000, deductions: [], balance: -5000, applyToBalance: true });
+  assert.equal(cr.applied, 0);
+  assert.equal(cr.creditRefunded, 5000);
+  assert.equal(cr.refund, 105000);
+  assert.equal(cr.balanceAfter, 0);
+  assert.equal(depositSettlement({ deposit: 100000, deductions: [], balance: -5000, applyToBalance: false }).refund, 100000);
   const s = depositSettlement({ deposit: 50000, deductions: [{ reason: 'Carpet', amount: 80000 }], balance: 10000, applyToBalance: true });
   assert.equal(s.refund, 0);
   assert.equal(s.applied, 0);

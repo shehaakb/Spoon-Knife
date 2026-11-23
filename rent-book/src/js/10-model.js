@@ -718,8 +718,8 @@ function moveOutPreview(tenant, entries, settings, today, moveOut) {
 
 /**
  * Deposit settlement arithmetic (pure). args: {deposit (cents), deductions:[{reason, amount}], balance (ledger balance,
- * >0 owed), applyToBalance:bool}
- * → {deposit, deducted, available, applied — deposit used to pay the unpaid balance, refund, shortfall — deductions
+ * >0 owed, <0 credit), applyToBalance:bool — use the deposit against what is owed, or refund a credit with it}
+ * → {deposit, deducted, available, applied — deposit used to pay the unpaid balance, creditRefunded, refund, shortfall — deductions
  *    beyond the deposit, balanceAfter — ledger balance once `applied` is credited and `shortfall` charged, lines}
  */
 function depositSettlement({ deposit, deductions, balance, applyToBalance }) {
@@ -728,10 +728,12 @@ function depositSettlement({ deposit, deductions, balance, applyToBalance }) {
   const deducted = lines.reduce((s, d) => s + d.amount, 0);
   const available = Math.max(0, dep - deducted);
   const shortfall = Math.max(0, deducted - dep);
-  const owed = Math.max(0, Math.round(+balance || 0));
+  const bal = Math.round(+balance || 0);
+  const owed = Math.max(0, bal);
   const applied = applyToBalance ? Math.min(owed, available) : 0;
-  const refund = available - applied;
-  return { deposit: dep, deducted, available, applied, refund, shortfall, balanceAfter: Math.round(+balance || 0) - applied + shortfall, lines };
+  const creditRefunded = applyToBalance && bal < 0 ? -bal : 0;   // credit on account paid back with the deposit
+  const refund = available - applied + creditRefunded;
+  return { deposit: dep, deducted, available, applied, creditRefunded, refund, shortfall, balanceAfter: bal - applied + creditRefunded + shortfall, lines };
 }
 RB.model.moveOutPreview = moveOutPreview;
 RB.model.depositSettlement = depositSettlement;

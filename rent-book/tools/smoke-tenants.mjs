@@ -11,13 +11,14 @@ const url = pathToFileURL(join(ROOT, 'dist', 'preview.html')).href;
 
 const errors = [];
 const results = [];
-const check = (name, ok, extra) => { results.push((ok ? 'ok   ' : 'FAIL ') + name + (extra ? ' — ' + extra : '')); if (!ok) process.exitCode = 1; };
+const check = (name, ok, extra) => { const line = (ok ? 'ok   ' : 'FAIL ') + name + (extra ? ' — ' + extra : ''); results.push(line); if (process.env.VERBOSE) console.log(line); if (!ok) process.exitCode = 1; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const browser = await chromium.launch();
 async function open(viewport, hash) {
   const ctx = await browser.newContext({ viewport, reducedMotion: 'reduce' });
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.fulfill({ status: 200, body: '' }));
+  ctx.setDefaultTimeout(5000);
   const page = await ctx.newPage();
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push(e.message));
@@ -37,7 +38,7 @@ try {
 
   // ---- list basics
   check('list renders a row per current tenant', await page.locator('.tn-tbl tbody tr[data-id]').count() === 26);
-  check('summary line', /26 tenants · ?3 properties/.test((await page.textContent('.tn-summary')).replace(/\s+/g, ' ')));
+  check('summary line', /26 tenants\s*·?\s*3 properties/.test(await page.textContent('.tn-summary')));
   check('default sort = urgency (first row is most urgent)', await ev(() => { const id = document.querySelector('.tn-tbl tbody tr[data-id]').dataset.id; const all = RB.store.tenantsList({ includePast: false }).map(t => RB.store.summary(t.id).urgency); return RB.store.summary(id).urgency === Math.min(...all); }));
 
   // ---- filter chips, search, sort
@@ -132,7 +133,7 @@ try {
   check('drawer states the balance in words', (await page.textContent('.tn-balw')).replace(/\s+/g, '') === 'Owes$1,700');
 
   // ---- edit details (section)
-  await ev(id => RB.actions.editTenant(id, 'contact'), nid);
+  await ev(id => { RB.actions.editTenant(id, 'contact'); }, nid);
   await page.waitForSelector('#tf-phone');
   await wait(80);
   check('edit opens at the requested section', await ev(() => document.activeElement && document.activeElement.id === 'tf-phone'));
@@ -142,7 +143,7 @@ try {
   check('edit saved and shown in the drawer', await ev(id => RB.store.tenant(id).phone, nid) === '(555) 0199-1234' && (await page.textContent('.drawer')).includes('(555) 0199-1234'));
 
   // ---- change rent
-  await ev(id => RB.actions.changeRent(id), nid);
+  await ev(id => { RB.actions.changeRent(id); }, nid);
   await page.waitForSelector('#cr-amount');
   await page.fill('#cr-amount', '1600');
   await wait(50);
@@ -193,14 +194,14 @@ try {
   check('follow-up ticked done', await ev(id => Object.values(RB.store.tenant(id).log).filter(Boolean)[0].done, nid) === true);
 
   // ---- give notice
-  await ev(id => RB.actions.giveNotice(id), nid);
+  await ev(id => { RB.actions.giveNotice(id); }, nid);
   await page.waitForSelector('#gn-moveout');
   await page.click('[data-action="save"]');
   await wait(150);
   check('give notice → status notice', await ev(id => RB.store.tenant(id).status, nid) === 'notice' && (await page.textContent('.tn-dtags')).includes('Notice given'));
 
   // ---- move out → settle deposit
-  await ev(id => RB.actions.moveOut(id), nid);
+  await ev(id => { RB.actions.moveOut(id); }, nid);
   await page.waitForSelector('#mo-date');
   await page.fill('#mo-date', today);
   await wait(60);
@@ -212,7 +213,7 @@ try {
   await page.fill('[data-rep="ded"] [data-k="reason"]', 'Cleaning');
   await page.fill('[data-rep="ded"] [data-k="amount"]', '100');
   await wait(60);
-  const expectRefund = 100000 - 10000 - Math.max(0, owedNow);
+  const expectRefund = 100000 - 10000 - owedNow;
   check('refund auto-computed', (await page.textContent('#sd-sum')).replace(/\s+/g, '').includes(('Refundtotenant$' + (expectRefund / 100).toLocaleString('en-US')).replace(/\s+/g, '')), 'owed ' + owedNow);
   await page.click('[data-action="save"]');
   await wait(200);
@@ -239,7 +240,7 @@ try {
   await wait(200);
   check('hostile strings stay escaped', await ev(() => !window.__x && !document.querySelector('#rb-view img, #rb-view b, #rb-view svg[onload], .drawer img, .drawer b, .drawer iframe, .drawer u, .drawer script')));
   check('non-https links are not linked', await ev(() => !document.querySelector('.drawer a[href^="javascript"]') && Array.from(document.querySelectorAll('.drawer a.tn-link')).every(a => a.href.startsWith('https://'))));
-  await ev(() => RB.actions.editTenant('xssT1'));
+  await ev(() => { RB.actions.editTenant('xssT1'); });
   await wait(150);
   check('hostile strings escaped in the edit form', await ev(() => !window.__x && document.getElementById('tf-name').value.startsWith('<img')));
   await page.keyboard.press('Escape');
@@ -274,7 +275,7 @@ try {
   check('phone drawer: full screen with back control, no overflow', await p3.isVisible('.drawer .tn-back') && !(await overflow()), await overflow());
   check('phone ledger has no header row and fits', await p3.evaluate(() => getComputedStyle(document.querySelector('.tn-ledger thead')).display === 'none'));
   for (const fn of ['editTenant', 'moveOut', 'changeRent']) {
-    await p3.evaluate(([f, id]) => RB.actions[f](id), [fn, did]);
+    await p3.evaluate(([f, id]) => { RB.actions[f](id); }, [fn, did]);
     await wait(250);
     check('phone ' + fn + ' sheet: no overflow', !(await overflow()), await overflow());
     await p3.keyboard.press('Escape');

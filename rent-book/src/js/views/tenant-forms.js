@@ -419,6 +419,7 @@ function settlementText(t, st, date, settings) {
   out.push(line('Deposit held', m(st.deposit)));
   st.lines.forEach(d => out.push(line('Less: ' + (d.reason || 'Deduction').slice(0, 30), '−' + m(d.amount))));
   if (st.applied) out.push(line('Applied to unpaid rent', '−' + m(st.applied)));
+  if (st.creditRefunded) out.push(line('Plus credit on account', '+' + m(st.creditRefunded)));
   out.push('-'.repeat(W));
   out.push(line('Refund to tenant', m(st.refund)));
   if (st.shortfall) out.push(line('Still owed beyond the deposit', m(st.shortfall)));
@@ -456,7 +457,8 @@ function settleDeposit(id, opts) {
             ${repeater('ded', [], 'Add deduction', 'sd-add')}
           </fieldset></div>
           <div class="stack stack-3 mt-4">
-            ${bal0 > 0 ? ui.field({ name: 'apply', id: 'sd-apply', type: 'checkbox', value: true, label: h`Apply the deposit to the unpaid balance (${M.fmt(bal0)} owed)` }) : ''}
+            ${bal0 > 0 ? ui.field({ name: 'apply', id: 'sd-apply', type: 'checkbox', value: true, label: h`Apply the deposit to the unpaid balance (${M.fmt(bal0)} owed)` })
+              : bal0 < 0 ? ui.field({ name: 'apply', id: 'sd-apply', type: 'checkbox', value: true, label: h`Refund the ${M.fmt(-bal0)} credit on account with the deposit` }) : ''}
             <div id="sd-short-wrap" hidden>${ui.field({ name: 'chargeShort', id: 'sd-short', type: 'checkbox', value: true, label: 'Add what the deductions exceed the deposit by to the ledger as a charge' })}</div>
           </div>
           <div class="form-grid mt-4">
@@ -475,6 +477,7 @@ function settleDeposit(id, opts) {
             <div class="tn-sum-row"><span>Deposit</span><span></span>${ui.money(cur.deposit)}</div>
             ${cur.lines.map(d => h`<div class="tn-sum-row tn-sum-minor"><span>Less</span><span class="tn-sum-val">${d.reason || 'Deduction'}</span><span>−${ui.money(d.amount)}</span></div>`)}
             ${cur.applied ? h`<div class="tn-sum-row tn-sum-minor"><span>Less</span><span class="tn-sum-val">applied to unpaid balance</span><span>−${ui.money(cur.applied)}</span></div>` : ''}
+            ${cur.creditRefunded ? h`<div class="tn-sum-row tn-sum-minor"><span>Plus</span><span class="tn-sum-val">credit on account</span><span>+${ui.money(cur.creditRefunded)}</span></div>` : ''}
             <div class="tn-sum-row tn-sum-total"><span>Refund to tenant</span><span></span><strong>${ui.money(cur.refund, { size: 'md' })}</strong></div>
             ${cur.shortfall ? h`<div class="tn-sum-row tn-sum-minor tone-bad"><span>Beyond the deposit</span><span class="tn-sum-val">still owed by the tenant</span>${ui.money(cur.shortfall)}</div>` : ''}
             ${cur.balanceAfter > 0 ? h`<div class="tn-sum-row tn-sum-minor"><span>Ledger after</span><span class="tn-sum-val">still owed</span>${ui.money(cur.balanceAfter, { tone: 'owed' })}</div>` : ''}`);
@@ -499,8 +502,9 @@ function settleDeposit(id, opts) {
           const st = cur;
           const entryIds = [];
           if (st.applied > 0) { const eid = RB.id(); entryIds.push(eid); S().addEntry(id, { id: eid, type: 'credit', date: v.date, amount: st.applied, memo: 'Security deposit applied to balance' }).catch(() => {}); }
+          if (st.creditRefunded > 0) { const eid = RB.id(); entryIds.push(eid); S().addEntry(id, { id: eid, type: 'charge', date: v.date, amount: st.creditRefunded, category: 'other', period: D.monthKey(v.date), memo: 'Credit on account refunded with the deposit' }).catch(() => {}); }
           if (st.shortfall > 0 && v.chargeShort) { const eid = RB.id(); entryIds.push(eid); S().addEntry(id, { id: eid, type: 'charge', date: v.date, amount: st.shortfall, category: 'damage', period: D.monthKey(v.date), memo: 'Deductions beyond the deposit' }).catch(() => {}); }
-          S().updateTenant(id, { deposit: { returned: { date: v.date, refund: st.refund, deductions: st.lines, applied: st.applied } } }).catch(() => {});
+          S().updateTenant(id, { deposit: { returned: { date: v.date, refund: st.refund, deductions: st.lines, applied: st.applied, creditRefunded: st.creditRefunded } } }).catch(() => {});
           ok = true;
           ui.toast('Deposit settled — ' + (st.refund ? M.fmt(st.refund) + ' refund to ' + t.name : 'nothing to refund'), { undo: () => { S().updateTenant(id, { deposit: { returned: null } }); entryIds.forEach(eid => S().undoEntry(id, eid)); } });
         } },
