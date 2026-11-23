@@ -392,7 +392,12 @@ function attention(state, today, getLedger) {
           action: { type: 'renewLease', tenantId: t.id, label: 'Decide' } });
       }
       const l = t.lease || {};
-      if (l.moveOut && l.moveOut >= today && D.diffDays(today, l.moveOut) <= 30) {
+      if (l.moveOut && l.moveOut <= today && t.status === 'notice') {
+        // The date has come: the tenant is still marked as on notice, so ask to complete the move-out.
+        items.push({ id: 'moveout-' + t.id, kind: 'moveout', severity: 'medium', rank: D.diffDays(today, l.moveOut), tenantId: t.id, unit,
+          title: name, detail: l.moveOut === today ? 'Moves out today' : 'Was due to move out ' + D.fmt(l.moveOut, today) + ' (' + D.rel(l.moveOut, today) + ')', date: l.moveOut,
+          action: { type: 'moveOut', tenantId: t.id, label: 'Complete move-out' } });
+      } else if (l.moveOut && l.moveOut > today && D.diffDays(today, l.moveOut) <= 30) {
         items.push({ id: 'moveout-' + t.id, kind: 'moveout', severity: 'medium', rank: D.diffDays(today, l.moveOut), tenantId: t.id, unit,
           title: name, detail: 'Moves out ' + D.fmt(l.moveOut, today) + ' (' + D.rel(l.moveOut, today) + ')', date: l.moveOut,
           action: { type: 'openTenant', tenantId: t.id, label: 'Plan move-out' } });

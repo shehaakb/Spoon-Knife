@@ -128,6 +128,16 @@ function render(el, ctx) {
   const all = rowsFor(ctx);
   const counts = {};
   FILTERS.forEach(([k]) => { counts[k] = all.filter(PRED[k]).length; });
+  // A deep link (or a move-out) can open a tenant the current filter hides, e.g. #t-<past tenant> under "All".
+  // Switch the list to one that contains them so the highlight, "N of M" and j/k stepping stay coherent.
+  // Not on 'refresh': that's the viewer choosing a filter themselves. Not remembered in prefs.
+  if (ctx.param && ctx.reason !== 'refresh') {
+    const mine = all.find(r => r.t.id === ctx.param);
+    if (mine && !visible(all).some(g => g.rows.includes(mine))) {
+      if (query && PRED[filter](mine)) query = '';
+      else { query = ''; filter = ['all', 'past', 'notice', 'owing', 'ending'].find(k => PRED[k](mine)) || filter; }
+    }
+  }
   const groups = visible(all);
   const flat = groups.flatMap(g => g.rows);
   T.order = flat.map(r => r.t.id);
@@ -138,7 +148,7 @@ function render(el, ctx) {
   const props = new Set(current.map(r => r.t.property).filter(Boolean));
   const monthly = current.reduce((s, r) => s + r.sum.rent, 0);
   const owed = all.reduce((s, r) => s + Math.max(0, r.lg.balance), 0);
-  const chip = ([k, label]) => h`<button type="button" class="chip" aria-pressed="${filter === k}" data-act="filter" data-k="${k}">${label}<span class="chip-count${k === 'owing' && counts.owing ? ' is-bad' : ''}">${counts[k]}</span></button>`;
+  const chip = ([k, label]) => h`<button type="button" class="chip" aria-pressed="${String(filter === k)}" data-act="filter" data-k="${k}">${label}<span class="chip-count${k === 'owing' && counts.owing ? ' is-bad' : ''}">${counts[k]}</span></button>`;
   const sortLabel = SORTS[sort.key].label;
   const sortDefault = sort.key === 'urgency' && sort.dir === 1;
   const q = query.trim();
@@ -150,19 +160,22 @@ function render(el, ctx) {
   const cards = groups.map(g => h`${g.property !== null ? h`<div class="tn-card-group">${g.property}<span class="faint">${RB.plural(g.rows.length, 'tenant')}</span></div>` : ''}${g.rows.map(r => card(r, ctx))}`);
 
   el.innerHTML = String(h`
-    <div class="tn-summary"><span>${RB.plural(current.length, 'tenant')}</span><span>${RB.plural(props.size, 'property', 'properties')}</span><span>${M.fmt(monthly)} monthly rent</span>${owed ? h`<span class="tone-bad tn-sum-owed">${M.fmt(owed)} owed</span>` : ''}</div>
+    <div class="view-head tn-top">
+      <p class="view-summary tn-summary"><span><strong>${current.length}</strong> ${current.length === 1 ? 'tenant' : 'tenants'}</span><span><strong>${props.size}</strong> ${props.size === 1 ? 'property' : 'properties'}</span><span><strong>${M.fmt(monthly)}</strong> monthly rent</span>${owed ? h`<span class="tone-bad tn-sum-owed">${M.fmt(owed)} owed</span>` : ''}</p>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-primary tn-add-btn" data-act="add" data-write>${ui.icon('plus')}<span>Add tenant</span></button>
+    </div>
     <div class="view-head tn-head">
       <div class="chips chips-scroll tn-chips" role="group" aria-label="Show">${FILTERS.map(chip)}</div>
       <span class="spacer hide-phone"></span>
       <label class="search tn-search" for="tn-q"><span class="search-icon">${ui.icon('filter')}</span><input class="input" type="search" id="tn-q" placeholder="Filter by name, unit, phone…" value="${query}" data-input="q" autocomplete="off" spellcheck="false" aria-label="Filter tenants">${q ? h`<button type="button" class="btn btn-ghost btn-icon btn-sm tn-q-clear" data-act="clearq" aria-label="Clear filter">${ui.icon('x', { size: 14 })}</button>` : ''}</label>
-      <button type="button" class="btn btn-primary tn-add-btn" data-act="add" data-write>${ui.icon('plus')}<span>Add tenant</span></button>
     </div>
     <div class="tn-tools">
       <span class="tn-count faint">${q ? h`${RB.plural(flat.length, 'match', 'matches')} for “${q}”${filter !== 'all' ? ' in ' + filterLabel : ''}` : h`Showing ${RB.plural(flat.length, 'tenant')}`}</span>
       <span class="spacer"></span>
       <button type="button" class="btn btn-ghost btn-sm tn-sortbtn" data-act="sortmenu" aria-haspopup="menu">${ui.icon('sort')}<span>Sort: ${sortLabel}${sortDefault ? '' : sort.dir === SORTS[sort.key].dir ? '' : ' (reversed)'}</span></button>
-      <button type="button" class="btn btn-ghost btn-sm tn-toggle" data-act="group" aria-pressed="${group}">${ui.icon('grid')}<span>Group by property</span></button>
-      <div class="seg hide-phone" role="group" aria-label="Row density"><button type="button" data-act="density" data-v="comfortable" aria-pressed="${density === 'comfortable'}">Comfortable</button><button type="button" data-act="density" data-v="compact" aria-pressed="${density === 'compact'}">Compact</button></div>
+      <label class="check tn-groupby"><input type="checkbox" id="tn-group" data-change="group"${group ? RB.raw(' checked') : ''}> <span><span class="hide-phone">Group by property</span><span class="show-phone">By property</span></span></label>
+      <div class="seg hide-phone" role="group" aria-label="Row density"><button type="button" data-act="density" data-v="comfortable" aria-pressed="${String(density === 'comfortable')}">Comfortable</button><button type="button" data-act="density" data-v="compact" aria-pressed="${String(density === 'compact')}">Compact</button></div>
     </div>
     ${empty ? ui.empty(q
       ? { icon: 'search', title: 'No tenants match “' + q + '”', body: filter !== 'all' ? 'Only ' + filterLabel + ' is being searched. Try All, or check the spelling.' : 'Search covers names, co-tenants, units, properties, phone numbers and emails.', actions: [{ label: 'Clear filter', act: 'clearq' }].concat(filter !== 'all' ? [{ label: 'Search all tenants', kind: 'soft', act: 'filter', attrs: { 'data-k': 'all' } }] : []) }
@@ -176,7 +189,7 @@ function render(el, ctx) {
     filter: b => { filter = b.dataset.k; RB.prefs.set('tn:filter', filter); cursor = null; RB.shell.refresh(); },
     sort: b => { const k = b.dataset.k; sort = sort.key === k ? { key: k, dir: -sort.dir } : { key: k, dir: SORTS[k].dir }; RB.prefs.set('tn:sort', sort); RB.shell.refresh(); },
     sortmenu: b => ui.menu(b, Object.keys(SORTS).map(k => ({ label: SORTS[k].label, checked: sort.key === k, hint: k === 'urgency' ? 'default' : '', onSelect: () => { sort = { key: k, dir: SORTS[k].dir }; RB.prefs.set('tn:sort', sort); RB.shell.refresh(); } })), { align: 'end' }),
-    group: () => { group = !group; RB.prefs.set('tn:group', group); RB.shell.refresh(); },
+    group: inp => { group = !!inp.checked; RB.prefs.set('tn:group', group); RB.shell.refresh(); },
     density: b => { density = b.dataset.v; RB.prefs.set('tn:density', density); RB.shell.refresh(); },
     q: inp => { query = inp.value; refreshSoon(); },
     clearq: () => { query = ''; RB.shell.refresh(); const i = document.getElementById('tn-q'); if (i) i.focus(); },

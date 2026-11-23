@@ -86,14 +86,14 @@ function ticketSheet(id, prefill) {
       sub: k ? where(k) + ' · reported ' + D.fmt(k.reported, today) : '',
       body: (el, sh) => {
         el.innerHTML = String(h`<fieldset class="fieldset"><legend class="fieldset-title">What and where</legend><div class="form-grid">
-            ${ui.field({ name: 'title', id: 'uk-title', label: 'What needs doing', value: p.title, required: true, placeholder: 'No hot water, leaking tap…', span: 2 })}
+            ${ui.field({ name: 'title', id: 'uk-title', label: 'What needs doing', value: p.title, required: true, requiredMsg: 'Describe what needs doing', placeholder: 'No hot water, leaking tap…', span: 2 })}
             ${ui.field({ name: 'tenantId', id: 'uk-tenant', label: 'Tenant', type: 'select', value: p.tenantId || '', span: 2,
               options: [{ value: '', label: 'No tenant — common area or vacant unit' }].concat(tenants.map(t => ({ value: t.id, label: t.name + ' · ' + RB.model.unitLabel(t) }))) })}
             ${ui.field({ name: 'property', id: 'uk-property', label: 'Property', value: p.property, attrs: { list: 'uk-props' }, required: true })}
             ${ui.field({ name: 'unit', id: 'uk-unit', label: 'Unit or area', value: p.unit, placeholder: '2B, basement, roof…', optional: true })}
             ${ui.field({ name: 'detail', id: 'uk-detail', label: 'Details', type: 'textarea', value: p.detail, optional: true, rows: 3, span: 2 })}
             ${ui.field({ name: 'priority', id: 'uk-priority', label: 'Priority', type: 'seg', value: p.priority, options: [{ value: 'urgent', label: 'Urgent', icon: 'triangle' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }] })}
-            ${ui.field({ name: 'reported', id: 'uk-reported', label: 'Reported', type: 'date', value: p.reported, required: true, max: today })}
+            ${ui.field({ name: 'reported', id: 'uk-reported', label: 'Reported', type: 'date', value: p.reported, required: true, requiredMsg: 'Choose the date it was reported', max: today })}
           </div><datalist id="uk-props">${props.map(x => h`<option value="${x}"></option>`)}</datalist></fieldset>
           <fieldset class="fieldset"><legend class="fieldset-title">Progress and cost</legend><div class="form-grid">
             ${ui.field({ name: 'status', id: 'uk-status', label: 'Status', type: 'seg', value: p.status, options: STATUS.map(([value, label]) => ({ value, label })), span: 2 })}
@@ -250,7 +250,7 @@ RB.views.register('upkeep', {
     const chipCount = p => all.filter(k => k.status !== 'done' && (!p || k.property === p)).length;
     el.innerHTML = String(h`
       <div class="view-head uk-head">
-        <p class="uk-count" id="uk-count">${countLine}</p>
+        <p class="view-summary uk-count" id="uk-count">${countLine}</p>
         <span class="spacer"></span>
         <button type="button" class="btn btn-primary" data-act="add" id="uk-add" data-write>${ui.icon('plus')}<span>New request</span></button>
       </div>

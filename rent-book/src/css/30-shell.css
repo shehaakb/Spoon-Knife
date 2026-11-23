@@ -60,6 +60,10 @@
 .view { flex: 1 0 auto; width: 100%; max-width: 1240px; margin: 0 auto; padding: 24px var(--gutter) 72px; min-width: 0; }
 .view:focus { outline: none; }
 .view-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: var(--s5); }
+/* the one-line summary that opens a view ("26 tenants · 3 properties"): left of the view's controls, figures in ink */
+.view-summary { color: var(--ink-2); font-size: var(--t-15); font-variant-numeric: tabular-nums; min-width: 0; }
+.view-summary strong { color: var(--ink); font-weight: 600; }
+@media (max-width: 759.98px) { .view-summary { font-size: var(--t-13); } }
 
 /* ---- Bottom tab bar (phone) ---- */
 .tabbar { display: none; }
@@ -83,7 +87,11 @@
   .topbar-search { display: none; }
   .topbar-findbtn { display: inline-flex; }
   .view { padding: 16px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
-  .banner { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .banner { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 8px; min-height: 44px; padding-top: 4px; padding-bottom: 4px; }
+  .banner:not(.banner-warn) { flex-wrap: nowrap; }
+  .banner:not(.banner-warn) .banner-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .banner-actions { flex: none; flex-wrap: nowrap; }
+  .banner .btn { height: 32px; padding-left: 10px; padding-right: 10px; }
   .tabbar {
     position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;
     display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));

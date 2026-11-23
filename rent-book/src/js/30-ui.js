@@ -630,14 +630,15 @@ let fieldSeq = 0;
  * Field (SafeHTML): label + control + hint + error slot. Every control gets a stable id (opts.id || 'f-' + name).
  * opts: {name (required), id, label, type:'text'|'email'|'tel'|'number'|'money'|'date'|'select'|'textarea'|'checkbox'|'seg'|'search',
  *        value, options:[{value,label}|string] (select/seg), placeholder, hint, required, optional:true (adds "optional"),
- *        span:2, attrs:{...} (extra attributes on the control), rows (textarea), min, max, step, autocomplete, write:true}
+ *        span:2, attrs:{...} (extra attributes on the control), rows (textarea), min, max, step, autocomplete, write:true,
+ *        requiredMsg: what readForm says when a required field is empty (default is built from the label — see readForm)}
  * money: value in cents; readForm returns cents (integer) or null.  date: 'YYYY-MM-DD' or null.  checkbox: boolean.
  */
 ui.field = function field(opts) {
   const o = opts || {};
   const name = o.name || 'f' + (++fieldSeq);
   const id = o.id || 'f-' + name;
-  const common = Object.assign({ id, name, required: !!o.required, 'aria-describedby': id + '-err' + (o.hint ? ' ' + id + '-hint' : ''), 'data-write': o.write ? '' : null }, o.attrs || {});
+  const common = Object.assign({ id, name, required: !!o.required, 'data-required-msg': o.required && o.requiredMsg ? o.requiredMsg : null, 'aria-describedby': id + '-err' + (o.hint ? ' ' + id + '-hint' : ''), 'data-write': o.write ? '' : null }, o.attrs || {});
   const val = o.value == null ? '' : o.value;
   let control;
   const t = o.type || 'text';
@@ -669,8 +670,28 @@ ui.field = function field(opts) {
 /**
  * Read every named control under root. Returns {values, errors, ok}.
  * money → cents|null (error if unparseable), date → 'YYYY-MM-DD'|null (error if invalid), checkbox → bool, number → Number|null,
- * required + empty → "Required". opts.validate(values) → {name: message} adds custom errors.
+ * required + empty → a message that says what to do, from the field's label: "Enter a name", "Enter the monthly rent",
+ * "Choose a lease start date" (override per field with ui.field's requiredMsg, i.e. data-required-msg on the control).
+ * opts.validate(values) → {name: message} adds custom errors.
  */
+/** "Enter a name" / "Enter the monthly rent" / "Choose a lease start date" — the empty-required message for a control. */
+function requiredMessage(el, root) {
+  if (el.dataset.requiredMsg) return el.dataset.requiredMsg;
+  const lab = (el.id && root.querySelector('label[for="' + CSS.escape(el.id) + '"]')) || el.closest('label');
+  let text = '';
+  if (lab) { const c = lab.cloneNode(true); c.querySelectorAll('.opt, .vh, svg').forEach(x => x.remove()); text = c.textContent.replace(/\s+/g, ' ').trim(); }
+  if (!text) return el.type === 'checkbox' ? 'Tick this to continue' : 'Fill this in';
+  const lc = /^[A-Z][a-z]/.test(text) ? text[0].toLowerCase() + text.slice(1) : text;
+  const a = w => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+  const kind = el.dataset.kind;
+  if (el.type === 'checkbox') return 'Tick “' + text + '” to continue';
+  if (kind === 'money') return 'Enter the ' + lc;
+  if (kind === 'date') return /^date\b/i.test(lc) ? 'Choose the ' + lc : 'Choose ' + a(/\bdate$/i.test(lc) ? lc : lc + ' date');
+  if (kind === 'seg' || el.tagName === 'SELECT') return 'Choose ' + a(lc);
+  return 'Enter ' + a(lc);
+}
+ui.requiredMessage = requiredMessage;
+
 ui.readForm = function readForm(root, opts) {
   const values = {}, errors = {};
   root.querySelectorAll('[name]').forEach(el => {
@@ -689,7 +710,7 @@ ui.readForm = function readForm(root, opts) {
     } else if (el.type === 'number') v = el.value === '' ? null : Number(el.value);
     else v = el.value.trim();
     values[name] = v;
-    if (el.required && (v === null || v === '' || v === false) && !errors[name]) errors[name] = 'Required';
+    if (el.required && (v === null || v === '' || v === false) && !errors[name]) errors[name] = requiredMessage(el, root);
   });
   if (opts && opts.validate) { const more = opts.validate(values) || {}; for (const k of Object.keys(more)) if (more[k] && !errors[k]) errors[k] = more[k]; }
   Object.keys(errors).forEach(k => { if (!errors[k]) delete errors[k]; });

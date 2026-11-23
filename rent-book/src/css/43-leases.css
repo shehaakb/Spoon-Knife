@@ -1,8 +1,8 @@
 /* Leases view: timeline + grouped list. Tokens only. */
 .view-leases { --lz-name-w: 232px; --lz-act-w: 124px; --lz-row-h: 48px; }
 .lz-head-row { margin-bottom: var(--s5); }
-.lz-summary { color: var(--ink-2); font-size: var(--t-15); }
-.lz-summary strong { color: var(--ink); font-weight: 600; }
+
+
 .lz-dot { color: var(--ink-3); }
 
 /* shared tenant cell */
@@ -63,7 +63,7 @@
 .lz-label-out { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1; }
 .lz-bar-due + .lz-label-out { color: var(--warn); font-weight: 500; }
 
-@media (max-width: 1099.98px) { .view-leases { --lz-name-w: 190px; --lz-act-w: 112px; } .lz-who-sub { display: none; } }
+@media (max-width: 1099.98px) { .view-leases { --lz-name-w: 190px; --lz-act-w: 112px; } .lz-who-sub { display: none; } .lz-yr { display: none; } }
 
 /* ---- list ---- */
 .lz-group.sec { margin-top: var(--s5); }
@@ -72,7 +72,7 @@
 .lz-list-tbl td .lz-who { margin: -4px 0 -4px -6px; }
 .lz-decide-ph { margin-right: -8px; }
 @media (max-width: 759.98px) {
-  .lz-summary { font-size: var(--t-13); }
+
   .lz-head-row { margin-bottom: var(--s4); }
   .view-leases .crow-actions .btn-group > .btn:first-child { flex: 1 1 auto; }
 }

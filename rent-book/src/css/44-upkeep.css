@@ -1,7 +1,7 @@
 /* Upkeep view: three status columns (desktop), one at a time under a segmented control (phone). Tokens only. */
 .uk-head { margin-bottom: var(--s4); }
-.uk-count { color: var(--ink-2); font-size: var(--t-15); }
-.uk-count strong { color: var(--ink); font-weight: 600; }
+
+
 .uk-filter { margin-bottom: var(--s5); }
 
 .uk-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); align-items: start; }

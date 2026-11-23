@@ -254,7 +254,7 @@ function addNote(tenantId, preset) {
       title: 'Add note', sub: tenantSub(t),
       body: h`<div class="form-grid">
         ${ui.field({ name: 'kind', id: 'note-kind', label: 'Kind', type: 'seg', value: p.kind || 'note', options: LOG_KINDS, span: 2 })}
-        ${ui.field({ name: 'text', id: 'note-text', label: 'What happened', type: 'textarea', value: p.text || '', required: true, span: 2, rows: 4 })}
+        ${ui.field({ name: 'text', id: 'note-text', label: 'What happened', type: 'textarea', value: p.text || '', required: true, requiredMsg: 'Describe what happened', span: 2, rows: 4 })}
         ${ui.field({ name: 'followUp', id: 'note-followup', label: 'Follow up on', type: 'date', value: p.followUp || '', optional: true, hint: 'Shows on Today when it’s due.' })}
       </div>`,
       initialFocus: '#note-text',
@@ -430,6 +430,7 @@ RB.actions = {
       case 'followupDone': return A.followupDone(a.tenantId, a.logId);
       case 'settleDeposit': return A.settleDeposit(a.tenantId);
       case 'renewLease': return A.renewLease(a.tenantId);
+      case 'moveOut': return A.moveOut ? A.moveOut(a.tenantId) : A.openTenant(a.tenantId);
       default: console.warn('Unknown action', a);
     }
   },

@@ -41,6 +41,19 @@ try {
   check('summary line', /26 tenants\s*·?\s*3 properties/.test(await page.textContent('.tn-summary')));
   check('default sort = urgency (first row is most urgent)', await ev(() => { const id = document.querySelector('.tn-tbl tbody tr[data-id]').dataset.id; const all = RB.store.tenantsList({ includePast: false }).map(t => RB.store.summary(t.id).urgency); return RB.store.summary(id).urgency === Math.min(...all); }));
 
+  // ---- deep link to a past tenant while "All" is active: the list switches to Past so highlight/position agree
+  const pastId = await ev(() => RB.store.tenantsList().find(t => t.status === 'past').id);
+  await ev(id => { location.hash = 't-' + id; }, pastId);
+  await wait(200);
+  check('deep link to a past tenant switches the list to Past', await ev(() => document.querySelector('.chip[aria-pressed="true"]').dataset.k) === 'past');
+  check('deep-linked past tenant row is highlighted', await page.locator('.tn-tbl tbody tr.is-selected[data-id="' + pastId + '"]').count() === 1);
+  check('drawer shows its position in the list', /^1 of 1$/.test(((await page.textContent('.tn-pos').catch(() => '')) || '').trim()));
+  await page.keyboard.press('Escape');
+  await wait(250);
+  check('deep link did not change the remembered filter', await ev(() => RB.prefs.get('tn:filter', 'all')) !== 'past');
+  await page.click('.chip[data-k="all"]');
+  await wait(60);
+
   // ---- filter chips, search, sort
   const owingCount = await ev(() => RB.store.tenantsList().filter(t => RB.store.ledger(t.id).balance > 0).length);
   await page.click('.chip[data-k="owing"]');
@@ -73,10 +86,10 @@ try {
   const bals2 = await ev(() => Array.from(document.querySelectorAll('.tn-tbl tbody tr[data-id]')).map(r => RB.store.ledger(r.dataset.id).balance));
   check('second click reverses', bals2.every((b, i) => i === 0 || bals2[i - 1] <= b));
   check('sort remembered in prefs', await ev(() => RB.prefs.get('tn:sort').key === 'balance'));
-  await page.click('[data-act="group"]');
+  await page.click('#tn-group');
   await wait(60);
   check('group by property adds group rows', await page.locator('.tn-tbl .tbl-group').count() === 3);
-  await page.click('[data-act="group"]');
+  await page.click('#tn-group');
   await page.click('[data-act="density"][data-v="compact"]');
   await wait(60);
   check('compact density', await page.locator('.tn-tbl.tbl-compact').count() === 1 && await ev(() => RB.prefs.get('tn:density') === 'compact'));
@@ -199,6 +212,30 @@ try {
   await page.click('[data-action="save"]');
   await wait(150);
   check('give notice → status notice', await ev(id => RB.store.tenant(id).status, nid) === 'notice' && (await page.textContent('.tn-dtags')).includes('Notice given'));
+
+  // ---- move out with a future date = notice, then "Complete move-out" once the date arrives
+  const future = await ev(t => RB.date.addDays(t, 20), today);
+  const futureFmt = await ev(([d, t]) => RB.date.fmt(d, t), [future, today]);
+  const firstName = await ev(id => RB.store.tenant(id).name.split(' ')[0], nid);
+  await ev(id => { RB.actions.moveOut(id); }, nid);
+  await page.waitForSelector('#mo-date');
+  await page.fill('#mo-date', future);
+  await wait(60);
+  check('future move-out: sheet says it is recorded as notice', ((await page.textContent('#mo-future').catch(() => '')) || '').includes(firstName + ' moves out ' + futureFmt + ' — recorded as notice.'), await page.textContent('#mo-sum'));
+  check('future move-out: button says notice', (await page.textContent('[data-action="save"]')).includes('Record notice'));
+  await page.click('[data-action="save"]');
+  await wait(300);
+  const tf = await ev(id => { const t = RB.store.tenant(id); return { status: t.status, mo: t.lease.moveOut }; }, nid);
+  check('future move-out: status notice (not past), moveOut set', tf.status === 'notice' && tf.mo === future, JSON.stringify(tf));
+  check('future move-out: no deposit settlement yet', await page.locator('#sd-date').count() === 0);
+  await ev(d => RB.store.setToday(d), future);
+  await wait(150);
+  const it = await ev(id => RB.store.attention().find(a => a.kind === 'moveout' && a.tenantId === id), nid);
+  check('on the date: Today offers Complete move-out', !!it && it.action.type === 'moveOut' && it.action.label === 'Complete move-out', JSON.stringify(it && it.action));
+  check('on the date: drawer offers Complete move-out', (await page.textContent('.tn-alerts').catch(() => '')).includes('Complete move-out'));
+  await ev(d => RB.store.setToday(d), today);
+  await wait(150);
+  await ev(() => document.querySelectorAll(".toast").forEach(t => t.remove()));
 
   // ---- move out → settle deposit
   await ev(id => { RB.actions.moveOut(id); }, nid);

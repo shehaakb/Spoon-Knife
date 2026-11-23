@@ -51,6 +51,44 @@ check('chips: Paid filter has no Mark paid buttons', await page.locator('.rent-t
 await page.click('#rent-f-all');
 check('chips: All restores every row', await rowCount() === expectAll);
 
+// honest quick-pay amounts (item: a tenant who also owes for earlier months)
+const fmt = c => page.evaluate(c => RB.money.fmt(c), c);
+const owesMore = await page.evaluate(k => { const t = RB.store.tenantsList().find(t => { const lg = RB.store.ledger(t.id); const m = lg.months[k]; return m && m.open > 0 && lg.balance > m.open; }); return t && t.id; }, thisMonth);
+const ordinary = await page.evaluate(k => { const t = RB.store.tenantsList().find(t => { const lg = RB.store.ledger(t.id); const m = lg.months[k]; return m && m.open > 0 && lg.balance === m.open; }); return t && t.id; }, thisMonth);
+if (owesMore && ordinary) {
+  const om = await month(owesMore);
+  const earlier = om.balance - om.open;
+  check('honest pay: button names the amount it records', (await page.textContent('#rent-pay-' + owesMore)).trim() === 'Pay ' + await fmt(om.balance), await page.textContent('#rent-pay-' + owesMore));
+  check('honest pay: muted "+ $X earlier" under Open', (await page.textContent('tr[data-row="' + owesMore + '"] .rent-earlier')).trim() === '+ ' + await fmt(earlier) + ' earlier');
+  check('honest pay: ordinary rows keep "Mark paid", no earlier line', (await page.textContent('#rent-pay-' + ordinary)).trim() === 'Mark paid' && await page.locator('tr[data-row="' + ordinary + '"] .rent-earlier').count() === 0);
+  await page.check('#rent-chk-' + owesMore);
+  await page.check('#rent-chk-' + ordinary);
+  await tick(page);
+  const ob = await month(ordinary);
+  const bt = (await page.textContent('#rent-bulk')) || '';
+  check('honest pay: bulk total includes earlier months and says so', bt.includes(await fmt(om.balance + ob.balance)) && (await page.textContent('.rent-bar-n')).includes('incl. ' + await fmt(earlier) + ' from earlier months'), bt);
+  await page.click('#rent-clear');
+  await tick(page);
+  await page.click('#rent-pay-' + owesMore);
+  await tick(page);
+  check('honest pay: toast states the full amount recorded', ((await page.textContent('.toast-msg')) || '').startsWith('Recorded ' + await fmt(om.balance) + ' from'), await page.textContent('.toast-msg'));
+  check('honest pay: balance cleared', (await month(owesMore)).balance === 0);
+  await page.click('.toast-action'); await tick(page); await closeToasts();
+} else check('honest pay: sample has a tenant owing earlier months and an ordinary one', false);
+
+// rail badges: Today = attention items; Rent = tenants with rent past grace in any month
+const badge = r => page.evaluate(r => document.querySelector('.rail-link[href="#' + r + '"] .rail-count').textContent.trim(), r);
+const lateAny = () => page.evaluate(() => RB.store.tenantsList().filter(t => Object.values(RB.store.ledger(t.id).months).some(m => m.status === 'late')).length);
+check('badge: Today = number of attention items', +(await badge('today')) === await page.evaluate(() => RB.store.attention().length), await badge('today'));
+check('badge: Rent = tenants late in any month', +(await badge('rent')) === await lateAny(), await badge('rent'));
+const rentBadge0 = +(await badge('rent'));
+// a moved-out tenant whose last months are unpaid: late, but not this month
+await page.evaluate(() => RB.store.addTenant({ id: 'smkLateOld', name: 'Old Debt', property: 'Alder Court', unit: '9Z', status: 'past', rent: [{ from: '2026-08-01', amount: 100000 }], lease: { start: '2026-08-01', moveIn: '2026-08-01', moveOut: '2026-10-31' } }));
+await tick(page);
+check('badge: counts a tenant late only in an earlier month', +(await badge('rent')) === rentBadge0 + 1, await badge('rent'));
+await page.evaluate(() => RB.store.deleteTenant('smkLateOld'));
+await tick(page);
+
 // quick pay + undo
 const q = unpaid0[0];
 const before = await month(q);
@@ -172,6 +210,24 @@ await page.keyboard.press('Escape');
 await tick(page, 250);
 await page.evaluate(() => { RB.ui.closeAll(); location.hash = 'rent'; });
 await tick(page, 150);
+// shortcuts keep working while a tick box has focus (the core no longer treats checkboxes as typing)
+const ck = (await unpaidIds())[0];
+await page.click('#rent-chk-' + ck);
+await tick(page);
+check('keys: a ticked checkbox keeps focus', await page.evaluate(id => document.activeElement && document.activeElement.id === 'rent-chk-' + id, ck));
+await page.keyboard.press('j');
+await tick(page);
+check('keys: j works with a checkbox focused', await page.evaluate(id => { const tr = document.querySelector('tr.is-focused'); return !!tr && tr.dataset.row !== id; }, ck));
+await page.keyboard.press('Escape');
+await tick(page);
+await page.focus('#rent-group');
+await page.keyboard.press('?');
+await tick(page, 100);
+check('keys: ? opens help from the group-by checkbox', ((await page.textContent('.sheet-title').catch(() => '')) || '') === 'Keyboard shortcuts');
+await page.keyboard.press('Escape');
+await tick(page, 250);
+await page.evaluate(() => { RB.ui.closeAll(); location.hash = 'rent'; });
+await tick(page, 150);
 await closeToasts();
 
 // group by property (remembered)
@@ -247,6 +303,10 @@ for (const r of ['today', 'rent']) {
 }
 const small = await page.evaluate(() => Array.from(document.querySelectorAll('.rent-cards [data-act="pay"], .rent-cards [data-act="sheet"], .rent-cards .rent-fee, .rent-cards .rent-menu')).filter(b => b.offsetParent && b.getBoundingClientRect().height < 44).length);
 check('phone: card actions are 44px tall', small === 0, small + ' small');
+if (owesMore) {
+  const om = await month(owesMore);
+  check('phone: card button names the amount, earlier line shown', (await page.textContent('#rent-cpay-' + owesMore)).trim() === 'Pay ' + await fmt(om.balance) && (await page.textContent('.rent-card[data-row="' + owesMore + '"] .rent-earlier')).includes(await fmt(om.balance - om.open)));
+}
 await page.click('#rent-select');
 await tick(page);
 const pu = (await unpaidIds()).slice(0, 2);

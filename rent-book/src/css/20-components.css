@@ -240,13 +240,19 @@ button.plate:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .amt-zero { color: var(--ink-3); }
 
 /* ================= Data table ================= */
+/* Header cells stick under the top bar (--sticky-top). Inside anything that scrolls on its own (.tbl-scroll, sheets,
+   drawers) they stick to that container's top instead: those set --tbl-sticky-top: 0px. Cells are positioned so a
+   visually-hidden (.vh, position:absolute) label inside a scrolled table is clipped with it, never widening the page. */
 .tbl-wrap { position: relative; min-width: 0; }
+.tbl-scroll { position: relative; min-width: 0; overflow: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; --tbl-sticky-top: 0px; }
+@media (max-width: 759.98px) { .tbl-scroll-phone { position: relative; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; --tbl-sticky-top: 0px; } }
+.sheet-body, .drawer-body, .popover, .palette-list { --tbl-sticky-top: 0px; }
 .tbl { width: 100%; font-size: var(--t-13); }
-.tbl th, .tbl td { padding: 0 12px; height: var(--row-h); border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.tbl th, .tbl td { position: relative; padding: 0 12px; height: var(--row-h); border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
 .tbl th:first-child, .tbl td:first-child { padding-left: 16px; }
 .tbl th:last-child, .tbl td:last-child { padding-right: 16px; }
 .tbl thead th {
-  position: sticky; top: var(--sticky-top); z-index: 2; height: 34px;
+  position: sticky; top: var(--tbl-sticky-top, var(--sticky-top)); z-index: 2; height: 34px;
   background: var(--sunk); color: var(--ink-3); border-bottom: 1px solid var(--line-2);
   font-size: var(--t-12); font-weight: 500; white-space: nowrap;
 }

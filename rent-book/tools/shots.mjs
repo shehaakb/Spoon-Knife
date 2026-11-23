@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Screenshots of every route (and a few interaction scenarios) at desktop + phone, light + dark.
-// Usage: node tools/shots.mjs [--only rent,kit] [--no-build] [--size desktop|phone] [--theme light|dark]
+// Usage: node tools/shots.mjs [--only rent,kit] [--no-build] [--size desktop|phone|rail|wide] [--theme light|dark]
+// Default sizes: desktop (1360) and phone (390). `rail` (900, icon rail) and `wide` (1600) run only when asked for.
 // Writes rent-book/shots/<scenario>-<size>-<theme>.png. Exits 1 on console errors or horizontal overflow at phone width.
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
@@ -24,7 +25,8 @@ const themesArg = arg('--theme');
 if (!args.includes('--no-build')) execFileSync(process.execPath, [join(ROOT, 'build.mjs')], { stdio: 'inherit' });
 mkdirSync(FONT_CACHE, { recursive: true });
 
-const SIZES = { desktop: { width: 1360, height: 900 }, phone: { width: 390, height: 844 } };
+const SIZES = { desktop: { width: 1360, height: 900 }, phone: { width: 390, height: 844 }, rail: { width: 900, height: 900 }, wide: { width: 1600, height: 1000 } };
+const DEFAULT_SIZES = ['desktop', 'phone'];
 const THEMES = ['light', 'dark'];
 
 // Named scenarios. `route` is the hash; `setup(page, ids)` runs after navigation; `full` = full-page screenshot.
@@ -35,7 +37,12 @@ const SCENARIOS = [
   { name: 'tenant-detail', route: ids => 't-' + ids.delinquent },
   { name: 'leases', route: 'leases', full: true },
   { name: 'upkeep', route: 'upkeep', full: true },
-  { name: 'reports', route: 'reports', full: true },
+  { name: 'reports', route: 'reports', full: true, setup: p => p.evaluate(() => { RB.prefs.set('reports:tab', 'roll'); document.getElementById('rp-tab-roll').click(); }) },
+  { name: 'reports-aging', route: 'reports', full: true, setup: p => p.click('#rp-tab-aging') },
+  { name: 'reports-collection', route: 'reports', full: true, setup: p => p.click('#rp-tab-collection') },
+  { name: 'reports-income', route: 'reports', full: true, setup: p => p.click('#rp-tab-income') },
+  { name: 'rent-past', route: 'rent', setup: p => p.click('#rent-prev') },
+  { name: 'move-out-sheet', route: ids => 't-' + ids.notice, setup: (p, ids) => p.evaluate(id => { RB.actions.moveOut(id); }, ids.notice) },
   { name: 'setup', route: 'setup', full: true },
   { name: 'kit', route: 'kit', full: true },
   { name: 'payment-sheet', route: 'rent', setup: (p, ids) => p.evaluate(id => { RB.actions.recordPayment(id); }, ids.late) },
@@ -65,7 +72,7 @@ const url = pathToFileURL(join(ROOT, 'dist', 'preview.html')).href;
 const want = s => !only.length || only.some(o => s.name === o || s.name.includes(o));
 
 for (const sizeName of Object.keys(SIZES)) {
-  if (sizesArg && sizesArg !== sizeName) continue;
+  if (sizesArg ? !sizesArg.split(',').includes(sizeName) : !DEFAULT_SIZES.includes(sizeName)) continue;
   for (const theme of THEMES) {
     if (themesArg && themesArg !== theme) continue;
     for (const empty of [false, true]) {
@@ -93,6 +100,7 @@ for (const sizeName of Object.keys(SIZES)) {
           const lg = id => RB.store.ledger(id);
           return {
             delinquent: (list.find(t => lg(t.id).delinquent) || list[0]).id,
+            notice: (list.find(t => t.status === 'notice') || list[0]).id,
             late: (list.find(t => lg(t.id).current.status === 'late' && !lg(t.id).delinquent) || list.find(t => lg(t.id).balance > 0) || list[0]).id,
           };
         });
@@ -104,8 +112,8 @@ for (const sizeName of Object.keys(SIZES)) {
         if (s.setup) { await s.setup(page, ids); await page.waitForTimeout(250); }
         await page.evaluate(() => document.fonts && document.fonts.ready);
         await page.waitForTimeout(80);
-        if (sizeName === 'phone') {
-          const ov = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, win: window.innerWidth, wide: Array.from(document.querySelectorAll('#rb-view *')).filter(e => e.getBoundingClientRect().right > window.innerWidth + 1 && !e.closest('.chips-scroll, .seg, .tbl-wrap.hide-phone')).slice(0, 3).map(e => e.tagName.toLowerCase() + '.' + String(e.className).split(' ').join('.')) }));
+        if (sizeName !== 'desktop') {
+          const ov = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, win: window.innerWidth, wide: Array.from(document.querySelectorAll('#rb-view *')).filter(e => e.getBoundingClientRect().right > window.innerWidth + 1 && !e.closest('.chips-scroll, .seg, .tbl-wrap.hide-phone, .tbl-scroll, .tbl-scroll-phone')).slice(0, 3).map(e => e.tagName.toLowerCase() + '.' + String(e.className).split(' ').join('.')) }));
           if (ov.doc > ov.win) problems.push(`[${tag}] ${s.name}: horizontal overflow ${ov.doc}px > ${ov.win}px ${ov.wide.join(' ')}`);
         }
         const file = join(OUT, `${s.name}-${sizeName}-${theme}.png`);

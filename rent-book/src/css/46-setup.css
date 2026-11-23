@@ -53,9 +53,9 @@
 .st-eg td { color: var(--ink-2); }
 
 .st-prev-head { display: flex; flex-direction: column; gap: 2px; margin: var(--s5) 0 var(--s2); }
-.st-prev-scroll { position: relative; overflow-x: auto; max-height: 460px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--r-ctl); }
+.st-prev-scroll { max-height: 460px; border: 1px solid var(--line); border-radius: var(--r-ctl); }
 .st-prev { min-width: 100%; }
-.st-prev thead th { position: sticky; top: 0; height: auto; padding-top: 8px; padding-bottom: 8px; vertical-align: top; }
+.st-prev thead th { height: auto; padding-top: 8px; padding-bottom: 8px; vertical-align: top; }
 .st-prev thead th:first-child { border-top-left-radius: 0; }
 .st-src { display: block; margin-bottom: 4px; font-family: var(--f-mono); font-size: 11px; color: var(--ink-2); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 .st-map { min-width: 128px; }

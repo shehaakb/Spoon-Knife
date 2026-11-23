@@ -38,9 +38,12 @@ function rentRoll(today) {
     g.occupied = new Set(cur.map(r => r.unit)).size; g.units = new Set(g.rows.map(r => r.unit)).size;
   });
   const occ = rr.occupancy;
+  // Same "owed" as Tenants and Aging: what owing tenants owe, not netted against other tenants' credit.
+  const owedSum = rr.rows.reduce((a, r) => a + Math.max(0, r.balance), 0);
+  const creditSum = rr.rows.reduce((a, r) => a + Math.max(0, -r.balance), 0);
   const end = r => r.status === 'past' ? h`<span class="faint">Moved out ${D.fmt(r.moveOut || r.leaseEnd, today)}</span>` : r.leaseEnd ? D.fmt(r.leaseEnd, today) : h`<span class="faint">Month-to-month</span>`;
   const status = r => h`<span class="rp-status">${r.status === 'past' ? ui.tag('Past', 'quiet') : ui.pill(r.monthStatus, { size: 'sm' })}${r.status === 'notice' ? ui.tag('Notice', 'warn') : ''}</span>`;
-  const meta = h`<strong>${occ.occupied} of ${occ.units}</strong> units occupied (${Math.round(occ.rate * 100)}%) · ${ui.money(rr.totals.rent)} monthly rent · ${ui.money(rr.totals.deposit)} in deposits · ${rr.totals.balance > 0 ? h`${ui.money(rr.totals.balance)} owed` : 'nothing owed'}`;
+  const meta = h`<strong>${occ.occupied} of ${occ.units}</strong> units occupied (${Math.round(occ.rate * 100)}%) · ${ui.money(rr.totals.rent)} monthly rent · ${ui.money(rr.totals.deposit)} in deposits · ${owedSum > 0 ? h`${ui.money(owedSum)} owed` : 'nothing owed'}${creditSum > 0 ? h` · ${ui.money(creditSum)} in credit` : ''}`;
   const body = h`
     <div class="tbl-wrap hide-phone"><table class="tbl tbl-compact rp-tbl" id="rp-roll">
       <thead><tr><th>Unit</th><th>Tenant</th><th class="num">Rent</th><th>Lease start</th><th>Lease end</th><th class="num">Deposit</th><th class="num">Balance</th><th>This month</th></tr></thead>
@@ -49,7 +52,7 @@ function rentRoll(today) {
         ${g.rows.map(r => h`<tr class="${r.status === 'past' ? 'is-muted' : ''}" data-tenant="${r.tenantId}">
           <td>${ui.plate(r.unit)}</td><td><button type="button" class="rp-name" data-act="open" data-id="${r.tenantId}">${r.name}</button></td>
           <td class="num">${r.status === 'past' ? h`<span class="faint">—</span>` : ui.money(r.rent)}</td>
-          <td>${r.leaseStart ? D.fmt(r.leaseStart, today) : '—'}</td><td>${end(r)}</td>
+          <td class="nowrap">${r.leaseStart ? D.fmt(r.leaseStart, today) : '—'}</td><td class="nowrap">${end(r)}</td>
           <td class="num">${r.deposit ? ui.money(r.deposit) : h`<span class="faint">—</span>`}</td>
           <td class="num">${ui.balance(r.balance)}</td><td>${status(r)}</td></tr>`)}
         <tr class="rp-subtotal"><td></td><td>${g.property} subtotal</td><td class="num">${ui.money(g.rent)}</td><td></td><td></td><td class="num">${ui.money(g.deposit)}</td><td class="num">${ui.balance(g.balance)}</td><td></td></tr>
@@ -77,7 +80,7 @@ function aging(today) {
   const meta = ag.rows.length
     ? h`<strong>${ui.money(ag.totals.total)}</strong> owed by ${RB.plural(ag.rows.length, 'tenant')}${ag.totals.d90 ? h` · <span class="tone-bad">${ui.money(ag.totals.d90)} over 90 days</span>` : ''} · ${RB.plural(none, 'tenant')} ${none === 1 ? 'owes' : 'owe'} nothing`
     : h`Nobody owes anything · ${RB.plural(none, 'tenant')} all square`;
-  const body = ag.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-aging">
+  const body = ag.rows.length ? h`<div class="tbl-scroll-phone rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-aging">
       <thead><tr><th>Tenant</th><th class="num">0–30 days</th><th class="num">31–60</th><th class="num">61–90</th><th class="num">90+</th><th class="num">Total</th></tr></thead>
       <tbody>${ag.rows.map(r => h`<tr data-tenant="${r.tenantId}"><td><span class="rp-who">${ui.plate(r.unit)}<button type="button" class="rp-name truncate" data-act="open" data-id="${r.tenantId}">${r.name}</button></span></td>
         <td class="num">${cell(r.d0_30)}</td><td class="num">${cell(r.d31_60)}</td><td class="num">${cell(r.d61_90)}</td><td class="num">${cell(r.d90)}</td><td class="num strong">${ui.money(r.total, { tone: 'owed' })}</td></tr>`)}</tbody>
@@ -113,7 +116,7 @@ function collection(today) {
       </div>
       <figcaption class="bar-legend rp-legend"><span class="rp-key rp-key-charged">Charged</span><span class="rp-key rp-key-collected">Collected</span><span class="faint">Percent = collected of charged</span></figcaption>
     </figure>
-    <div class="rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-collection">
+    <div class="tbl-scroll-phone rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-collection">
       <thead><tr><th>Month</th><th class="num">Charged</th><th class="num">Collected</th><th class="num hide-phone">Outstanding</th><th class="num">Rate</th></tr></thead>
       <tbody>${rows.slice().reverse().map(r => h`<tr><td><span class="hide-phone">${D.fmtMonth(r.period)}</span><span class="show-phone">${D.MON[+r.period.slice(5, 7) - 1] + ' ' + r.period.slice(0, 4)}</span>${r.period === curKey ? h` <span class="faint t-12 hide-phone">so far</span>` : ''}</td><td class="num">${ui.money(r.charged)}</td><td class="num">${ui.money(r.collected)}</td><td class="num hide-phone">${r.outstanding ? ui.money(r.outstanding, { tone: 'owed' }) : h`<span class="faint">—</span>`}</td><td class="num">${pctTxt(r.rate)}</td></tr>`)}</tbody>
       <tfoot><tr><td>12 months</td><td class="num" data-total="charged">${ui.money(tot.charged)}</td><td class="num" data-total="collected">${ui.money(tot.collected)}</td><td class="num hide-phone">${ui.money(tot.outstanding)}</td><td class="num">${pctTxt(rate)}</td></tr></tfoot>
@@ -137,7 +140,7 @@ function income(today) {
       <button type="button" class="btn btn-ghost btn-icon" id="rp-year-prev" data-act="year" data-d="-1" aria-label="Previous year"${yr <= lo ? RB.raw(' disabled') : ''}>${ui.icon('chevron-left')}</button>
       <span class="stepper-label" id="rp-year-label">${yr}</span>
       <button type="button" class="btn btn-ghost btn-icon" id="rp-year-next" data-act="year" data-d="1" aria-label="Next year"${yr >= cy ? RB.raw(' disabled') : ''}>${ui.icon('chevron-right')}</button></div>`;
-  const body = inc.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-income">
+  const body = inc.rows.length ? h`<div class="tbl-scroll-phone rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-income">
       <thead><tr><th>Tenant</th><th class="hide-phone">Property</th><th class="num hide-phone">Payments</th><th class="num">Received</th><th class="num hide-phone">Credits given</th></tr></thead>
       <tbody>${inc.rows.map(r => h`<tr data-tenant="${r.tenantId}"><td><span class="rp-who">${ui.plate(r.unit)}<button type="button" class="rp-name truncate" data-act="open" data-id="${r.tenantId}">${r.name}</button></span></td>
         <td class="hide-phone muted">${r.property}</td><td class="num faint hide-phone">${r.count}</td><td class="num">${ui.money(r.payments)}</td><td class="num hide-phone">${r.credits ? ui.money(r.credits) : h`<span class="faint">—</span>`}</td></tr>`)}</tbody>
@@ -166,7 +169,7 @@ RB.views.register('reports', {
         </div>
       </div>
       <section class="rp-report" role="tabpanel" aria-labelledby="rp-tab-${tab}" data-report="${tab}">
-        <p class="rp-meta" id="rp-meta">${rep.meta}</p>
+        <p class="view-summary rp-meta" id="rp-meta">${rep.meta}</p>
         ${rep.body}
       </section>`);
     ui.bind(el, {

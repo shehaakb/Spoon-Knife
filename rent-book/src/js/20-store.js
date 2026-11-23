@@ -5,6 +5,7 @@ const RB = (globalThis.RB = globalThis.RB || {});
 const D = RB.date;
 
 const COLS = ['meta', 'tenants', 'ledgers', 'tickets'];
+const SAMPLE_NAME = 'Calder & Vane Rentals';
 const LOCAL_KEY = 'rb:data:v1';
 const LOAD_TIMEOUT_MS = 10000;
 const MAX_INFLIGHT = 4;
@@ -378,7 +379,13 @@ async function removeSample() {
   const ps = [];
   ts.forEach(id => ps.push(deleteTenant(id)));
   ks.forEach(id => ps.push(commit('tickets', id, 'delete')));
-  if (viewDocs.meta.settings && viewDocs.meta.settings.hasSample) ps.push(saveSettings({ hasSample: false }));
+  const cur = viewDocs.meta.settings;
+  if (cur && (cur.hasSample || cur.portfolioName === SAMPLE_NAME)) {
+    // The sample portfolio's name goes with its tenants; a name the landlord typed stays.
+    const patch = { hasSample: false };
+    if (cur.portfolioName === SAMPLE_NAME) patch.portfolioName = '';
+    ps.push(saveSettings(patch));
+  }
   await Promise.all(ps);
   return { tenants: ts.length, tickets: ks.length };
 }

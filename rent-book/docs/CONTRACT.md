@@ -5,9 +5,12 @@ What view authors code against. SPEC.md is the product spec; this file is the AP
 
 - Build: `node build.mjs` → `dist/rent-book.html` + `dist/preview.html`. Open `dist/preview.html` directly (file://).
 - Tests: `node --test test/*.test.mjs` (pure model + sample data).
-- Screens: `node tools/shots.mjs [--only rent,kit] [--size desktop|phone] [--theme light|dark] [--no-build]` → `shots/*.png`.
-  Fails on console errors and on horizontal overflow at 390 px.
-- Interaction smoke test: `node tools/smoke.mjs`. Cloud-path simulation: `node tools/cloud-sim.mjs` (fake db, see §11).
+- Screens: `node tools/shots.mjs [--only rent,kit] [--size desktop,phone,rail,wide] [--theme light|dark] [--no-build]` → `shots/*.png`.
+  Default sizes are desktop (1360) and phone (390); `rail` (900, icon rail) and `wide` (1600) run only when named.
+  Fails on console errors and on horizontal page overflow at any non-desktop size.
+- Interaction smoke tests (run `node build.mjs` first): `node tools/smoke.mjs` (core), `tools/smoke-today-rent.mjs`,
+  `tools/smoke-tenants.mjs`, `tools/smoke-other.mjs` (Leases, Upkeep, Reports, Setup). Cloud-path simulation:
+  `node tools/cloud-sim.mjs` (fake db, see §11).
 - Component review page: open `dist/preview.html#kit` (not in the nav). Every class below is rendered there.
 
 ## 0. Files
@@ -27,13 +30,15 @@ What view authors code against. SPEC.md is the product spec; this file is the AP
 | `src/js/30-ui.js` | `RB.ui` — renderers (SafeHTML) and primitives (toast, sheet, confirm, menu, drawer, palette, forms) |
 | `src/js/35-actions.js` | `RB.actions` — shared flows (record payment, charges, notes, downloads, sample data…) |
 | `src/js/40-shell.js` | `RB.views`, `RB.shell`, `RB.commands`, router, keyboard, palette, chrome |
-| `src/js/views/today.js` | **Today** view (placeholder — replace wholesale) |
-| `src/js/views/rent.js` | **Rent** view (placeholder) |
-| `src/js/views/tenants.js` | **Tenants** view + `#t-<id>` drawer (placeholder) |
-| `src/js/views/leases.js` | **Leases** view (placeholder) |
-| `src/js/views/upkeep.js` | **Upkeep** view (placeholder) |
-| `src/js/views/reports.js` | **Reports** view (placeholder) |
-| `src/js/views/setup.js` | **Setup** view (placeholder; sample-data buttons work) |
+| `src/js/views/today.js` | **Today** view |
+| `src/js/views/rent.js` | **Rent** view (monthly collection sheet, quick pay, bulk pay) |
+| `src/js/views/tenants.js` | **Tenants** list; hosts the `#t-<id>` drawer; shares state with the two files below via `RB._tn` |
+| `src/js/views/tenant-detail.js` | tenant drawer (header, contact, lease, ledger, notes & timeline) |
+| `src/js/views/tenant-forms.js` | tenant sheets; assigns hooks `addTenant`, `editTenant`, `changeRent`, `giveNotice`, `moveOut`, `settleDeposit` |
+| `src/js/views/leases.js` | **Leases** view; assigns hook `renewLease` |
+| `src/js/views/upkeep.js` | **Upkeep** view; assigns hooks `addTicket`, `openTicket` |
+| `src/js/views/reports.js` | **Reports** view (rent roll, aging, collection, income) |
+| `src/js/views/setup.js` | **Setup** view (settings, import, backup, sample data) |
 | `src/js/views/kit.js` | `#kit` developer route (foundation-owned; keep) |
 | `src/js/99-boot.js` | `RB.shell.start(); RB.store.start(); RB.actions.warmDownloads()` |
 
@@ -187,7 +192,8 @@ Data shapes are exactly SPEC §3. Additions: entry `undone:true` (Undo), entry `
 - `RB.shell.refresh(reason='refresh')` — re-render the mounted view now (§3.4).
 - `RB.shell.current()` → `{route, view, param}`; `RB.shell.root()` → mounted root el.
 - `RB.shell.setTitle(text|null)` — override the top-bar title until the next navigation.
-- `RB.shell.openPalette(query?)`, `RB.shell.quickAdd(anchorEl)`, `RB.shell.helpSheet()`.
+- `RB.shell.openPalette(query?)`, `RB.shell.quickAdd(anchorEl)`, `RB.shell.helpSheet()`, `RB.shell.lateTenants()` → tenants
+  with any month in status `late` (the Rent badge).
 - `RB.commands.register({id, label, group?, icon?, hint?, keywords?, run, when?, quickAdd?, write?})` → unregister fn.
   Shows in the ⌘K palette (`group` heading, default "Actions"); `quickAdd: n` also puts it in the "+" menu at order n;
   `write: true` hides/blocks it when read-only; `when()` → false hides it. `RB.commands.run(id)`.
@@ -195,15 +201,16 @@ Data shapes are exactly SPEC §3. Additions: entry `undone:true` (Undo), entry `
 - Built-in command ids: `go:today|rent|tenants|leases|upkeep|reports|setup`, `payment:record`, `charge:add`,
   `credit:add`, `note:add`, `tenant:add`, `ticket:add`, `setup:import` (→ `go('setup','import')`),
   `backup:download`, `sample:load`, `sample:remove`, `help:keys`.
-- Global keys (ignored while typing in a field): `/` search (opens palette), `⌘K`/`Ctrl-K` palette (works in fields
+- Global keys (ignored while typing in a **text-entry** control — text-like `input`s, `textarea`, `select`,
+  `contenteditable`; checkboxes, radios and buttons do *not* swallow shortcuts, so `j/k/p` keep working after a click on a tick box): `/` search (opens palette), `⌘K`/`Ctrl-K` palette (works in fields
   too), `n` or `+` quick-add menu, `?` help, `g d` Today, `g r` Rent, `g t` Tenants, `g l` Leases, `g u` Upkeep,
   `g p` Reports, `g s` Setup, `Esc` closes the top layer. Everything else goes to your `onKey(e, ctx)` (only when
   your view is in `ready` state and no sheet/menu/palette is open; **your drawer being open does not block it** —
   that's how `j/k` stepping in the tenant drawer works).
 - Palette search covers tenant name, unit, property, phone, email, co-tenants; ≤3 matches add "Record payment / Add
   note / Add charge — <name>" actions.
-- Chrome the shell maintains: rail (counts: Today = high-severity attention items, Rent = tenants late this
-  month), phone tab bar (Today · Rent · Tenants · Upkeep · More), sample-data banner / load-issue banner, sync note
+- Chrome the shell maintains: rail and tab-bar counts (Today = number of "Needs attention" items, i.e.
+  `RB.store.attention().length`; Rent = tenants with rent past grace in *any* month, `RB.shell.lateTenants()`), phone tab bar (Today · Rent · Tenants · Upkeep · More), sample-data banner / load-issue banner, sync note
   ("Saved", "Saving…", "Not syncing — saved on this device only", "View only"), "View only" tag in the top bar.
 
 ## 6. RB.model (pure; node-loadable)
@@ -269,9 +276,10 @@ progress /* 0..1 through the term, fixed only */, holdover /* end passed, still 
 ```
 kinds: `delinquent` (high), `late` (high), `partial` (medium), `ticket` (urgent → high, open normal → low), `lease`
 (ending inside the notice window, no notice), `moveout`/`movein` (≤30 d), `deposit` (high ≤7 d), `followup`
-(due, not done), `insurance` (≤30 d). Action types: `recordPayment {tenantId}`, `addLateFee {tenantId, period,
-amount}` (label "Add late fee $50"), `openTenant`, `openTicket {ticketId}`, `followupDone {tenantId, logId}`,
-`settleDeposit`, `renewLease`. Run any of them with **`RB.actions.run(item.action)`**.
+(due, not done), `insurance` (≤30 d). `moveout`: a future move-out ≤30 d away → `openTenant` "Plan move-out"; a tenant
+still on `notice` on/after their move-out date → `moveOut` "Complete move-out". Action types: `recordPayment {tenantId}`,
+`addLateFee {tenantId, period, amount}` (label "Add late fee $50"), `openTenant`, `openTicket {ticketId}`,
+`followupDone {tenantId, logId}`, `settleDeposit`, `renewLease`, `moveOut {tenantId}`. Run any of them with **`RB.actions.run(item.action)`**.
 
 ### 6.5 `portfolio(state, today, period?, getLedger?)`
 `{ period, charged, collected, outstanding /* all charges of the period */, received /* payments dated in the period */,
@@ -290,6 +298,14 @@ tenants /* with a charge */, counts:{paid, paid_late, partial, due, late, none},
 - `ledgerCsv(ledger)`, `rentRollCsv(rr)`, `agingCsv(ag)`, `collectionCsv(rows)`, `incomeCsv(inc)`.
 - `parseDelimited(text)` → `string[][]` (auto-detects comma/tab/semicolon; quotes; BOM) — for Setup import.
 
+### 6.8a Move-out and deposit (pure)
+- `moveOutPreview(tenant, entries, settings, today, moveOut)` → `{moveOut, period, finalRows /* generated rent+recurring rows of
+  the final month, with prorate */, finalTotal, balance /* at move-out if nothing more is paid; <0 credit */, balanceNow, depositDueDate}`.
+  Builds the ledger as it will stand on max(today, moveOut) with `lease.moveOut` set.
+- `depositSettlement({deposit, deductions:[{reason, amount}], balance, applyToBalance})` → `{deposit, deducted, available,
+  applied /* deposit used against what is owed */, creditRefunded /* credit on account paid back with the deposit */, refund,
+  shortfall /* deductions beyond the deposit */, balanceAfter, lines}`.
+
 ### 6.8 `tenantSummary(tenant, ledger, settings, today)`
 `{tenantId, name, unit, property, rent, status, monthStatus, balance, delinquent, lease /* leaseState */, daysLate,
 urgency /* lower = more urgent; default Tenants sort */}`
@@ -301,7 +317,7 @@ All return Promises; all guard read-only/loading with a toast.
 | Call | Does |
 |---|---|
 | `recordPayment(tenantId, {quick?, amount?, date?, method?})` → entryId\|null | `quick:true`: records the full open balance today with the tenant's last-used method, toast "Recorded $1,450 from Unit 2B" + Undo (falls back to the sheet if nothing is owed). Otherwise the payment sheet (amount prefilled to `amount` ?? balance ?? rent, date, method, reference, memo, live "Balance after", button "Record $X"). |
-| `recordPayments(tenantIds)` | bulk quick-pay; one toast "Recorded 6 payments · $8,400" + Undo |
+| `recordPayments(tenantIds, opts?)` | bulk quick-pay; one toast "Recorded 6 payments · $8,400" + Undo. Each records the tenant's whole balance unless `opts.amounts = {tenantId: cents}` names an amount (capped at the balance), e.g. one past month's open amount. |
 | `addCharge(tenantId, preset?)`, `addCredit(tenantId, preset?)` | sheets; Undo toast |
 | `addLateFee(tenantId, period?)` | one click; uses the ledger suggestion; Undo toast |
 | `voidEntry(tenantId, entryId)` | Undo toast ("Voided $1,450 payment") |
@@ -317,11 +333,23 @@ All return Promises; all guard read-only/loading with a toast.
 | `who(tenant)` | "Unit 2B" / "No. 4" — for toasts |
 | `lastMethod(tenantId)`, `monthOptions(today, back, fwd, sel)`, `LOG_KINDS`, `CATEGORIES` | helpers |
 
-**Hooks views replace** (assign at load: `RB.actions.addTenant = myFullForm;`):
-`addTenant(preset?)` (default: minimal working sheet), `editTenant(id)` (default: opens tenant), `addTicket()` (default:
-`#upkeep` + `RB.emit('ticket:add')`), `openTicket(id)` (default: `#upkeep` + `RB.emit('ticket:open', id)`),
-`settleDeposit(id)`, `renewLease(id)` (default: open tenant). The built-in commands call through `RB.actions.*`, so
-replacing a hook also updates the palette, "+" menu, Today actions and first-run.
+**Hooks views replace** (assign at load: `RB.actions.addTenant = myFullForm;`). Core defaults in brackets; the file that
+replaces each is listed in §0.
+
+| Hook | Does (as implemented) |
+|---|---|
+| `addTenant(preset?)` | full tenant sheet [minimal working sheet] |
+| `editTenant(id, section?)` | edit sheet focused on `section` (`who contact cotenants emergency lease terms money recurring deposit insurance links about`) [opens the tenant] |
+| `changeRent(id)` | sheet: new amount + effective date, appended to the `rent` schedule (history never rewritten); Undo |
+| `giveNotice(id)` | sheet: notice date + move-out date → status `notice`, a `notice` log entry; Undo |
+| `moveOut(id)` | sheet: move-out date with final-month preview. Date ≤ today → status `past`, then `settleDeposit` if a deposit is held. **Date in the future → recorded as notice** (status `notice`, `lease.moveOut` set, sheet says so); Today and the drawer offer "Complete move-out" once the date arrives |
+| `settleDeposit(id, opts?)` | deductions list, apply-to-balance, refund auto-computed, deadline shown; Undo [opens the tenant] |
+| `renewLease(id)` | sheet: new end date + optional new rent from a date [opens the tenant] |
+| `addTicket(prefill?)` | upkeep request sheet [`#upkeep` + `RB.emit('ticket:add')`] |
+| `openTicket(id)` | upkeep request sheet for that ticket [`#upkeep` + `RB.emit('ticket:open', id)`] |
+
+The built-in commands call through `RB.actions.*`, so replacing a hook also updates the palette, "+" menu, Today actions
+and first-run. `run(action)` dispatches every action type in §6.4, including `moveOut`.
 
 ## 8. RB.ui
 
@@ -364,7 +392,10 @@ replacing a hook also updates the palette, "+" menu, Today actions and first-run
 types: `text email tel number search money date select textarea checkbox seg`.
 - `money`: value in cents; input shows `1,450.50`; reformatted on blur; read as cents.
 - `seg`: segmented single choice (hidden input + buttons; dispatches `change`). Options `[{value,label,icon?}]` or strings.
-- `ui.readForm(root, {validate(values) → {name: msg}})` → `{values, errors, ok}` (money → cents|null, date → string|null, checkbox → bool, number → Number|null, `required` → "Required").
+- `ui.readForm(root, {validate(values) → {name: msg}})` → `{values, errors, ok}` (money → cents|null, date → string|null, checkbox → bool, number → Number|null).
+  An empty `required` field gets a message built from its label: text → "Enter a name", money → "Enter the monthly rent",
+  date → "Choose a lease start date" / "Choose the date received", select/seg → "Choose a …". When the label doesn't read
+  as a noun, pass `ui.field({…, requiredMsg: 'Describe what happened'})` (stored as `data-required-msg`). `ui.requiredMessage(el, root)`.
 - `ui.showErrors(root, errors, {focus=true})`; `ui.form(root, opts)` = read + show → values or null.
 - `ui.setValue(root, name, value)`.
 
@@ -419,7 +450,11 @@ New tokens go in 00-tokens.css in all three places (light, dark media, `[data-th
 <span class="pstrip [pstrip-lg]"><i class="pc pc-paid"></i>…</span>   <!-- use ui.strip -->
 <span class="money [money-lg|money-md] [amt-owed|amt-credit]"><span class="cur">$</span>1,450</span>
 
-<!-- data table: sticky header under the top bar, 44px rows -->
+<!-- data table: sticky header under the top bar, 44px rows. Inside anything that scrolls by itself use .tbl-scroll
+     (always a scroll box) or .tbl-scroll-phone (scrolls sideways only under 760px): the header then sticks to that box
+     (--tbl-sticky-top: 0px; sheets and drawers set it too). Cells are position:relative so a .vh label in a scrolled
+     table is clipped with it. No per-view `top:` overrides needed. -->
+<div class="tbl-scroll-phone"><table class="tbl">…</table></div>
 <div class="tbl-wrap"><table class="tbl [tbl-compact]">
   <thead><tr><th class="tbl-check"><input type="checkbox"></th>
     <th aria-sort="ascending"><button class="th-sort">Tenant<svg class="sort-ind" arrow-up/></button></th>
@@ -450,7 +485,9 @@ New tokens go in 00-tokens.css in all three places (light, dark media, `[data-th
 <div class="bar-legend"><span class="bar-key bar-key-ok">Collected</span>…</div>
 <div class="stepper"><button class="btn btn-ghost btn-icon">‹</button><span class="stepper-label">November 2026</span><button …>›</button></div>
 <div class="actionbar">6 selected <button class="btn btn-primary">Record 6 payments</button></div>   <!-- fixed bottom bar for bulk mode -->
-<div class="view-head">…</div>   <!-- top-of-view toolbar row -->
+<div class="view-head"><p class="view-summary"><strong>26</strong> tenants · …</p><span class="spacer"></span>controls / one primary</div>
+<!-- top-of-view toolbar: summary line left (figures in <strong>), controls right; at most one btn-primary per screen
+     (the top-bar "+" is btn-soft so a view's own primary stands alone) -->
 <kbd class="kbd">⌘K</kbd>  <span class="dot dot-ok|warn|bad|accent [dot-pulse]"></span>  <div class="code-block">…</div>
 <div class="banner [banner-warn]"><div class="banner-text">…</div><div class="banner-actions">…</div></div>
 ```
@@ -481,7 +518,7 @@ parse(text) → cents|null round(x) symbol setCurrency(code)`.
   tenants (no empty-state flash from an empty cache). Writes: one at a time per document, ≤4 in flight overall,
   transient `unavailable` retried once, `invalid_argument`/`revoked`/`not_granted` → `readOnly` ("View only"),
   `quota_exceeded`/`resource_exhausted` → toast. Optimistic ops are folded over snapshot data until the next
-  snapshot after the write resolves. The publishing step must declare `capabilities: {db: {}, downloads: true}`
-  (optionally `user: {}`, used only to learn `can('data.write') === false` up front).
+  snapshot after the write resolves. The publishing step must declare `capabilities: {db: {}, downloads: true, user: {}}`
+  (`user` is used only to learn `can('data.write') === false` up front; the page works without it).
 - `tools/cloud-sim.mjs` drives the cloud path against a fake db that follows the documented API; it is a simulation,
   not the platform.

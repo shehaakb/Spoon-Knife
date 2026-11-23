@@ -489,13 +489,19 @@ button.plate:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .amt-zero { color: var(--ink-3); }
 
 /* ================= Data table ================= */
+/* Header cells stick under the top bar (--sticky-top). Inside anything that scrolls on its own (.tbl-scroll, sheets,
+   drawers) they stick to that container's top instead: those set --tbl-sticky-top: 0px. Cells are positioned so a
+   visually-hidden (.vh, position:absolute) label inside a scrolled table is clipped with it, never widening the page. */
 .tbl-wrap { position: relative; min-width: 0; }
+.tbl-scroll { position: relative; min-width: 0; overflow: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; --tbl-sticky-top: 0px; }
+@media (max-width: 759.98px) { .tbl-scroll-phone { position: relative; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; --tbl-sticky-top: 0px; } }
+.sheet-body, .drawer-body, .popover, .palette-list { --tbl-sticky-top: 0px; }
 .tbl { width: 100%; font-size: var(--t-13); }
-.tbl th, .tbl td { padding: 0 12px; height: var(--row-h); border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.tbl th, .tbl td { position: relative; padding: 0 12px; height: var(--row-h); border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
 .tbl th:first-child, .tbl td:first-child { padding-left: 16px; }
 .tbl th:last-child, .tbl td:last-child { padding-right: 16px; }
 .tbl thead th {
-  position: sticky; top: var(--sticky-top); z-index: 2; height: 34px;
+  position: sticky; top: var(--tbl-sticky-top, var(--sticky-top)); z-index: 2; height: 34px;
   background: var(--sunk); color: var(--ink-3); border-bottom: 1px solid var(--line-2);
   font-size: var(--t-12); font-weight: 500; white-space: nowrap;
 }
@@ -937,6 +943,10 @@ th.num .th-sort { flex-direction: row-reverse; }
 .view { flex: 1 0 auto; width: 100%; max-width: 1240px; margin: 0 auto; padding: 24px var(--gutter) 72px; min-width: 0; }
 .view:focus { outline: none; }
 .view-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: var(--s5); }
+/* the one-line summary that opens a view ("26 tenants · 3 properties"): left of the view's controls, figures in ink */
+.view-summary { color: var(--ink-2); font-size: var(--t-15); font-variant-numeric: tabular-nums; min-width: 0; }
+.view-summary strong { color: var(--ink); font-weight: 600; }
+@media (max-width: 759.98px) { .view-summary { font-size: var(--t-13); } }
 
 /* ---- Bottom tab bar (phone) ---- */
 .tabbar { display: none; }
@@ -960,7 +970,11 @@ th.num .th-sort { flex-direction: row-reverse; }
   .topbar-search { display: none; }
   .topbar-findbtn { display: inline-flex; }
   .view { padding: 16px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
-  .banner { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .banner { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); gap: 8px; min-height: 44px; padding-top: 4px; padding-bottom: 4px; }
+  .banner:not(.banner-warn) { flex-wrap: nowrap; }
+  .banner:not(.banner-warn) .banner-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .banner-actions { flex: none; flex-wrap: nowrap; }
+  .banner .btn { height: 32px; padding-left: 10px; padding-right: 10px; }
   .tabbar {
     position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;
     display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1183,11 +1197,30 @@ th.num .th-sort { flex-direction: row-reverse; }
 .rent-caside-paid .rent-menu { width: 44px; height: 44px; }
 /* soft buttons must stay visible on tinted (selected / cursor) rows */
 .rent-row.is-selected .btn-soft, .rent-row.is-focused .btn-soft, .rent-card.is-selected .btn-soft, .rent-card.is-cursor .btn-soft { background: var(--surface); border-color: var(--accent-line); }
+/* quick pay also clears older months: say so under the Open figure, and in the bulk bar */
+.rent-earlier { display: block; margin-top: 1px; font-size: var(--t-12); line-height: 1.2; color: var(--ink-3); font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rent-bar-n { display: inline-flex; flex-direction: column; line-height: 1.25; }
+.rent-bar-sub { font-size: var(--t-12); font-weight: 400; color: var(--ink-3); }
+.crow-aside .rent-earlier { margin-top: -3px; }
+/* phone, past month: the jump back is a quiet second row, so stepper + group toggle stay on one line */
+.rent-pastline { flex: 1 0 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: -8px; font-size: var(--t-13); white-space: nowrap; }
+.rent-pastline .linkbtn { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-size: var(--t-13); }
+/* icon-rail widths (760–1100): drop the Paid column, stack the late-fee link under the pill, keep names on one line */
+@media (max-width: 1099.98px) {
+  .rent-tbl .rent-c-paid { display: none; }
+  .rent-tbl td.num { padding-left: 12px; }
+  .rent-tbl .rent-c-status { padding-left: 16px; }
+  .rent-status { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .rent-act { min-width: 0; }
+  .rent-tbl .rent-c-name .cell-name, .rent-tbl .rent-c-name .cell-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22ch; }
+  .rent-tbl .rent-c-plate .plate { min-width: 44px; }
+}
 /* ---- 42-tenants.css ---- */
 /* Tenants view (#tenants) + tenant detail drawer (#t-<id>) + tenant sheets. Layout only; tokens only. */
 
 /* ================= List ================= */
-.tn-summary { display: flex; flex-wrap: wrap; gap: 2px 0; margin: -4px 0 var(--s4); color: var(--ink-2); font-size: var(--t-13); }
+.tn-top { margin-bottom: var(--s4); }
+.tn-summary { display: flex; flex-wrap: wrap; gap: 2px 0; }
 .tn-summary > span + span::before { content: "·"; margin: 0 8px; color: var(--ink-3); }
 .tn-head { margin-bottom: var(--s3); gap: 10px 12px; }
 .tn-search { width: 260px; flex: 0 1 260px; }
@@ -1195,7 +1228,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .tn-q-clear { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); }
 .tn-tools { display: flex; align-items: center; gap: 6px; min-height: 32px; margin-bottom: var(--s2); font-size: var(--t-12); }
 .tn-count { font-size: var(--t-12); }
-.tn-toggle[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.tn-groupby { font-size: var(--t-13); color: var(--ink-2); margin: 0 8px; }
 .tn-tools .seg > button { height: 22px; }
 
 .tn-tbl .tn-c-name { width: 30%; }
@@ -1222,7 +1255,9 @@ th.num .th-sort { flex-direction: row-reverse; }
 .view-tenants.tn-narrow .tn-c-prop, .view-tenants.tn-narrow .tn-c-strip { display: none; }
 .view-tenants.tn-xnarrow .tn-c-lease, .view-tenants.tn-xnarrow .tn-tbl th.num:nth-child(3), .view-tenants.tn-xnarrow .tn-tbl td.num:nth-child(3) { display: none; }
 .view-tenants.tn-narrow .tn-search { flex: 1 1 200px; }
-.view-tenants.tn-narrow .tn-sortbtn span, .view-tenants.tn-narrow .tn-toggle span { display: none; }
+.view-tenants.tn-narrow .tn-sortbtn span { display: none; }
+/* icon-rail widths: property moves out of the table (the strip and lease still fit) */
+@media (min-width: 760px) and (max-width: 1099.98px) { .view-tenants .tn-c-prop { display: none; } .tn-search { flex: 0 1 220px; } }
 
 /* phone cards */
 .tn-card { grid-template-rows: auto auto; }
@@ -1238,15 +1273,15 @@ th.num .th-sort { flex-direction: row-reverse; }
 .tn-clist .tn-card-group:first-child { padding-top: 4px; }
 
 @media (max-width: 759.98px) {
-  .tn-summary { font-size: var(--t-12); margin: 0 0 var(--s3); }
-  .tn-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-  .tn-head .tn-chips { grid-column: 1 / -1; grid-row: 2; }
+  .tn-top { margin-bottom: var(--s3); }
+  .tn-head { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .tn-head .tn-chips { grid-row: 2; }
   .tn-search { width: auto; flex: none; }
   .tn-summary .tn-sum-owed { flex-basis: 100%; }
   .tn-summary .tn-sum-owed::before { content: none; }
   .tn-tools { gap: 2px; }
-  .tn-tools .tn-sortbtn, .tn-tools .tn-toggle { height: 36px; }
-  .tn-toggle span { display: none; }
+  .tn-tools .tn-sortbtn { height: 36px; }
+  .tn-groupby { min-height: 44px; margin: 0 4px; }
   .tn-clist { border-top: 0; }
   .tn-card { min-height: 72px; }
 }
@@ -1416,8 +1451,8 @@ th.num .th-sort { flex-direction: row-reverse; }
 /* Leases view: timeline + grouped list. Tokens only. */
 .view-leases { --lz-name-w: 232px; --lz-act-w: 124px; --lz-row-h: 48px; }
 .lz-head-row { margin-bottom: var(--s5); }
-.lz-summary { color: var(--ink-2); font-size: var(--t-15); }
-.lz-summary strong { color: var(--ink); font-weight: 600; }
+
+
 .lz-dot { color: var(--ink-3); }
 
 /* shared tenant cell */
@@ -1478,7 +1513,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .lz-label-out { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1; }
 .lz-bar-due + .lz-label-out { color: var(--warn); font-weight: 500; }
 
-@media (max-width: 1099.98px) { .view-leases { --lz-name-w: 190px; --lz-act-w: 112px; } .lz-who-sub { display: none; } }
+@media (max-width: 1099.98px) { .view-leases { --lz-name-w: 190px; --lz-act-w: 112px; } .lz-who-sub { display: none; } .lz-yr { display: none; } }
 
 /* ---- list ---- */
 .lz-group.sec { margin-top: var(--s5); }
@@ -1487,7 +1522,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .lz-list-tbl td .lz-who { margin: -4px 0 -4px -6px; }
 .lz-decide-ph { margin-right: -8px; }
 @media (max-width: 759.98px) {
-  .lz-summary { font-size: var(--t-13); }
+
   .lz-head-row { margin-bottom: var(--s4); }
   .view-leases .crow-actions .btn-group > .btn:first-child { flex: 1 1 auto; }
 }
@@ -1501,8 +1536,8 @@ th.num .th-sort { flex-direction: row-reverse; }
 /* ---- 44-upkeep.css ---- */
 /* Upkeep view: three status columns (desktop), one at a time under a segmented control (phone). Tokens only. */
 .uk-head { margin-bottom: var(--s4); }
-.uk-count { color: var(--ink-2); font-size: var(--t-15); }
-.uk-count strong { color: var(--ink); font-weight: 600; }
+
+
 .uk-filter { margin-bottom: var(--s5); }
 
 .uk-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s5); align-items: start; }
@@ -1561,7 +1596,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .rp-head { gap: 10px 12px; }
 .rp-actions { display: flex; gap: 4px; }
 .rp-year .stepper-label { min-width: 64px; }
-.rp-meta { margin-bottom: var(--s4); color: var(--ink-2); font-size: var(--t-15); }
+.rp-meta { margin-bottom: var(--s4); }
 .rp-meta strong { color: var(--ink); font-weight: 600; }
 .rp-note { margin-top: var(--s3); color: var(--ink-3); font-size: var(--t-12); }
 
@@ -1579,15 +1614,12 @@ th.num .th-sort { flex-direction: row-reverse; }
 .rp-total td { font-size: var(--t-13); }
 .rp-tbl .plate { min-width: 52px; }
 
-/* scrolling table with sticky first column (phone) */
-.rp-scroll { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+/* phone: tables scroll sideways inside .tbl-scroll-phone with a sticky first column */
 .rp-sticky { min-width: 520px; }
-.rp-scroll .tbl thead th { top: auto; }
-@media (min-width: 760px) { .rp-scroll .tbl thead th { top: var(--sticky-top); } }
 .rp-sticky th:first-child, .rp-sticky td:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
 .rp-sticky thead th:first-child { background: var(--sunk); z-index: 3; }
 .rp-sticky tbody tr:hover td:first-child { background: var(--hover); }
-@media (min-width: 760px) { .rp-sticky { min-width: 0; } .rp-scroll { overflow: visible; } }
+@media (min-width: 760px) { .rp-sticky { min-width: 0; } }
 
 /* collection chart: bars drawn to scale with percentage heights against a nice axis */
 .rp-chart { margin: 0 0 var(--s5); }
@@ -1626,7 +1658,7 @@ th.num .th-sort { flex-direction: row-reverse; }
   .rp-tabs > button { flex: 1 0 auto; }
   .rp-head > .spacer { display: none; }
   .rp-actions { margin-left: auto; }
-  .rp-meta { font-size: var(--t-13); }
+
   .rp-chart-plot { height: 180px; margin-left: 40px; }
   .rp-rate { display: none; }
   .rp-col { left: 16%; right: 16%; }
@@ -1639,6 +1671,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .view-reports .plate-sm { display: inline-block; line-height: 20px; text-align: center; }
 @media (max-width: 759.98px) { #rp-collection th, #rp-collection td { padding-left: 6px; padding-right: 6px; } #rp-collection th:first-child, #rp-collection td:first-child { padding-left: 8px; } #rp-collection th:last-child, #rp-collection td:last-child { padding-right: 8px; } }
 @media (max-width: 759.98px) { .rp-sticky .rp-who .plate { min-width: 0; max-width: 4.5em; } .rp-sticky { min-width: 560px; } }
+#rp-roll .rp-name { white-space: nowrap; }
 /* ---- 46-setup.css ---- */
 /* Setup view: settings rows saved field by field, import, backup. Tokens only. */
 .st-layout { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: var(--s6); align-items: start; }
@@ -1695,9 +1728,9 @@ th.num .th-sort { flex-direction: row-reverse; }
 .st-eg td { color: var(--ink-2); }
 
 .st-prev-head { display: flex; flex-direction: column; gap: 2px; margin: var(--s5) 0 var(--s2); }
-.st-prev-scroll { position: relative; overflow-x: auto; max-height: 460px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--r-ctl); }
+.st-prev-scroll { max-height: 460px; border: 1px solid var(--line); border-radius: var(--r-ctl); }
 .st-prev { min-width: 100%; }
-.st-prev thead th { position: sticky; top: 0; height: auto; padding-top: 8px; padding-bottom: 8px; vertical-align: top; }
+.st-prev thead th { height: auto; padding-top: 8px; padding-bottom: 8px; vertical-align: top; }
 .st-prev thead th:first-child { border-top-left-radius: 0; }
 .st-src { display: block; margin-bottom: 4px; font-family: var(--f-mono); font-size: 11px; color: var(--ink-2); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 .st-map { min-width: 128px; }
@@ -1757,7 +1790,7 @@ th.num .th-sort { flex-direction: row-reverse; }
           <kbd class="kbd search-kbd">/</kbd>
         </label>
         <button class="btn btn-ghost btn-icon topbar-findbtn" id="rb-find" type="button" aria-label="Search"></button>
-        <button class="btn btn-primary btn-icon" id="rb-add" type="button" aria-label="Add" aria-haspopup="menu"></button>
+        <button class="btn btn-soft btn-icon" id="rb-add" type="button" aria-label="Add" aria-haspopup="menu"></button>
       </div>
     </header>
     <main class="view" id="rb-view" tabindex="-1" aria-live="off"></main>
@@ -2466,7 +2499,12 @@ function attention(state, today, getLedger) {
           action: { type: 'renewLease', tenantId: t.id, label: 'Decide' } });
       }
       const l = t.lease || {};
-      if (l.moveOut && l.moveOut >= today && D.diffDays(today, l.moveOut) <= 30) {
+      if (l.moveOut && l.moveOut <= today && t.status === 'notice') {
+        // The date has come: the tenant is still marked as on notice, so ask to complete the move-out.
+        items.push({ id: 'moveout-' + t.id, kind: 'moveout', severity: 'medium', rank: D.diffDays(today, l.moveOut), tenantId: t.id, unit,
+          title: name, detail: l.moveOut === today ? 'Moves out today' : 'Was due to move out ' + D.fmt(l.moveOut, today) + ' (' + D.rel(l.moveOut, today) + ')', date: l.moveOut,
+          action: { type: 'moveOut', tenantId: t.id, label: 'Complete move-out' } });
+      } else if (l.moveOut && l.moveOut > today && D.diffDays(today, l.moveOut) <= 30) {
         items.push({ id: 'moveout-' + t.id, kind: 'moveout', severity: 'medium', rank: D.diffDays(today, l.moveOut), tenantId: t.id, unit,
           title: name, detail: 'Moves out ' + D.fmt(l.moveOut, today) + ' (' + D.rel(l.moveOut, today) + ')', date: l.moveOut,
           action: { type: 'openTenant', tenantId: t.id, label: 'Plan move-out' } });
@@ -2821,6 +2859,7 @@ const RB = (globalThis.RB = globalThis.RB || {});
 const D = RB.date;
 
 const COLS = ['meta', 'tenants', 'ledgers', 'tickets'];
+const SAMPLE_NAME = 'Calder & Vane Rentals';
 const LOCAL_KEY = 'rb:data:v1';
 const LOAD_TIMEOUT_MS = 10000;
 const MAX_INFLIGHT = 4;
@@ -3194,7 +3233,13 @@ async function removeSample() {
   const ps = [];
   ts.forEach(id => ps.push(deleteTenant(id)));
   ks.forEach(id => ps.push(commit('tickets', id, 'delete')));
-  if (viewDocs.meta.settings && viewDocs.meta.settings.hasSample) ps.push(saveSettings({ hasSample: false }));
+  const cur = viewDocs.meta.settings;
+  if (cur && (cur.hasSample || cur.portfolioName === SAMPLE_NAME)) {
+    // The sample portfolio's name goes with its tenants; a name the landlord typed stays.
+    const patch = { hasSample: false };
+    if (cur.portfolioName === SAMPLE_NAME) patch.portfolioName = '';
+    ps.push(saveSettings(patch));
+  }
   await Promise.all(ps);
   return { tenants: ts.length, tickets: ks.length };
 }
@@ -4119,14 +4164,15 @@ let fieldSeq = 0;
  * Field (SafeHTML): label + control + hint + error slot. Every control gets a stable id (opts.id || 'f-' + name).
  * opts: {name (required), id, label, type:'text'|'email'|'tel'|'number'|'money'|'date'|'select'|'textarea'|'checkbox'|'seg'|'search',
  *        value, options:[{value,label}|string] (select/seg), placeholder, hint, required, optional:true (adds "optional"),
- *        span:2, attrs:{...} (extra attributes on the control), rows (textarea), min, max, step, autocomplete, write:true}
+ *        span:2, attrs:{...} (extra attributes on the control), rows (textarea), min, max, step, autocomplete, write:true,
+ *        requiredMsg: what readForm says when a required field is empty (default is built from the label — see readForm)}
  * money: value in cents; readForm returns cents (integer) or null.  date: 'YYYY-MM-DD' or null.  checkbox: boolean.
  */
 ui.field = function field(opts) {
   const o = opts || {};
   const name = o.name || 'f' + (++fieldSeq);
   const id = o.id || 'f-' + name;
-  const common = Object.assign({ id, name, required: !!o.required, 'aria-describedby': id + '-err' + (o.hint ? ' ' + id + '-hint' : ''), 'data-write': o.write ? '' : null }, o.attrs || {});
+  const common = Object.assign({ id, name, required: !!o.required, 'data-required-msg': o.required && o.requiredMsg ? o.requiredMsg : null, 'aria-describedby': id + '-err' + (o.hint ? ' ' + id + '-hint' : ''), 'data-write': o.write ? '' : null }, o.attrs || {});
   const val = o.value == null ? '' : o.value;
   let control;
   const t = o.type || 'text';
@@ -4158,8 +4204,28 @@ ui.field = function field(opts) {
 /**
  * Read every named control under root. Returns {values, errors, ok}.
  * money → cents|null (error if unparseable), date → 'YYYY-MM-DD'|null (error if invalid), checkbox → bool, number → Number|null,
- * required + empty → "Required". opts.validate(values) → {name: message} adds custom errors.
+ * required + empty → a message that says what to do, from the field's label: "Enter a name", "Enter the monthly rent",
+ * "Choose a lease start date" (override per field with ui.field's requiredMsg, i.e. data-required-msg on the control).
+ * opts.validate(values) → {name: message} adds custom errors.
  */
+/** "Enter a name" / "Enter the monthly rent" / "Choose a lease start date" — the empty-required message for a control. */
+function requiredMessage(el, root) {
+  if (el.dataset.requiredMsg) return el.dataset.requiredMsg;
+  const lab = (el.id && root.querySelector('label[for="' + CSS.escape(el.id) + '"]')) || el.closest('label');
+  let text = '';
+  if (lab) { const c = lab.cloneNode(true); c.querySelectorAll('.opt, .vh, svg').forEach(x => x.remove()); text = c.textContent.replace(/\s+/g, ' ').trim(); }
+  if (!text) return el.type === 'checkbox' ? 'Tick this to continue' : 'Fill this in';
+  const lc = /^[A-Z][a-z]/.test(text) ? text[0].toLowerCase() + text.slice(1) : text;
+  const a = w => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+  const kind = el.dataset.kind;
+  if (el.type === 'checkbox') return 'Tick “' + text + '” to continue';
+  if (kind === 'money') return 'Enter the ' + lc;
+  if (kind === 'date') return /^date\b/i.test(lc) ? 'Choose the ' + lc : 'Choose ' + a(/\bdate$/i.test(lc) ? lc : lc + ' date');
+  if (kind === 'seg' || el.tagName === 'SELECT') return 'Choose ' + a(lc);
+  return 'Enter ' + a(lc);
+}
+ui.requiredMessage = requiredMessage;
+
 ui.readForm = function readForm(root, opts) {
   const values = {}, errors = {};
   root.querySelectorAll('[name]').forEach(el => {
@@ -4178,7 +4244,7 @@ ui.readForm = function readForm(root, opts) {
     } else if (el.type === 'number') v = el.value === '' ? null : Number(el.value);
     else v = el.value.trim();
     values[name] = v;
-    if (el.required && (v === null || v === '' || v === false) && !errors[name]) errors[name] = 'Required';
+    if (el.required && (v === null || v === '' || v === false) && !errors[name]) errors[name] = requiredMessage(el, root);
   });
   if (opts && opts.validate) { const more = opts.validate(values) || {}; for (const k of Object.keys(more)) if (more[k] && !errors[k]) errors[k] = more[k]; }
   Object.keys(errors).forEach(k => { if (!errors[k]) delete errors[k]; });
@@ -4530,7 +4596,7 @@ function addNote(tenantId, preset) {
       title: 'Add note', sub: tenantSub(t),
       body: h`<div class="form-grid">
         ${ui.field({ name: 'kind', id: 'note-kind', label: 'Kind', type: 'seg', value: p.kind || 'note', options: LOG_KINDS, span: 2 })}
-        ${ui.field({ name: 'text', id: 'note-text', label: 'What happened', type: 'textarea', value: p.text || '', required: true, span: 2, rows: 4 })}
+        ${ui.field({ name: 'text', id: 'note-text', label: 'What happened', type: 'textarea', value: p.text || '', required: true, requiredMsg: 'Describe what happened', span: 2, rows: 4 })}
         ${ui.field({ name: 'followUp', id: 'note-followup', label: 'Follow up on', type: 'date', value: p.followUp || '', optional: true, hint: 'Shows on Today when it’s due.' })}
       </div>`,
       initialFocus: '#note-text',
@@ -4706,6 +4772,7 @@ RB.actions = {
       case 'followupDone': return A.followupDone(a.tenantId, a.logId);
       case 'settleDeposit': return A.settleDeposit(a.tenantId);
       case 'renewLease': return A.renewLease(a.tenantId);
+      case 'moveOut': return A.moveOut ? A.moveOut(a.tenantId) : A.openTenant(a.tenantId);
       default: console.warn('Unknown action', a);
     }
   },
@@ -4808,7 +4875,7 @@ function mount(r, reason) {
 
 function textFocusIn(root) {
   const a = document.activeElement;
-  return a && root.contains(a) && (a.matches('input:not([type=checkbox]):not([type=radio]):not([type=button]), textarea, select, [contenteditable="true"]'));
+  return a && root.contains(a) && isTyping(a);
 }
 
 /**
@@ -4877,13 +4944,13 @@ const $ = id => document.getElementById(id);
 function renderChrome() {
   const st = RB.store.state;
   const att = st.ready ? RB.store.attention() : [];
-  const high = att.filter(a => a.severity === 'high').length;
-  const lateCount = st.ready ? RB.store.tenantsList({ includePast: false }).filter(t => { const lg = RB.store.ledger(t.id); return lg && lg.current.status === 'late'; }).length : 0;
-  const counts = { today: high || '', rent: lateCount || '' };
+  // Today = every item in "Needs attention"; Rent = tenants with rent past grace in any month (not just this one).
+  const lateCount = st.ready ? lateTenants().length : 0;
+  const counts = { today: att.length || '', rent: lateCount || '' };
   const active = cur.view;
   // rail
   const nav = $('rb-nav');
-  if (nav) nav.innerHTML = String(h`${NAV.map(n => h`<a class="rail-link" href="#${n.route}"${n.route === active ? raw(' aria-current="page"') : ''} title="${n.label}">${ui.icon(n.icon)}<span class="rail-link-label">${n.label}</span><span class="rail-count" aria-label="${counts[n.route] ? counts[n.route] + ' need attention' : ''}">${counts[n.route]}</span></a>`)}`);
+  if (nav) nav.innerHTML = String(h`${NAV.map(n => h`<a class="rail-link" href="#${n.route}"${n.route === active ? raw(' aria-current="page"') : ''} title="${n.label}">${ui.icon(n.icon)}<span class="rail-link-label">${n.label}</span><span class="rail-count" aria-label="${counts[n.route] ? (n.route === 'rent' ? RB.plural(counts[n.route], 'tenant') + ' with late rent' : counts[n.route] + ' need attention') : ''}">${counts[n.route]}</span></a>`)}`);
   // tab bar (phone)
   const tb = $('rb-tabbar');
   if (tb) {
@@ -4909,11 +4976,15 @@ function renderChrome() {
   let banner = null;
   if (st.loadIssue === 'timeout') banner = h`<div class="banner-text">${ui.icon('alert')} <strong>Can’t reach your saved data yet.</strong> Still trying — what you see may be out of date.</div>`;
   else if (st.loadIssue === 'error') banner = h`<div class="banner-text"><strong>Live updates stopped.</strong> What you see may be out of date; reopen the page to reconnect.</div>`;
-  else if (st.ready && RB.store.hasSample()) banner = h`<div class="banner-text">${ui.icon('sample', { cls: 'vh' })}You’re looking at <strong>sample tenants</strong>. Explore freely — nothing here is real.</div>
-    <div class="banner-actions"><button type="button" class="btn btn-sm btn-ghost" data-cmd="sample:remove" data-write>Remove sample data</button><button type="button" class="btn btn-sm" data-cmd="setup:import" data-write>Import my tenants</button></div>`;
+  else if (st.ready && RB.store.hasSample()) banner = h`<div class="banner-text"><span class="hide-phone">You’re looking at <strong>sample tenants</strong>. Explore freely — nothing here is real.</span><span class="show-phone">Viewing <strong>sample tenants</strong></span></div>
+    <div class="banner-actions"><button type="button" class="btn btn-sm btn-ghost" data-cmd="sample:remove" data-write aria-label="Remove sample data"><span class="hide-phone">Remove sample data</span><span class="show-phone">Remove</span></button><button type="button" class="btn btn-sm" data-cmd="setup:import" data-write aria-label="Import my tenants"><span class="hide-phone">Import my tenants</span><span class="show-phone">Import</span></button></div>`;
   bn.hidden = !banner;
   bn.className = 'banner' + (st.loadIssue ? ' banner-warn' : '');
   if (banner) { const s = String(banner); if (bn.innerHTML !== s) bn.innerHTML = s; }
+}
+/** Tenants with any rent month open past its grace period (status 'late'), current or earlier. */
+function lateTenants() {
+  return RB.store.tenantsList().filter(t => { const lg = RB.store.ledger(t.id); return lg && Object.values(lg.months).some(m => m.status === 'late'); });
 }
 function syncNote(st) {
   let dot = 'dot', text;
@@ -5000,7 +5071,9 @@ function helpSheet() {
   });
 }
 let gPending = 0;
-function isTyping(t) { return t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]'); }
+// Only text-entry controls swallow shortcuts. Checkboxes, radios, buttons, ranges and the like keep j/k/p… working.
+const TEXT_ENTRY = 'textarea, select, [contenteditable=""], [contenteditable="true"], input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="tel"], input[type="url"], input[type="password"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="month"], input[type="week"], input[type="time"]';
+function isTyping(t) { return !!(t && t.closest && t.closest(TEXT_ENTRY)); }
 document.addEventListener('keydown', e => {
   if (e.defaultPrevented) return;
   const mod = e.metaKey || e.ctrlKey;
@@ -5052,7 +5125,7 @@ RB.shell = {
   root: () => (mounted ? mounted.root : null),
   /** Override the top-bar title (e.g. "November 2026"); null restores the view title. */
   setTitle(text) { titleOverride = text || null; const def = views[cur.view]; $('rb-title').textContent = text || (def && def.title) || ''; },
-  openPalette, quickAdd, helpSheet,
+  openPalette, quickAdd, helpSheet, lateTenants,
   start() {
     if (started) return; started = true;
     registerBuiltins();
@@ -5349,7 +5422,7 @@ function actionCell(r, noticeDays, phone) {
   const id = r.t.id;
   if (r.group === 'moving') return h`<button type="button" class="btn btn-sm${phone ? '' : ' btn-ghost'}" data-act="moveout" data-id="${id}" data-write>Plan move-out</button>`;
   if (isRenewDue(r, noticeDays)) {
-    return h`<span class="btn-group"><button type="button" class="btn btn-sm btn-primary" data-act="renew" data-id="${id}" data-write>Renew</button><button type="button" class="btn btn-sm btn-primary btn-caret" data-act="decide" data-id="${id}" aria-label="Other choices for ${r.t.name}" aria-haspopup="menu" data-write>${ui.icon('chevron-down')}</button></span>`;
+    return h`<span class="btn-group"><button type="button" class="btn btn-sm btn-soft" data-act="renew" data-id="${id}" data-write>Renew</button><button type="button" class="btn btn-sm btn-soft btn-caret" data-act="decide" data-id="${id}" aria-label="Other choices for ${r.t.name}" aria-haspopup="menu" data-write>${ui.icon('chevron-down')}</button></span>`;
   }
   return h`<button type="button" class="btn btn-sm" data-act="decide" data-id="${id}" aria-haspopup="menu" data-write><span>Decide</span>${ui.icon('chevron-down')}</button>`;
 }
@@ -5373,7 +5446,9 @@ function timeline(rows, today, settings) {
   const nwEnd = D.addDays(today, nd);
   const months = Array.from({ length: 12 }, (_, i) => {
     const k = D.addMonthKey(curKey, i);
-    const label = i === 0 || k.slice(5) === '01' ? D.fmtMonthShort(k, today, { year: true }) : D.MON[+k.slice(5, 7) - 1];
+    const mon = D.MON[+k.slice(5, 7) - 1];
+    // The year is dropped where the month cells get narrow (icon rail); January stays bold either way.
+    const label = i === 0 || k.slice(5) === '01' ? h`${mon}<span class="lz-yr">${'\u00a0' + k.slice(0, 4)}</span>` : mon;
     return { k, x: pct(D.monthStart(k)), w: (D.daysInMonth(k) / span) * 100, label };
   });
   const bar = r => {
@@ -5468,7 +5543,7 @@ RB.views.register('leases', {
     const parts = [h`<strong>${RB.plural(ending, 'lease')}</strong> ${ending === 1 ? 'ends' : 'end'} in the next ${nd} days`, h`<strong>${mtm}</strong> month-to-month`, h`<strong>${moving}</strong> moving out`];
     el.innerHTML = String(h`
       <div class="view-head lz-head-row">
-        <p class="lz-summary">${RB.html.join(parts, h`<span class="lz-dot" aria-hidden="true"> · </span>`)}</p>
+        <p class="view-summary lz-summary">${RB.html.join(parts, h`<span class="lz-dot" aria-hidden="true"> · </span>`)}</p>
         <span class="spacer"></span>
         <div class="seg hide-phone" role="group" aria-label="Layout">
           <button type="button" id="lz-mode-timeline" data-act="mode" data-mode="timeline" aria-pressed="${String(mode === 'timeline')}">Timeline</button>
@@ -5537,7 +5612,9 @@ function buildRows(S, key, current) {
     let later = 0;
     if (!current) for (const k of Object.keys(lg.months)) if (k > key) later += lg.months[k].open;
     const payAmount = unpaid ? (current ? Math.max(0, lg.balance) : Math.max(0, Math.min(lg.balance, lg.balance - later))) : 0;
-    out.push({ t, i, lg, m, unpaid, payAmount, rank: unpaid ? (RANK[m.status] !== undefined ? RANK[m.status] : 3) : 4 });
+    // What quick pay records beyond this month's open amount (older months, fees): shown so the button is honest.
+    const earlier = unpaid ? Math.max(0, payAmount - m.open) : 0;
+    out.push({ t, i, lg, m, unpaid, payAmount, earlier, rank: unpaid ? (RANK[m.status] !== undefined ? RANK[m.status] : 3) : 4 });
   });
   return out;
 }
@@ -5574,7 +5651,7 @@ const lateFeeLink = (r, key, cls) => {
   return h`<button type="button" class="linkbtn linkbtn-muted rent-fee ${cls || ''}" id="rent-fee-${cls ? 'c' : ''}${r.t.id}" data-act="fee" data-id="${r.t.id}" data-write aria-label="Add late fee ${M.fmt(s.amount)} for ${D.monthName(key)}, ${r.t.name}">+ late fee ${M.fmt(s.amount)}</button>`;
 };
 const payBtn = (r, pre) => h`<span class="btn-group rent-pay">
-  <button type="button" class="btn btn-sm btn-soft" id="rent-${pre}pay-${r.t.id}" data-act="pay" data-id="${r.t.id}" data-write title="Record ${M.fmt(r.payAmount)} today" aria-label="Mark paid: record ${M.fmt(r.payAmount)} from ${r.t.name} today">Mark paid</button><button type="button" class="btn btn-sm btn-soft btn-caret" id="rent-${pre}sheet-${r.t.id}" data-act="sheet" data-id="${r.t.id}" data-write aria-label="Payment details for ${r.t.name}" title="Amount, date, method…">${ui.icon('chevron-down')}</button>
+  <button type="button" class="btn btn-sm btn-soft" id="rent-${pre}pay-${r.t.id}" data-act="pay" data-id="${r.t.id}" data-write title="Record ${M.fmt(r.payAmount)} today${r.earlier ? ' — includes ' + M.fmt(r.earlier) + ' owed from earlier' : ''}" aria-label="${r.earlier ? 'Pay' : 'Mark paid'}: record ${M.fmt(r.payAmount)} from ${r.t.name} today">${r.earlier ? 'Pay ' + M.fmt(r.payAmount) : 'Mark paid'}</button><button type="button" class="btn btn-sm btn-soft btn-caret" id="rent-${pre}sheet-${r.t.id}" data-act="sheet" data-id="${r.t.id}" data-write aria-label="Payment details for ${r.t.name}" title="Amount, date, method…">${ui.icon('chevron-down')}</button>
 </span>`;
 const menuBtn = (r, pre) => h`<button type="button" class="btn btn-ghost btn-icon btn-sm rent-menu" id="rent-${pre}menu-${r.t.id}" data-act="menu" data-id="${r.t.id}" aria-label="More for ${r.t.name}" aria-haspopup="menu">${ui.icon('more')}</button>`;
 function paidNote(r, today) {
@@ -5584,6 +5661,8 @@ function paidNote(r, today) {
   return [when, how].filter(Boolean).join(' · ');
 }
 const amt = (c, opts) => (c ? ui.money(c, opts) : h`<span class="faint" aria-label="none">—</span>`);
+/** Muted second line under the Open figure when quick pay would also clear older months. */
+const earlierNote = r => (r.earlier ? h`<span class="rent-earlier" title="Payments settle the oldest charges first">+ ${M.fmt(r.earlier)} earlier</span>` : '');
 
 function tableRow(r, key, today) {
   const sel = selected.has(r.t.id), cur = cursorId === r.t.id;
@@ -5592,8 +5671,8 @@ function tableRow(r, key, today) {
     <td class="rent-c-plate">${ui.plate(r.t.unit, { property: r.t.property })}</td>
     <td class="rent-c-name"><span class="cell-name">${r.t.name}</span>${!grouped ? h`<span class="cell-sub">${r.t.property}${r.t.status === 'past' ? ' · moved out' : ''}</span>` : r.t.status === 'past' ? h`<span class="cell-sub">moved out</span>` : ''}</td>
     <td class="num">${ui.money(r.m.charged)}</td>
-    <td class="num">${amt(r.m.paid)}</td>
-    <td class="num">${amt(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}</td>
+    <td class="num rent-c-paid">${amt(r.m.paid)}</td>
+    <td class="num">${amt(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}${earlierNote(r)}</td>
     <td class="rent-c-status"><span class="rent-status">${ui.pill(r.m.status, { daysLate: r.m.daysLate })}${lateFeeLink(r, key)}</span></td>
     <td class="rent-c-act"><span class="rent-act">${r.unpaid ? payBtn(r, '') : h`<span class="rent-paidon">${paidNote(r, today)}</span>`}${menuBtn(r, '')}</span></td>
   </tr>`;
@@ -5609,7 +5688,7 @@ function card(r, key, today) {
     <span class="crow-lead rent-card-lead">${showChk ? h`<label class="rent-cchk"><input type="checkbox" id="rent-cchk-${r.t.id}" data-change="sel" data-id="${r.t.id}" aria-label="Select ${r.t.name}"${sel ? RB.raw(' checked') : ''} data-write></label>` : ''}${ui.plate(r.t.unit, { property: r.t.property })}</span>
     <div class="crow-main"><div class="crow-title">${r.t.name}</div><div class="crow-sub">${sub}</div></div>
     ${r.unpaid
-      ? h`<div class="crow-aside">${ui.pill(r.m.status, { daysLate: r.m.daysLate, size: 'sm' })}${ui.money(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}</div>
+      ? h`<div class="crow-aside">${ui.pill(r.m.status, { daysLate: r.m.daysLate, size: 'sm' })}${ui.money(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}${earlierNote(r)}</div>
         <div class="crow-actions rent-cact">${lateFeeLink(r, key, 'c')}<span class="spacer"></span>${menuBtn(r, 'c')}${payBtn(r, 'c')}</div>`
       : h`<div class="crow-aside rent-caside-paid">${ui.pill(r.m.status, { daysLate: r.m.daysLate, size: 'sm' })}${menuBtn(r, 'c')}</div>`}
   </div>`;
@@ -5715,6 +5794,7 @@ function render(el, ctx) {
   const someSel = !allSel && unpaidShown.some(r => selected.has(r.t.id));
   const selRows = Array.from(selected).map(rowOf).filter(Boolean);
   const selTotal = selRows.reduce((a, r) => a + r.payAmount, 0);
+  const selEarlier = selRows.reduce((a, r) => a + r.earlier, 0);
   const chip = ([k, label]) => h`<button type="button" class="chip" id="rent-f-${k}" aria-pressed="${filter === k ? 'true' : 'false'}" data-act="filter" data-k="${k}">${label}<span class="chip-count${k === 'late' && counts.late ? ' is-bad' : ''}">${counts[k]}</span></button>`;
   const emptyMsg = { all: 'No rent was charged for ' + D.fmtMonth(period) + '.', unpaid: 'Everyone has paid ' + D.monthName(period) + ' rent.', late: 'No late rent for ' + D.fmtMonth(period) + '.', partial: 'No partial payments for ' + D.fmtMonth(period) + '.', paid: 'No one has paid ' + D.monthName(period) + ' rent yet.' }[filter];
 
@@ -5725,9 +5805,10 @@ function render(el, ctx) {
         <span class="stepper-label" aria-live="polite">${D.fmtMonth(period)}</span>
         <button type="button" class="btn btn-ghost btn-icon" id="rent-next" data-act="step" data-d="1" aria-label="Next month"${period >= b.max ? RB.raw(' disabled') : ''}>${ui.icon('chevron-right')}</button>
       </div>
-      ${current ? h`<span class="rent-now faint">This month</span>` : h`<button type="button" class="btn btn-sm" id="rent-today" data-act="now">${ui.icon('arrow-right')}<span>This month</span></button>`}
+      ${current ? h`<span class="rent-now faint">This month</span>` : h`<button type="button" class="btn btn-sm hide-phone" id="rent-today" data-act="now">${ui.icon('arrow-right')}<span>This month</span></button>`}
       <span class="spacer"></span>
       <label class="check rent-groupby"><input type="checkbox" id="rent-group" data-change="group"${grouped ? RB.raw(' checked') : ''}> <span><span class="hide-phone">Group by property</span><span class="show-phone">By property</span></span></label>
+      ${current ? '' : h`<div class="show-phone rent-pastline"><span class="faint">Past month</span><button type="button" class="linkbtn" id="rent-today-p" data-act="now">Back to ${D.monthName(b.cur)}${ui.icon('arrow-right', { size: 14 })}</button></div>`}
     </div>
     <div class="rent-tools">
       <div class="chips chips-scroll" role="group" aria-label="Filter">${FILTERS.map(chip)}</div>
@@ -5740,7 +5821,7 @@ function render(el, ctx) {
     <div class="tbl-wrap hide-phone"><table class="tbl rent-tbl">
       <thead><tr>
         <th class="tbl-check">${unpaidShown.length ? h`<input type="checkbox" id="rent-all" data-change="all" aria-label="Select all unpaid"${allSel ? RB.raw(' checked') : ''} data-write>` : ''}</th>
-        <th class="rent-c-plate">Unit</th><th>Tenant</th><th class="num">Due</th><th class="num">Paid</th><th class="num">Open</th><th>Status</th><th class="rent-c-act"><span class="vh">Actions</span></th>
+        <th class="rent-c-plate">Unit</th><th>Tenant</th><th class="num">Due</th><th class="num rent-c-paid">Paid</th><th class="num">Open</th><th>Status</th><th class="rent-c-act"><span class="vh">Actions</span></th>
       </tr></thead>
       <tbody>${groups.map(g => h`${g.prop !== null ? h`<tr class="tbl-group"><td colspan="8">${g.prop || 'No property'} <span class="rent-gcount">${g.list.filter(r => r.unpaid).length ? g.list.filter(r => r.unpaid).length + ' unpaid' : 'all paid'}</span></td></tr>` : ''}${g.list.map(r => tableRow(r, period, today))}`)}</tbody>
     </table></div>
@@ -5756,7 +5837,7 @@ function render(el, ctx) {
     </div>
 
     ${selected.size ? h`<div class="actionbar rent-bar" role="region" aria-label="Selected rows">
-      <span class="rent-bar-n">${selected.size} selected</span>
+      <span class="rent-bar-n">${selected.size} selected${selEarlier ? h`<span class="rent-bar-sub">incl. ${M.fmt(selEarlier)} from earlier months</span>` : ''}</span>
       <button type="button" class="btn btn-ghost btn-sm" id="rent-clear" data-act="clear">Clear</button>
       <button type="button" class="btn btn-primary" id="rent-bulk" data-act="bulk" data-write>Record ${RB.plural(selRows.length, 'payment')} · ${M.fmt(selTotal)}</button>
     </div>` : ''}
@@ -5786,16 +5867,6 @@ function render(el, ctx) {
       if (cursorId !== id) { cursorId = id; RB.shell.refresh(); }
     },
   });
-  // Keys while a tick box has focus (the shell treats any input as typing): keep j/k/p/x/o/Enter working.
-  if (!el._rentKeys) {
-    el._rentKeys = true;
-    el.addEventListener('keydown', e => {
-      if (!e.target.matches || !e.target.matches('input[type="checkbox"]') || e.target.id === 'rent-group') return;
-      if (['j', 'k', 'p', 'o', 'x', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        if (handleKey(e)) { e.preventDefault(); e.stopPropagation(); }
-      }
-    });
-  }
   if (pendingFocus) {
     const f = document.getElementById(pendingFocus);
     pendingFocus = null;
@@ -5872,9 +5943,12 @@ function rentRoll(today) {
     g.occupied = new Set(cur.map(r => r.unit)).size; g.units = new Set(g.rows.map(r => r.unit)).size;
   });
   const occ = rr.occupancy;
+  // Same "owed" as Tenants and Aging: what owing tenants owe, not netted against other tenants' credit.
+  const owedSum = rr.rows.reduce((a, r) => a + Math.max(0, r.balance), 0);
+  const creditSum = rr.rows.reduce((a, r) => a + Math.max(0, -r.balance), 0);
   const end = r => r.status === 'past' ? h`<span class="faint">Moved out ${D.fmt(r.moveOut || r.leaseEnd, today)}</span>` : r.leaseEnd ? D.fmt(r.leaseEnd, today) : h`<span class="faint">Month-to-month</span>`;
   const status = r => h`<span class="rp-status">${r.status === 'past' ? ui.tag('Past', 'quiet') : ui.pill(r.monthStatus, { size: 'sm' })}${r.status === 'notice' ? ui.tag('Notice', 'warn') : ''}</span>`;
-  const meta = h`<strong>${occ.occupied} of ${occ.units}</strong> units occupied (${Math.round(occ.rate * 100)}%) · ${ui.money(rr.totals.rent)} monthly rent · ${ui.money(rr.totals.deposit)} in deposits · ${rr.totals.balance > 0 ? h`${ui.money(rr.totals.balance)} owed` : 'nothing owed'}`;
+  const meta = h`<strong>${occ.occupied} of ${occ.units}</strong> units occupied (${Math.round(occ.rate * 100)}%) · ${ui.money(rr.totals.rent)} monthly rent · ${ui.money(rr.totals.deposit)} in deposits · ${owedSum > 0 ? h`${ui.money(owedSum)} owed` : 'nothing owed'}${creditSum > 0 ? h` · ${ui.money(creditSum)} in credit` : ''}`;
   const body = h`
     <div class="tbl-wrap hide-phone"><table class="tbl tbl-compact rp-tbl" id="rp-roll">
       <thead><tr><th>Unit</th><th>Tenant</th><th class="num">Rent</th><th>Lease start</th><th>Lease end</th><th class="num">Deposit</th><th class="num">Balance</th><th>This month</th></tr></thead>
@@ -5883,7 +5957,7 @@ function rentRoll(today) {
         ${g.rows.map(r => h`<tr class="${r.status === 'past' ? 'is-muted' : ''}" data-tenant="${r.tenantId}">
           <td>${ui.plate(r.unit)}</td><td><button type="button" class="rp-name" data-act="open" data-id="${r.tenantId}">${r.name}</button></td>
           <td class="num">${r.status === 'past' ? h`<span class="faint">—</span>` : ui.money(r.rent)}</td>
-          <td>${r.leaseStart ? D.fmt(r.leaseStart, today) : '—'}</td><td>${end(r)}</td>
+          <td class="nowrap">${r.leaseStart ? D.fmt(r.leaseStart, today) : '—'}</td><td class="nowrap">${end(r)}</td>
           <td class="num">${r.deposit ? ui.money(r.deposit) : h`<span class="faint">—</span>`}</td>
           <td class="num">${ui.balance(r.balance)}</td><td>${status(r)}</td></tr>`)}
         <tr class="rp-subtotal"><td></td><td>${g.property} subtotal</td><td class="num">${ui.money(g.rent)}</td><td></td><td></td><td class="num">${ui.money(g.deposit)}</td><td class="num">${ui.balance(g.balance)}</td><td></td></tr>
@@ -5911,7 +5985,7 @@ function aging(today) {
   const meta = ag.rows.length
     ? h`<strong>${ui.money(ag.totals.total)}</strong> owed by ${RB.plural(ag.rows.length, 'tenant')}${ag.totals.d90 ? h` · <span class="tone-bad">${ui.money(ag.totals.d90)} over 90 days</span>` : ''} · ${RB.plural(none, 'tenant')} ${none === 1 ? 'owes' : 'owe'} nothing`
     : h`Nobody owes anything · ${RB.plural(none, 'tenant')} all square`;
-  const body = ag.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-aging">
+  const body = ag.rows.length ? h`<div class="tbl-scroll-phone rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-aging">
       <thead><tr><th>Tenant</th><th class="num">0–30 days</th><th class="num">31–60</th><th class="num">61–90</th><th class="num">90+</th><th class="num">Total</th></tr></thead>
       <tbody>${ag.rows.map(r => h`<tr data-tenant="${r.tenantId}"><td><span class="rp-who">${ui.plate(r.unit)}<button type="button" class="rp-name truncate" data-act="open" data-id="${r.tenantId}">${r.name}</button></span></td>
         <td class="num">${cell(r.d0_30)}</td><td class="num">${cell(r.d31_60)}</td><td class="num">${cell(r.d61_90)}</td><td class="num">${cell(r.d90)}</td><td class="num strong">${ui.money(r.total, { tone: 'owed' })}</td></tr>`)}</tbody>
@@ -5947,7 +6021,7 @@ function collection(today) {
       </div>
       <figcaption class="bar-legend rp-legend"><span class="rp-key rp-key-charged">Charged</span><span class="rp-key rp-key-collected">Collected</span><span class="faint">Percent = collected of charged</span></figcaption>
     </figure>
-    <div class="rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-collection">
+    <div class="tbl-scroll-phone rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-collection">
       <thead><tr><th>Month</th><th class="num">Charged</th><th class="num">Collected</th><th class="num hide-phone">Outstanding</th><th class="num">Rate</th></tr></thead>
       <tbody>${rows.slice().reverse().map(r => h`<tr><td><span class="hide-phone">${D.fmtMonth(r.period)}</span><span class="show-phone">${D.MON[+r.period.slice(5, 7) - 1] + ' ' + r.period.slice(0, 4)}</span>${r.period === curKey ? h` <span class="faint t-12 hide-phone">so far</span>` : ''}</td><td class="num">${ui.money(r.charged)}</td><td class="num">${ui.money(r.collected)}</td><td class="num hide-phone">${r.outstanding ? ui.money(r.outstanding, { tone: 'owed' }) : h`<span class="faint">—</span>`}</td><td class="num">${pctTxt(r.rate)}</td></tr>`)}</tbody>
       <tfoot><tr><td>12 months</td><td class="num" data-total="charged">${ui.money(tot.charged)}</td><td class="num" data-total="collected">${ui.money(tot.collected)}</td><td class="num hide-phone">${ui.money(tot.outstanding)}</td><td class="num">${pctTxt(rate)}</td></tr></tfoot>
@@ -5971,7 +6045,7 @@ function income(today) {
       <button type="button" class="btn btn-ghost btn-icon" id="rp-year-prev" data-act="year" data-d="-1" aria-label="Previous year"${yr <= lo ? RB.raw(' disabled') : ''}>${ui.icon('chevron-left')}</button>
       <span class="stepper-label" id="rp-year-label">${yr}</span>
       <button type="button" class="btn btn-ghost btn-icon" id="rp-year-next" data-act="year" data-d="1" aria-label="Next year"${yr >= cy ? RB.raw(' disabled') : ''}>${ui.icon('chevron-right')}</button></div>`;
-  const body = inc.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-income">
+  const body = inc.rows.length ? h`<div class="tbl-scroll-phone rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-income">
       <thead><tr><th>Tenant</th><th class="hide-phone">Property</th><th class="num hide-phone">Payments</th><th class="num">Received</th><th class="num hide-phone">Credits given</th></tr></thead>
       <tbody>${inc.rows.map(r => h`<tr data-tenant="${r.tenantId}"><td><span class="rp-who">${ui.plate(r.unit)}<button type="button" class="rp-name truncate" data-act="open" data-id="${r.tenantId}">${r.name}</button></span></td>
         <td class="hide-phone muted">${r.property}</td><td class="num faint hide-phone">${r.count}</td><td class="num">${ui.money(r.payments)}</td><td class="num hide-phone">${r.credits ? ui.money(r.credits) : h`<span class="faint">—</span>`}</td></tr>`)}</tbody>
@@ -6000,7 +6074,7 @@ RB.views.register('reports', {
         </div>
       </div>
       <section class="rp-report" role="tabpanel" aria-labelledby="rp-tab-${tab}" data-report="${tab}">
-        <p class="rp-meta" id="rp-meta">${rep.meta}</p>
+        <p class="view-summary rp-meta" id="rp-meta">${rep.meta}</p>
         ${rep.body}
       </section>`);
     ui.bind(el, {
@@ -6276,7 +6350,7 @@ function importSection(today) {
         <div><strong>${RB.plural(p.rows.length, 'row')}</strong> found${p.hasHeader ? '' : ' (no header row recognised — match the columns below)'} · <span class="tone-ok">${good} ready</span>${bad ? h` · <span class="tone-bad">${RB.plural(bad, 'row')} with problems will be skipped</span>` : ''}</div>
         ${missing.length ? h`<div class="tone-bad t-12">Choose which column holds the ${missing.map(fieldLabel).join(' and ').toLowerCase()}.</div>` : h`<div class="faint t-12">Columns were matched by their headings — change any that are wrong.</div>`}
       </div>
-      <div class="st-prev-scroll"><table class="tbl tbl-compact st-prev" id="st-import-table">
+      <div class="tbl-scroll st-prev-scroll"><table class="tbl tbl-compact st-prev" id="st-import-table">
         <thead><tr><th class="st-prev-n">#</th><th class="st-prev-checkh">Check</th>${p.header.map((hd, i) => h`<th><span class="st-src">${hd || 'Column ' + (i + 1)}</span>
           <span class="select st-map"><select class="input" id="st-map-${i}" data-change="map" data-i="${i}" aria-label="Import column ${hd || i + 1} as">${FIELDS.map(f => h`<option value="${f.key}"${mapped[i] === f.key ? RB.raw(' selected') : ''}>${f.label}</option>`)}</select></span></th>`)}</tr></thead>
         <tbody>${p.rows.slice(0, 200).map((r, ri) => h`<tr class="${checks[ri].ok ? '' : 'st-prev-bad'}"><td class="st-prev-n faint">${ri + 1}</td>
@@ -6616,7 +6690,7 @@ function alertsPart(t, lg, settings, today) {
   const dd = RB.model.depositDue(t, settings, today);
   if (dd) out.push(h`<div class="tn-alert">${ui.icon('clock', { size: 14, cls: dd.overdue || dd.daysLeft <= 7 ? 'tone-bad' : 'tone-warn' })}<span class="grow">Deposit ${M.fmt(dd.amount)} due back ${dd.overdue ? h`<strong class="tone-bad">${-dd.daysLeft} d overdue</strong> (${D.fmt(dd.dueDate, today)})` : h`by ${D.fmt(dd.dueDate, today)} (${D.rel(dd.dueDate, today)})`}.</span><button type="button" class="linkbtn" data-act="settle" data-write>Settle deposit</button></div>`);
   const ls = RB.model.leaseState(t, settings, today);
-  if (t.status === 'notice' && ls.moveOut && ls.moveOut <= today) out.push(h`<div class="tn-alert">${ui.icon('door', { size: 14, cls: 'tone-warn' })}<span class="grow">Move-out date ${D.fmt(ls.moveOut, today)} has passed.</span><button type="button" class="linkbtn" data-act="moveout" data-write>Finish move-out</button></div>`);
+  if (t.status === 'notice' && ls.moveOut && ls.moveOut <= today) out.push(h`<div class="tn-alert">${ui.icon('door', { size: 14, cls: 'tone-warn' })}<span class="grow">${ls.moveOut === today ? 'Moves out today.' : h`Move-out date ${D.fmt(ls.moveOut, today)} has passed.`}</span><button type="button" class="linkbtn" data-act="moveout" data-write>Complete move-out</button></div>`);
   return out.length ? h`<div class="tn-alerts">${out}</div>` : '';
 }
 
@@ -6750,7 +6824,7 @@ function composer() {
     <div class="field-error" id="tn-note-text-err" aria-live="polite"></div>
     <div class="tn-composer-row">
       <input type="hidden" id="tn-note-kind" name="kind" value="note" data-kind="seg">
-      <div class="seg" role="radiogroup" aria-label="Kind of note" data-seg-for="tn-note-kind">${kinds.map(k => h`<button type="button" role="radio" data-value="${k.value}" aria-checked="${k.value === 'note'}" aria-pressed="${k.value === 'note'}">${k.label}</button>`)}</div>
+      <div class="seg" role="radiogroup" aria-label="Kind of note" data-seg-for="tn-note-kind">${kinds.map(k => h`<button type="button" role="radio" data-value="${k.value}" aria-checked="${String(k.value === 'note')}" aria-pressed="${String(k.value === 'note')}">${k.label}</button>`)}</div>
       <label class="tn-follow"><span class="faint">${ui.icon('calendar', { size: 14 })}</span><span class="vh">Follow up on</span><input class="input" type="date" id="tn-note-follow" name="followUp" data-kind="date" title="Follow up on (optional)"></label>
       <span class="spacer"></span>
       <button type="submit" class="btn btn-sm btn-primary">Add note</button>
@@ -6850,7 +6924,7 @@ T.overflowMenu = function overflowMenu(anchor, id) {
       { label: 'Change rent', icon: 'cash', write: true, onSelect: () => A.changeRent(id) },
       { label: 'Renew lease', icon: 'leases', write: true, onSelect: () => A.renewLease(id) });
     if (t.status !== 'notice') items.push({ label: 'Give notice', icon: 'calendar', write: true, onSelect: () => A.giveNotice(id) });
-    items.push({ label: 'Move out', icon: 'door', write: true, onSelect: () => A.moveOut(id) });
+    items.push({ label: t.status === 'notice' && t.lease && t.lease.moveOut && t.lease.moveOut <= S().today() ? 'Complete move-out' : 'Move out', icon: 'door', write: true, onSelect: () => A.moveOut(id) });
   }
   if (t.deposit && +t.deposit.amount > 0 && !t.deposit.returned && t.lease && t.lease.moveOut) items.push({ label: 'Settle deposit', icon: 'key', write: true, onSelect: () => A.settleDeposit(id) });
   items.push({ sep: true }, { label: 'Delete tenant', icon: 'trash', danger: true, write: true, onSelect: () => T.deleteTenant(id) });
@@ -6987,12 +7061,12 @@ function tenantForm(id, section, preset) {
               ? ui.field({ name: 'rent', id: 'tf-rent', label: 'Monthly rent', type: 'money', value: sched.length ? sched[0].amount : null, required: true })
               : h`<div class="field"><span class="field-label">Monthly rent</span><div class="tn-static">${ui.money(RB.model.rentOn(t, today))} <span class="faint">· ${RB.plural(sched.length, 'amount')} on file</span></div><div class="field-hint">History is kept. <button type="button" class="linkbtn" data-tf="changerent">Change rent from a date…</button></div></div>`}
             ${ui.field({ name: 'deposit', id: 'tf-deposit', label: 'Security deposit', type: 'money', value: dep.amount || null, optional: true })}
-            ${ui.field({ name: 'trackFrom', id: 'tf-track', label: 'Start tracking rent from', type: 'date', value: track0, required: true })}
+            ${ui.field({ name: 'trackFrom', id: 'tf-track', label: 'Start tracking rent from', type: 'date', value: track0, required: true, requiredMsg: 'Choose the date to start tracking rent from' })}
             ${ui.field({ name: 'opening', id: 'tf-opening', label: 'Opening balance', type: 'money', value: t.opening ? t.opening.amount : null, optional: true, placeholder: '0.00', hint: 'Owed on that date. Negative = credit.' })}
             <div class="form-note span-2" id="tf-track-note"></div>
           </div></fieldset>
 
-          ${edit ? '' : h`<button type="button" class="tn-more-toggle" id="tf-more" aria-expanded="${moreOpen}" aria-controls="tf-more-body">${ui.icon('chevron-down', { size: 14 })}<span>More details</span><span class="faint">phone, email, co-tenants, emergency contact, due day, recurring charges, insurance, links, notes</span></button>`}
+          ${edit ? '' : h`<button type="button" class="tn-more-toggle" id="tf-more" aria-expanded="${String(moreOpen)}" aria-controls="tf-more-body">${ui.icon('chevron-down', { size: 14 })}<span>More details</span><span class="faint">phone, email, co-tenants, emergency contact, due day, recurring charges, insurance, links, notes</span></button>`}
           <div class="tn-more-body" id="tf-more-body"${moreOpen ? '' : RB.raw(' hidden')}>
             <fieldset class="fieldset" data-sec="contact"><legend class="fieldset-title">Contact</legend><div class="form-grid">
               ${ui.field({ name: 'phone', id: 'tf-phone', label: 'Phone', type: 'tel', value: t.phone, optional: true })}
@@ -7141,7 +7215,7 @@ function changeRent(id) {
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="form-grid">
           ${ui.field({ name: 'amount', id: 'cr-amount', label: 'New monthly rent', type: 'money', value: null, required: true, hint: 'Now ' + M.fmt(cur) })}
-          ${ui.field({ name: 'from', id: 'cr-from', label: 'Starting', type: 'date', value: from0, required: true, hint: last ? 'After ' + D.fmt(last.from, today) + ', the last change' : null })}
+          ${ui.field({ name: 'from', id: 'cr-from', label: 'Starting', type: 'date', value: from0, required: true, requiredMsg: 'Choose when the new rent starts', hint: last ? 'After ' + D.fmt(last.from, today) + ', the last change' : null })}
         </div>
         <div class="form-note mt-4" id="cr-sum" aria-live="polite"></div>`);
         const upd = () => {
@@ -7186,8 +7260,8 @@ function giveNotice(id) {
       title: 'Give notice', sub: sub(t),
       body: el => {
         el.innerHTML = String(h`<div class="form-grid">
-          ${ui.field({ name: 'noticeDate', id: 'gn-notice', label: 'Notice given on', type: 'date', value: l.noticeDate || today, required: true })}
-          ${ui.field({ name: 'moveOut', id: 'gn-moveout', label: 'Moving out on', type: 'date', value: mo0, required: true, hint: l.end ? 'Lease ends ' + D.fmt(l.end, today) : 'Month-to-month' })}
+          ${ui.field({ name: 'noticeDate', id: 'gn-notice', label: 'Notice given on', type: 'date', value: l.noticeDate || today, required: true, requiredMsg: 'Choose the date notice was given' })}
+          ${ui.field({ name: 'moveOut', id: 'gn-moveout', label: 'Moving out on', type: 'date', value: mo0, required: true, requiredMsg: 'Choose the move-out date', hint: l.end ? 'Lease ends ' + D.fmt(l.end, today) : 'Month-to-month' })}
         </div><div class="form-note mt-4" id="gn-sum"></div>`);
         const upd = () => {
           const mo = el.querySelector('#gn-moveout').value;
@@ -7217,6 +7291,12 @@ function giveNotice(id) {
 }
 
 // ------------------------------------------------------------------ move out
+const firstName = t => String(t.name || 'The tenant').trim().split(/\s+/)[0];
+/**
+ * Move-out sheet. A date on or before today completes the move-out (status `past`, then deposit settlement).
+ * A future date is recorded as notice (status `notice`, lease.moveOut set); Today and the drawer then offer
+ * "Complete move-out" once that date arrives.
+ */
 function moveOut(id) {
   if (!T.guard()) return Promise.resolve(false);
   const t = S().tenant(id); if (!t) return Promise.resolve(false);
@@ -7224,13 +7304,14 @@ function moveOut(id) {
   const settings = S().settings();
   const l = t.lease || {};
   const dep = t.deposit || {};
+  const owesDeposit = +dep.amount > 0 && !dep.returned;
   return new Promise(resolve => {
     let ok = false;
     ui.sheet({
-      title: 'Move out', sub: sub(t), size: 'wide',
+      title: t.status === 'notice' && l.moveOut && l.moveOut <= today ? 'Complete move-out' : 'Move out', sub: sub(t), size: 'wide',
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="form-grid">
-          ${ui.field({ name: 'moveOut', id: 'mo-date', label: 'Moved out on', type: 'date', value: l.moveOut || today, required: true, hint: l.noticeDate ? 'Notice given ' + D.fmt(l.noticeDate, today) : null })}
+          ${ui.field({ name: 'moveOut', id: 'mo-date', label: 'Move-out date', type: 'date', value: l.moveOut || today, required: true, requiredMsg: 'Choose the move-out date', hint: l.noticeDate ? 'Notice given ' + D.fmt(l.noticeDate, today) : null })}
         </div><div class="tn-sum mt-4" id="mo-sum" aria-live="polite"></div>`);
         const upd = () => {
           const mo = el.querySelector('#mo-date').value;
@@ -7244,16 +7325,24 @@ function moveOut(id) {
             ${fr.filter(r => r.kind === 'recurring').map(r => h`<div class="tn-sum-row tn-sum-minor"><span></span><span class="tn-sum-val">${r.label}</span><span>${ui.money(r.amount)}</span></div>`)}
             <div class="tn-sum-row tn-sum-total"><span>${pv.balance >= 0 ? 'Still owed at move-out' : 'Credit at move-out'}</span><span class="tn-sum-val faint">${pv.balance !== pv.balanceNow ? 'if nothing more is paid · owed today ' + M.fmt(Math.max(0, pv.balanceNow)) : 'if nothing more is paid'}</span><strong>${pv.balance > 0 ? ui.money(pv.balance, { tone: 'owed' }) : pv.balance < 0 ? ui.money(-pv.balance) : ui.money(0)}</strong></div>
             ${+dep.amount > 0 && !dep.returned ? h`<div class="tn-sum-row"><span>Deposit held</span><span class="tn-sum-val">return by ${D.fmtLong(pv.depositDueDate)} <span class="faint">(${settings.depositReturnDays} days after move-out)</span></span><strong>${ui.money(dep.amount)}</strong></div>` : ''}
-            ${mo > today ? h`<div class="form-note mt-2">${ui.icon('alert', { size: 14, cls: 'tn-inline-ico' })}That date is still ahead. To plan a future move-out, use <button type="button" class="linkbtn" id="mo-notice">Give notice</button> instead.</div>` : ''}`);
-          const gn = box.querySelector('#mo-notice');
-          if (gn) gn.addEventListener('click', () => { sh.close(); setTimeout(() => A().giveNotice(id), 0); });
-          sh.setAction('save', { label: 'Move out on ' + D.fmt(mo, today) });
+            ${mo > today ? h`<div class="form-note mt-2" id="mo-future">${ui.icon('calendar', { size: 14, cls: 'tn-inline-ico' })}${firstName(t)} moves out ${D.fmt(mo, today)} — recorded as notice. ${owesDeposit ? 'Come back to settle the deposit after that date.' : 'Come back to complete the move-out after that date.'}</div>` : ''}`);
+          sh.setAction('save', { label: mo > today ? 'Record notice · out ' + D.fmt(mo, today) : 'Move out on ' + D.fmt(mo, today) });
         };
         el.addEventListener('input', upd); el.addEventListener('change', upd); upd();
       },
       actions: [{ id: 'save', label: 'Move out', kind: 'primary', onClick: s => {
         const v = ui.form(s.body, { validate: v => ({ moveOut: v.moveOut && l.moveIn && v.moveOut < l.moveIn ? 'Move-out can’t be before move-in (' + D.fmt(l.moveIn, today) + ')' : '' }) });
         if (!v) return false;
+        // A date still ahead is notice, not a move-out: the tenant stays current until then (spec: status `past` only once gone).
+        if (v.moveOut > today) {
+          const prevN = { status: t.status || 'active', lease: { noticeDate: l.noticeDate || null, moveOut: l.moveOut || null } };
+          const lid = RB.id();
+          S().updateTenant(id, { status: 'notice', lease: { noticeDate: l.noticeDate || today, moveOut: v.moveOut } }).catch(() => {});
+          S().addLog(id, { id: lid, kind: 'notice', text: 'Moving out ' + D.fmtLong(v.moveOut) + ' — recorded as notice.', followUp: null, done: false }).catch(() => {});
+          ok = true;
+          ui.toast('Notice recorded — ' + firstName(t) + ' moves out ' + D.fmt(v.moveOut, today), { undo: () => { S().updateTenant(id, prevN); S().deleteLog(id, lid); } });
+          return;
+        }
         const prev = { status: t.status || 'active', lease: { moveOut: l.moveOut || null } };
         S().updateTenant(id, { status: 'past', lease: { moveOut: v.moveOut } }).catch(() => {});
         ok = true;
@@ -7323,7 +7412,7 @@ function settleDeposit(id, opts) {
             <div id="sd-short-wrap" hidden>${ui.field({ name: 'chargeShort', id: 'sd-short', type: 'checkbox', value: true, label: 'Add what the deductions exceed the deposit by to the ledger as a charge' })}</div>
           </div>
           <div class="form-grid mt-4">
-            ${ui.field({ name: 'date', id: 'sd-date', label: 'Returned on', type: 'date', value: today, required: true })}
+            ${ui.field({ name: 'date', id: 'sd-date', label: 'Returned on', type: 'date', value: today, required: true, requiredMsg: 'Choose the date the deposit was returned' })}
           </div>
           <div class="tn-sum mt-5" id="sd-sum" aria-live="polite"></div>`);
         wireRepeaters(el);
@@ -7401,7 +7490,7 @@ T.editNote = function editNote(id, lid) {
     title: 'Edit note', sub: sub(t),
     body: h`<div class="form-grid">
       ${ui.field({ name: 'kind', id: 'en-kind', label: 'Kind', type: 'seg', value: e.kind || 'note', options: RB.actions.LOG_KINDS, span: 2 })}
-      ${ui.field({ name: 'text', id: 'en-text', label: 'What happened', type: 'textarea', value: e.text || '', required: true, span: 2, rows: 4 })}
+      ${ui.field({ name: 'text', id: 'en-text', label: 'What happened', type: 'textarea', value: e.text || '', required: true, requiredMsg: 'Describe what happened', span: 2, rows: 4 })}
       ${ui.field({ name: 'followUp', id: 'en-followup', label: 'Follow up on', type: 'date', value: e.followUp || '', optional: true })}
     </div>`,
     initialFocus: '#en-text',
@@ -7559,6 +7648,16 @@ function render(el, ctx) {
   const all = rowsFor(ctx);
   const counts = {};
   FILTERS.forEach(([k]) => { counts[k] = all.filter(PRED[k]).length; });
+  // A deep link (or a move-out) can open a tenant the current filter hides, e.g. #t-<past tenant> under "All".
+  // Switch the list to one that contains them so the highlight, "N of M" and j/k stepping stay coherent.
+  // Not on 'refresh': that's the viewer choosing a filter themselves. Not remembered in prefs.
+  if (ctx.param && ctx.reason !== 'refresh') {
+    const mine = all.find(r => r.t.id === ctx.param);
+    if (mine && !visible(all).some(g => g.rows.includes(mine))) {
+      if (query && PRED[filter](mine)) query = '';
+      else { query = ''; filter = ['all', 'past', 'notice', 'owing', 'ending'].find(k => PRED[k](mine)) || filter; }
+    }
+  }
   const groups = visible(all);
   const flat = groups.flatMap(g => g.rows);
   T.order = flat.map(r => r.t.id);
@@ -7569,7 +7668,7 @@ function render(el, ctx) {
   const props = new Set(current.map(r => r.t.property).filter(Boolean));
   const monthly = current.reduce((s, r) => s + r.sum.rent, 0);
   const owed = all.reduce((s, r) => s + Math.max(0, r.lg.balance), 0);
-  const chip = ([k, label]) => h`<button type="button" class="chip" aria-pressed="${filter === k}" data-act="filter" data-k="${k}">${label}<span class="chip-count${k === 'owing' && counts.owing ? ' is-bad' : ''}">${counts[k]}</span></button>`;
+  const chip = ([k, label]) => h`<button type="button" class="chip" aria-pressed="${String(filter === k)}" data-act="filter" data-k="${k}">${label}<span class="chip-count${k === 'owing' && counts.owing ? ' is-bad' : ''}">${counts[k]}</span></button>`;
   const sortLabel = SORTS[sort.key].label;
   const sortDefault = sort.key === 'urgency' && sort.dir === 1;
   const q = query.trim();
@@ -7581,19 +7680,22 @@ function render(el, ctx) {
   const cards = groups.map(g => h`${g.property !== null ? h`<div class="tn-card-group">${g.property}<span class="faint">${RB.plural(g.rows.length, 'tenant')}</span></div>` : ''}${g.rows.map(r => card(r, ctx))}`);
 
   el.innerHTML = String(h`
-    <div class="tn-summary"><span>${RB.plural(current.length, 'tenant')}</span><span>${RB.plural(props.size, 'property', 'properties')}</span><span>${M.fmt(monthly)} monthly rent</span>${owed ? h`<span class="tone-bad tn-sum-owed">${M.fmt(owed)} owed</span>` : ''}</div>
+    <div class="view-head tn-top">
+      <p class="view-summary tn-summary"><span><strong>${current.length}</strong> ${current.length === 1 ? 'tenant' : 'tenants'}</span><span><strong>${props.size}</strong> ${props.size === 1 ? 'property' : 'properties'}</span><span><strong>${M.fmt(monthly)}</strong> monthly rent</span>${owed ? h`<span class="tone-bad tn-sum-owed">${M.fmt(owed)} owed</span>` : ''}</p>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-primary tn-add-btn" data-act="add" data-write>${ui.icon('plus')}<span>Add tenant</span></button>
+    </div>
     <div class="view-head tn-head">
       <div class="chips chips-scroll tn-chips" role="group" aria-label="Show">${FILTERS.map(chip)}</div>
       <span class="spacer hide-phone"></span>
       <label class="search tn-search" for="tn-q"><span class="search-icon">${ui.icon('filter')}</span><input class="input" type="search" id="tn-q" placeholder="Filter by name, unit, phone…" value="${query}" data-input="q" autocomplete="off" spellcheck="false" aria-label="Filter tenants">${q ? h`<button type="button" class="btn btn-ghost btn-icon btn-sm tn-q-clear" data-act="clearq" aria-label="Clear filter">${ui.icon('x', { size: 14 })}</button>` : ''}</label>
-      <button type="button" class="btn btn-primary tn-add-btn" data-act="add" data-write>${ui.icon('plus')}<span>Add tenant</span></button>
     </div>
     <div class="tn-tools">
       <span class="tn-count faint">${q ? h`${RB.plural(flat.length, 'match', 'matches')} for “${q}”${filter !== 'all' ? ' in ' + filterLabel : ''}` : h`Showing ${RB.plural(flat.length, 'tenant')}`}</span>
       <span class="spacer"></span>
       <button type="button" class="btn btn-ghost btn-sm tn-sortbtn" data-act="sortmenu" aria-haspopup="menu">${ui.icon('sort')}<span>Sort: ${sortLabel}${sortDefault ? '' : sort.dir === SORTS[sort.key].dir ? '' : ' (reversed)'}</span></button>
-      <button type="button" class="btn btn-ghost btn-sm tn-toggle" data-act="group" aria-pressed="${group}">${ui.icon('grid')}<span>Group by property</span></button>
-      <div class="seg hide-phone" role="group" aria-label="Row density"><button type="button" data-act="density" data-v="comfortable" aria-pressed="${density === 'comfortable'}">Comfortable</button><button type="button" data-act="density" data-v="compact" aria-pressed="${density === 'compact'}">Compact</button></div>
+      <label class="check tn-groupby"><input type="checkbox" id="tn-group" data-change="group"${group ? RB.raw(' checked') : ''}> <span><span class="hide-phone">Group by property</span><span class="show-phone">By property</span></span></label>
+      <div class="seg hide-phone" role="group" aria-label="Row density"><button type="button" data-act="density" data-v="comfortable" aria-pressed="${String(density === 'comfortable')}">Comfortable</button><button type="button" data-act="density" data-v="compact" aria-pressed="${String(density === 'compact')}">Compact</button></div>
     </div>
     ${empty ? ui.empty(q
       ? { icon: 'search', title: 'No tenants match “' + q + '”', body: filter !== 'all' ? 'Only ' + filterLabel + ' is being searched. Try All, or check the spelling.' : 'Search covers names, co-tenants, units, properties, phone numbers and emails.', actions: [{ label: 'Clear filter', act: 'clearq' }].concat(filter !== 'all' ? [{ label: 'Search all tenants', kind: 'soft', act: 'filter', attrs: { 'data-k': 'all' } }] : []) }
@@ -7607,7 +7709,7 @@ function render(el, ctx) {
     filter: b => { filter = b.dataset.k; RB.prefs.set('tn:filter', filter); cursor = null; RB.shell.refresh(); },
     sort: b => { const k = b.dataset.k; sort = sort.key === k ? { key: k, dir: -sort.dir } : { key: k, dir: SORTS[k].dir }; RB.prefs.set('tn:sort', sort); RB.shell.refresh(); },
     sortmenu: b => ui.menu(b, Object.keys(SORTS).map(k => ({ label: SORTS[k].label, checked: sort.key === k, hint: k === 'urgency' ? 'default' : '', onSelect: () => { sort = { key: k, dir: SORTS[k].dir }; RB.prefs.set('tn:sort', sort); RB.shell.refresh(); } })), { align: 'end' }),
-    group: () => { group = !group; RB.prefs.set('tn:group', group); RB.shell.refresh(); },
+    group: inp => { group = !!inp.checked; RB.prefs.set('tn:group', group); RB.shell.refresh(); },
     density: b => { density = b.dataset.v; RB.prefs.set('tn:density', density); RB.shell.refresh(); },
     q: inp => { query = inp.value; refreshSoon(); },
     clearq: () => { query = ''; RB.shell.refresh(); const i = document.getElementById('tn-q'); if (i) i.focus(); },
@@ -7968,14 +8070,14 @@ function ticketSheet(id, prefill) {
       sub: k ? where(k) + ' · reported ' + D.fmt(k.reported, today) : '',
       body: (el, sh) => {
         el.innerHTML = String(h`<fieldset class="fieldset"><legend class="fieldset-title">What and where</legend><div class="form-grid">
-            ${ui.field({ name: 'title', id: 'uk-title', label: 'What needs doing', value: p.title, required: true, placeholder: 'No hot water, leaking tap…', span: 2 })}
+            ${ui.field({ name: 'title', id: 'uk-title', label: 'What needs doing', value: p.title, required: true, requiredMsg: 'Describe what needs doing', placeholder: 'No hot water, leaking tap…', span: 2 })}
             ${ui.field({ name: 'tenantId', id: 'uk-tenant', label: 'Tenant', type: 'select', value: p.tenantId || '', span: 2,
               options: [{ value: '', label: 'No tenant — common area or vacant unit' }].concat(tenants.map(t => ({ value: t.id, label: t.name + ' · ' + RB.model.unitLabel(t) }))) })}
             ${ui.field({ name: 'property', id: 'uk-property', label: 'Property', value: p.property, attrs: { list: 'uk-props' }, required: true })}
             ${ui.field({ name: 'unit', id: 'uk-unit', label: 'Unit or area', value: p.unit, placeholder: '2B, basement, roof…', optional: true })}
             ${ui.field({ name: 'detail', id: 'uk-detail', label: 'Details', type: 'textarea', value: p.detail, optional: true, rows: 3, span: 2 })}
             ${ui.field({ name: 'priority', id: 'uk-priority', label: 'Priority', type: 'seg', value: p.priority, options: [{ value: 'urgent', label: 'Urgent', icon: 'triangle' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Low' }] })}
-            ${ui.field({ name: 'reported', id: 'uk-reported', label: 'Reported', type: 'date', value: p.reported, required: true, max: today })}
+            ${ui.field({ name: 'reported', id: 'uk-reported', label: 'Reported', type: 'date', value: p.reported, required: true, requiredMsg: 'Choose the date it was reported', max: today })}
           </div><datalist id="uk-props">${props.map(x => h`<option value="${x}"></option>`)}</datalist></fieldset>
           <fieldset class="fieldset"><legend class="fieldset-title">Progress and cost</legend><div class="form-grid">
             ${ui.field({ name: 'status', id: 'uk-status', label: 'Status', type: 'seg', value: p.status, options: STATUS.map(([value, label]) => ({ value, label })), span: 2 })}
@@ -8132,7 +8234,7 @@ RB.views.register('upkeep', {
     const chipCount = p => all.filter(k => k.status !== 'done' && (!p || k.property === p)).length;
     el.innerHTML = String(h`
       <div class="view-head uk-head">
-        <p class="uk-count" id="uk-count">${countLine}</p>
+        <p class="view-summary uk-count" id="uk-count">${countLine}</p>
         <span class="spacer"></span>
         <button type="button" class="btn btn-primary" data-act="add" id="uk-add" data-write>${ui.icon('plus')}<span>New request</span></button>
       </div>

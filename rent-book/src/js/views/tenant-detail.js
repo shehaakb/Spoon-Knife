@@ -155,7 +155,7 @@ function alertsPart(t, lg, settings, today) {
   const dd = RB.model.depositDue(t, settings, today);
   if (dd) out.push(h`<div class="tn-alert">${ui.icon('clock', { size: 14, cls: dd.overdue || dd.daysLeft <= 7 ? 'tone-bad' : 'tone-warn' })}<span class="grow">Deposit ${M.fmt(dd.amount)} due back ${dd.overdue ? h`<strong class="tone-bad">${-dd.daysLeft} d overdue</strong> (${D.fmt(dd.dueDate, today)})` : h`by ${D.fmt(dd.dueDate, today)} (${D.rel(dd.dueDate, today)})`}.</span><button type="button" class="linkbtn" data-act="settle" data-write>Settle deposit</button></div>`);
   const ls = RB.model.leaseState(t, settings, today);
-  if (t.status === 'notice' && ls.moveOut && ls.moveOut <= today) out.push(h`<div class="tn-alert">${ui.icon('door', { size: 14, cls: 'tone-warn' })}<span class="grow">Move-out date ${D.fmt(ls.moveOut, today)} has passed.</span><button type="button" class="linkbtn" data-act="moveout" data-write>Finish move-out</button></div>`);
+  if (t.status === 'notice' && ls.moveOut && ls.moveOut <= today) out.push(h`<div class="tn-alert">${ui.icon('door', { size: 14, cls: 'tone-warn' })}<span class="grow">${ls.moveOut === today ? 'Moves out today.' : h`Move-out date ${D.fmt(ls.moveOut, today)} has passed.`}</span><button type="button" class="linkbtn" data-act="moveout" data-write>Complete move-out</button></div>`);
   return out.length ? h`<div class="tn-alerts">${out}</div>` : '';
 }
 
@@ -289,7 +289,7 @@ function composer() {
     <div class="field-error" id="tn-note-text-err" aria-live="polite"></div>
     <div class="tn-composer-row">
       <input type="hidden" id="tn-note-kind" name="kind" value="note" data-kind="seg">
-      <div class="seg" role="radiogroup" aria-label="Kind of note" data-seg-for="tn-note-kind">${kinds.map(k => h`<button type="button" role="radio" data-value="${k.value}" aria-checked="${k.value === 'note'}" aria-pressed="${k.value === 'note'}">${k.label}</button>`)}</div>
+      <div class="seg" role="radiogroup" aria-label="Kind of note" data-seg-for="tn-note-kind">${kinds.map(k => h`<button type="button" role="radio" data-value="${k.value}" aria-checked="${String(k.value === 'note')}" aria-pressed="${String(k.value === 'note')}">${k.label}</button>`)}</div>
       <label class="tn-follow"><span class="faint">${ui.icon('calendar', { size: 14 })}</span><span class="vh">Follow up on</span><input class="input" type="date" id="tn-note-follow" name="followUp" data-kind="date" title="Follow up on (optional)"></label>
       <span class="spacer"></span>
       <button type="submit" class="btn btn-sm btn-primary">Add note</button>
@@ -389,7 +389,7 @@ T.overflowMenu = function overflowMenu(anchor, id) {
       { label: 'Change rent', icon: 'cash', write: true, onSelect: () => A.changeRent(id) },
       { label: 'Renew lease', icon: 'leases', write: true, onSelect: () => A.renewLease(id) });
     if (t.status !== 'notice') items.push({ label: 'Give notice', icon: 'calendar', write: true, onSelect: () => A.giveNotice(id) });
-    items.push({ label: 'Move out', icon: 'door', write: true, onSelect: () => A.moveOut(id) });
+    items.push({ label: t.status === 'notice' && t.lease && t.lease.moveOut && t.lease.moveOut <= S().today() ? 'Complete move-out' : 'Move out', icon: 'door', write: true, onSelect: () => A.moveOut(id) });
   }
   if (t.deposit && +t.deposit.amount > 0 && !t.deposit.returned && t.lease && t.lease.moveOut) items.push({ label: 'Settle deposit', icon: 'key', write: true, onSelect: () => A.settleDeposit(id) });
   items.push({ sep: true }, { label: 'Delete tenant', icon: 'trash', danger: true, write: true, onSelect: () => T.deleteTenant(id) });

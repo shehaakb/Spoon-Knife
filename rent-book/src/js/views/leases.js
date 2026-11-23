@@ -131,7 +131,7 @@ function actionCell(r, noticeDays, phone) {
   const id = r.t.id;
   if (r.group === 'moving') return h`<button type="button" class="btn btn-sm${phone ? '' : ' btn-ghost'}" data-act="moveout" data-id="${id}" data-write>Plan move-out</button>`;
   if (isRenewDue(r, noticeDays)) {
-    return h`<span class="btn-group"><button type="button" class="btn btn-sm btn-primary" data-act="renew" data-id="${id}" data-write>Renew</button><button type="button" class="btn btn-sm btn-primary btn-caret" data-act="decide" data-id="${id}" aria-label="Other choices for ${r.t.name}" aria-haspopup="menu" data-write>${ui.icon('chevron-down')}</button></span>`;
+    return h`<span class="btn-group"><button type="button" class="btn btn-sm btn-soft" data-act="renew" data-id="${id}" data-write>Renew</button><button type="button" class="btn btn-sm btn-soft btn-caret" data-act="decide" data-id="${id}" aria-label="Other choices for ${r.t.name}" aria-haspopup="menu" data-write>${ui.icon('chevron-down')}</button></span>`;
   }
   return h`<button type="button" class="btn btn-sm" data-act="decide" data-id="${id}" aria-haspopup="menu" data-write><span>Decide</span>${ui.icon('chevron-down')}</button>`;
 }
@@ -155,7 +155,9 @@ function timeline(rows, today, settings) {
   const nwEnd = D.addDays(today, nd);
   const months = Array.from({ length: 12 }, (_, i) => {
     const k = D.addMonthKey(curKey, i);
-    const label = i === 0 || k.slice(5) === '01' ? D.fmtMonthShort(k, today, { year: true }) : D.MON[+k.slice(5, 7) - 1];
+    const mon = D.MON[+k.slice(5, 7) - 1];
+    // The year is dropped where the month cells get narrow (icon rail); January stays bold either way.
+    const label = i === 0 || k.slice(5) === '01' ? h`${mon}<span class="lz-yr">${'\u00a0' + k.slice(0, 4)}</span>` : mon;
     return { k, x: pct(D.monthStart(k)), w: (D.daysInMonth(k) / span) * 100, label };
   });
   const bar = r => {
@@ -250,7 +252,7 @@ RB.views.register('leases', {
     const parts = [h`<strong>${RB.plural(ending, 'lease')}</strong> ${ending === 1 ? 'ends' : 'end'} in the next ${nd} days`, h`<strong>${mtm}</strong> month-to-month`, h`<strong>${moving}</strong> moving out`];
     el.innerHTML = String(h`
       <div class="view-head lz-head-row">
-        <p class="lz-summary">${RB.html.join(parts, h`<span class="lz-dot" aria-hidden="true"> · </span>`)}</p>
+        <p class="view-summary lz-summary">${RB.html.join(parts, h`<span class="lz-dot" aria-hidden="true"> · </span>`)}</p>
         <span class="spacer"></span>
         <div class="seg hide-phone" role="group" aria-label="Layout">
           <button type="button" id="lz-mode-timeline" data-act="mode" data-mode="timeline" aria-pressed="${String(mode === 'timeline')}">Timeline</button>

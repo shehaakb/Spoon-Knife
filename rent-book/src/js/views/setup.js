@@ -249,7 +249,7 @@ function importSection(today) {
         <div><strong>${RB.plural(p.rows.length, 'row')}</strong> found${p.hasHeader ? '' : ' (no header row recognised — match the columns below)'} · <span class="tone-ok">${good} ready</span>${bad ? h` · <span class="tone-bad">${RB.plural(bad, 'row')} with problems will be skipped</span>` : ''}</div>
         ${missing.length ? h`<div class="tone-bad t-12">Choose which column holds the ${missing.map(fieldLabel).join(' and ').toLowerCase()}.</div>` : h`<div class="faint t-12">Columns were matched by their headings — change any that are wrong.</div>`}
       </div>
-      <div class="st-prev-scroll"><table class="tbl tbl-compact st-prev" id="st-import-table">
+      <div class="tbl-scroll st-prev-scroll"><table class="tbl tbl-compact st-prev" id="st-import-table">
         <thead><tr><th class="st-prev-n">#</th><th class="st-prev-checkh">Check</th>${p.header.map((hd, i) => h`<th><span class="st-src">${hd || 'Column ' + (i + 1)}</span>
           <span class="select st-map"><select class="input" id="st-map-${i}" data-change="map" data-i="${i}" aria-label="Import column ${hd || i + 1} as">${FIELDS.map(f => h`<option value="${f.key}"${mapped[i] === f.key ? RB.raw(' selected') : ''}>${f.label}</option>`)}</select></span></th>`)}</tr></thead>
         <tbody>${p.rows.slice(0, 200).map((r, ri) => h`<tr class="${checks[ri].ok ? '' : 'st-prev-bad'}"><td class="st-prev-n faint">${ri + 1}</td>

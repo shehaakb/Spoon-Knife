@@ -126,12 +126,12 @@ function tenantForm(id, section, preset) {
               ? ui.field({ name: 'rent', id: 'tf-rent', label: 'Monthly rent', type: 'money', value: sched.length ? sched[0].amount : null, required: true })
               : h`<div class="field"><span class="field-label">Monthly rent</span><div class="tn-static">${ui.money(RB.model.rentOn(t, today))} <span class="faint">· ${RB.plural(sched.length, 'amount')} on file</span></div><div class="field-hint">History is kept. <button type="button" class="linkbtn" data-tf="changerent">Change rent from a date…</button></div></div>`}
             ${ui.field({ name: 'deposit', id: 'tf-deposit', label: 'Security deposit', type: 'money', value: dep.amount || null, optional: true })}
-            ${ui.field({ name: 'trackFrom', id: 'tf-track', label: 'Start tracking rent from', type: 'date', value: track0, required: true })}
+            ${ui.field({ name: 'trackFrom', id: 'tf-track', label: 'Start tracking rent from', type: 'date', value: track0, required: true, requiredMsg: 'Choose the date to start tracking rent from' })}
             ${ui.field({ name: 'opening', id: 'tf-opening', label: 'Opening balance', type: 'money', value: t.opening ? t.opening.amount : null, optional: true, placeholder: '0.00', hint: 'Owed on that date. Negative = credit.' })}
             <div class="form-note span-2" id="tf-track-note"></div>
           </div></fieldset>
 
-          ${edit ? '' : h`<button type="button" class="tn-more-toggle" id="tf-more" aria-expanded="${moreOpen}" aria-controls="tf-more-body">${ui.icon('chevron-down', { size: 14 })}<span>More details</span><span class="faint">phone, email, co-tenants, emergency contact, due day, recurring charges, insurance, links, notes</span></button>`}
+          ${edit ? '' : h`<button type="button" class="tn-more-toggle" id="tf-more" aria-expanded="${String(moreOpen)}" aria-controls="tf-more-body">${ui.icon('chevron-down', { size: 14 })}<span>More details</span><span class="faint">phone, email, co-tenants, emergency contact, due day, recurring charges, insurance, links, notes</span></button>`}
           <div class="tn-more-body" id="tf-more-body"${moreOpen ? '' : RB.raw(' hidden')}>
             <fieldset class="fieldset" data-sec="contact"><legend class="fieldset-title">Contact</legend><div class="form-grid">
               ${ui.field({ name: 'phone', id: 'tf-phone', label: 'Phone', type: 'tel', value: t.phone, optional: true })}
@@ -280,7 +280,7 @@ function changeRent(id) {
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="form-grid">
           ${ui.field({ name: 'amount', id: 'cr-amount', label: 'New monthly rent', type: 'money', value: null, required: true, hint: 'Now ' + M.fmt(cur) })}
-          ${ui.field({ name: 'from', id: 'cr-from', label: 'Starting', type: 'date', value: from0, required: true, hint: last ? 'After ' + D.fmt(last.from, today) + ', the last change' : null })}
+          ${ui.field({ name: 'from', id: 'cr-from', label: 'Starting', type: 'date', value: from0, required: true, requiredMsg: 'Choose when the new rent starts', hint: last ? 'After ' + D.fmt(last.from, today) + ', the last change' : null })}
         </div>
         <div class="form-note mt-4" id="cr-sum" aria-live="polite"></div>`);
         const upd = () => {
@@ -325,8 +325,8 @@ function giveNotice(id) {
       title: 'Give notice', sub: sub(t),
       body: el => {
         el.innerHTML = String(h`<div class="form-grid">
-          ${ui.field({ name: 'noticeDate', id: 'gn-notice', label: 'Notice given on', type: 'date', value: l.noticeDate || today, required: true })}
-          ${ui.field({ name: 'moveOut', id: 'gn-moveout', label: 'Moving out on', type: 'date', value: mo0, required: true, hint: l.end ? 'Lease ends ' + D.fmt(l.end, today) : 'Month-to-month' })}
+          ${ui.field({ name: 'noticeDate', id: 'gn-notice', label: 'Notice given on', type: 'date', value: l.noticeDate || today, required: true, requiredMsg: 'Choose the date notice was given' })}
+          ${ui.field({ name: 'moveOut', id: 'gn-moveout', label: 'Moving out on', type: 'date', value: mo0, required: true, requiredMsg: 'Choose the move-out date', hint: l.end ? 'Lease ends ' + D.fmt(l.end, today) : 'Month-to-month' })}
         </div><div class="form-note mt-4" id="gn-sum"></div>`);
         const upd = () => {
           const mo = el.querySelector('#gn-moveout').value;
@@ -356,6 +356,12 @@ function giveNotice(id) {
 }
 
 // ------------------------------------------------------------------ move out
+const firstName = t => String(t.name || 'The tenant').trim().split(/\s+/)[0];
+/**
+ * Move-out sheet. A date on or before today completes the move-out (status `past`, then deposit settlement).
+ * A future date is recorded as notice (status `notice`, lease.moveOut set); Today and the drawer then offer
+ * "Complete move-out" once that date arrives.
+ */
 function moveOut(id) {
   if (!T.guard()) return Promise.resolve(false);
   const t = S().tenant(id); if (!t) return Promise.resolve(false);
@@ -363,13 +369,14 @@ function moveOut(id) {
   const settings = S().settings();
   const l = t.lease || {};
   const dep = t.deposit || {};
+  const owesDeposit = +dep.amount > 0 && !dep.returned;
   return new Promise(resolve => {
     let ok = false;
     ui.sheet({
-      title: 'Move out', sub: sub(t), size: 'wide',
+      title: t.status === 'notice' && l.moveOut && l.moveOut <= today ? 'Complete move-out' : 'Move out', sub: sub(t), size: 'wide',
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="form-grid">
-          ${ui.field({ name: 'moveOut', id: 'mo-date', label: 'Moved out on', type: 'date', value: l.moveOut || today, required: true, hint: l.noticeDate ? 'Notice given ' + D.fmt(l.noticeDate, today) : null })}
+          ${ui.field({ name: 'moveOut', id: 'mo-date', label: 'Move-out date', type: 'date', value: l.moveOut || today, required: true, requiredMsg: 'Choose the move-out date', hint: l.noticeDate ? 'Notice given ' + D.fmt(l.noticeDate, today) : null })}
         </div><div class="tn-sum mt-4" id="mo-sum" aria-live="polite"></div>`);
         const upd = () => {
           const mo = el.querySelector('#mo-date').value;
@@ -383,16 +390,24 @@ function moveOut(id) {
             ${fr.filter(r => r.kind === 'recurring').map(r => h`<div class="tn-sum-row tn-sum-minor"><span></span><span class="tn-sum-val">${r.label}</span><span>${ui.money(r.amount)}</span></div>`)}
             <div class="tn-sum-row tn-sum-total"><span>${pv.balance >= 0 ? 'Still owed at move-out' : 'Credit at move-out'}</span><span class="tn-sum-val faint">${pv.balance !== pv.balanceNow ? 'if nothing more is paid · owed today ' + M.fmt(Math.max(0, pv.balanceNow)) : 'if nothing more is paid'}</span><strong>${pv.balance > 0 ? ui.money(pv.balance, { tone: 'owed' }) : pv.balance < 0 ? ui.money(-pv.balance) : ui.money(0)}</strong></div>
             ${+dep.amount > 0 && !dep.returned ? h`<div class="tn-sum-row"><span>Deposit held</span><span class="tn-sum-val">return by ${D.fmtLong(pv.depositDueDate)} <span class="faint">(${settings.depositReturnDays} days after move-out)</span></span><strong>${ui.money(dep.amount)}</strong></div>` : ''}
-            ${mo > today ? h`<div class="form-note mt-2">${ui.icon('alert', { size: 14, cls: 'tn-inline-ico' })}That date is still ahead. To plan a future move-out, use <button type="button" class="linkbtn" id="mo-notice">Give notice</button> instead.</div>` : ''}`);
-          const gn = box.querySelector('#mo-notice');
-          if (gn) gn.addEventListener('click', () => { sh.close(); setTimeout(() => A().giveNotice(id), 0); });
-          sh.setAction('save', { label: 'Move out on ' + D.fmt(mo, today) });
+            ${mo > today ? h`<div class="form-note mt-2" id="mo-future">${ui.icon('calendar', { size: 14, cls: 'tn-inline-ico' })}${firstName(t)} moves out ${D.fmt(mo, today)} — recorded as notice. ${owesDeposit ? 'Come back to settle the deposit after that date.' : 'Come back to complete the move-out after that date.'}</div>` : ''}`);
+          sh.setAction('save', { label: mo > today ? 'Record notice · out ' + D.fmt(mo, today) : 'Move out on ' + D.fmt(mo, today) });
         };
         el.addEventListener('input', upd); el.addEventListener('change', upd); upd();
       },
       actions: [{ id: 'save', label: 'Move out', kind: 'primary', onClick: s => {
         const v = ui.form(s.body, { validate: v => ({ moveOut: v.moveOut && l.moveIn && v.moveOut < l.moveIn ? 'Move-out can’t be before move-in (' + D.fmt(l.moveIn, today) + ')' : '' }) });
         if (!v) return false;
+        // A date still ahead is notice, not a move-out: the tenant stays current until then (spec: status `past` only once gone).
+        if (v.moveOut > today) {
+          const prevN = { status: t.status || 'active', lease: { noticeDate: l.noticeDate || null, moveOut: l.moveOut || null } };
+          const lid = RB.id();
+          S().updateTenant(id, { status: 'notice', lease: { noticeDate: l.noticeDate || today, moveOut: v.moveOut } }).catch(() => {});
+          S().addLog(id, { id: lid, kind: 'notice', text: 'Moving out ' + D.fmtLong(v.moveOut) + ' — recorded as notice.', followUp: null, done: false }).catch(() => {});
+          ok = true;
+          ui.toast('Notice recorded — ' + firstName(t) + ' moves out ' + D.fmt(v.moveOut, today), { undo: () => { S().updateTenant(id, prevN); S().deleteLog(id, lid); } });
+          return;
+        }
         const prev = { status: t.status || 'active', lease: { moveOut: l.moveOut || null } };
         S().updateTenant(id, { status: 'past', lease: { moveOut: v.moveOut } }).catch(() => {});
         ok = true;
@@ -462,7 +477,7 @@ function settleDeposit(id, opts) {
             <div id="sd-short-wrap" hidden>${ui.field({ name: 'chargeShort', id: 'sd-short', type: 'checkbox', value: true, label: 'Add what the deductions exceed the deposit by to the ledger as a charge' })}</div>
           </div>
           <div class="form-grid mt-4">
-            ${ui.field({ name: 'date', id: 'sd-date', label: 'Returned on', type: 'date', value: today, required: true })}
+            ${ui.field({ name: 'date', id: 'sd-date', label: 'Returned on', type: 'date', value: today, required: true, requiredMsg: 'Choose the date the deposit was returned' })}
           </div>
           <div class="tn-sum mt-5" id="sd-sum" aria-live="polite"></div>`);
         wireRepeaters(el);
@@ -540,7 +555,7 @@ T.editNote = function editNote(id, lid) {
     title: 'Edit note', sub: sub(t),
     body: h`<div class="form-grid">
       ${ui.field({ name: 'kind', id: 'en-kind', label: 'Kind', type: 'seg', value: e.kind || 'note', options: RB.actions.LOG_KINDS, span: 2 })}
-      ${ui.field({ name: 'text', id: 'en-text', label: 'What happened', type: 'textarea', value: e.text || '', required: true, span: 2, rows: 4 })}
+      ${ui.field({ name: 'text', id: 'en-text', label: 'What happened', type: 'textarea', value: e.text || '', required: true, requiredMsg: 'Describe what happened', span: 2, rows: 4 })}
       ${ui.field({ name: 'followUp', id: 'en-followup', label: 'Follow up on', type: 'date', value: e.followUp || '', optional: true })}
     </div>`,
     initialFocus: '#en-text',

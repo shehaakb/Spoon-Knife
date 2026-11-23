@@ -93,7 +93,7 @@ function mount(r, reason) {
 
 function textFocusIn(root) {
   const a = document.activeElement;
-  return a && root.contains(a) && (a.matches('input:not([type=checkbox]):not([type=radio]):not([type=button]), textarea, select, [contenteditable="true"]'));
+  return a && root.contains(a) && isTyping(a);
 }
 
 /**
@@ -162,13 +162,13 @@ const $ = id => document.getElementById(id);
 function renderChrome() {
   const st = RB.store.state;
   const att = st.ready ? RB.store.attention() : [];
-  const high = att.filter(a => a.severity === 'high').length;
-  const lateCount = st.ready ? RB.store.tenantsList({ includePast: false }).filter(t => { const lg = RB.store.ledger(t.id); return lg && lg.current.status === 'late'; }).length : 0;
-  const counts = { today: high || '', rent: lateCount || '' };
+  // Today = every item in "Needs attention"; Rent = tenants with rent past grace in any month (not just this one).
+  const lateCount = st.ready ? lateTenants().length : 0;
+  const counts = { today: att.length || '', rent: lateCount || '' };
   const active = cur.view;
   // rail
   const nav = $('rb-nav');
-  if (nav) nav.innerHTML = String(h`${NAV.map(n => h`<a class="rail-link" href="#${n.route}"${n.route === active ? raw(' aria-current="page"') : ''} title="${n.label}">${ui.icon(n.icon)}<span class="rail-link-label">${n.label}</span><span class="rail-count" aria-label="${counts[n.route] ? counts[n.route] + ' need attention' : ''}">${counts[n.route]}</span></a>`)}`);
+  if (nav) nav.innerHTML = String(h`${NAV.map(n => h`<a class="rail-link" href="#${n.route}"${n.route === active ? raw(' aria-current="page"') : ''} title="${n.label}">${ui.icon(n.icon)}<span class="rail-link-label">${n.label}</span><span class="rail-count" aria-label="${counts[n.route] ? (n.route === 'rent' ? RB.plural(counts[n.route], 'tenant') + ' with late rent' : counts[n.route] + ' need attention') : ''}">${counts[n.route]}</span></a>`)}`);
   // tab bar (phone)
   const tb = $('rb-tabbar');
   if (tb) {
@@ -194,11 +194,15 @@ function renderChrome() {
   let banner = null;
   if (st.loadIssue === 'timeout') banner = h`<div class="banner-text">${ui.icon('alert')} <strong>Can’t reach your saved data yet.</strong> Still trying — what you see may be out of date.</div>`;
   else if (st.loadIssue === 'error') banner = h`<div class="banner-text"><strong>Live updates stopped.</strong> What you see may be out of date; reopen the page to reconnect.</div>`;
-  else if (st.ready && RB.store.hasSample()) banner = h`<div class="banner-text">${ui.icon('sample', { cls: 'vh' })}You’re looking at <strong>sample tenants</strong>. Explore freely — nothing here is real.</div>
-    <div class="banner-actions"><button type="button" class="btn btn-sm btn-ghost" data-cmd="sample:remove" data-write>Remove sample data</button><button type="button" class="btn btn-sm" data-cmd="setup:import" data-write>Import my tenants</button></div>`;
+  else if (st.ready && RB.store.hasSample()) banner = h`<div class="banner-text"><span class="hide-phone">You’re looking at <strong>sample tenants</strong>. Explore freely — nothing here is real.</span><span class="show-phone">Viewing <strong>sample tenants</strong></span></div>
+    <div class="banner-actions"><button type="button" class="btn btn-sm btn-ghost" data-cmd="sample:remove" data-write aria-label="Remove sample data"><span class="hide-phone">Remove sample data</span><span class="show-phone">Remove</span></button><button type="button" class="btn btn-sm" data-cmd="setup:import" data-write aria-label="Import my tenants"><span class="hide-phone">Import my tenants</span><span class="show-phone">Import</span></button></div>`;
   bn.hidden = !banner;
   bn.className = 'banner' + (st.loadIssue ? ' banner-warn' : '');
   if (banner) { const s = String(banner); if (bn.innerHTML !== s) bn.innerHTML = s; }
+}
+/** Tenants with any rent month open past its grace period (status 'late'), current or earlier. */
+function lateTenants() {
+  return RB.store.tenantsList().filter(t => { const lg = RB.store.ledger(t.id); return lg && Object.values(lg.months).some(m => m.status === 'late'); });
 }
 function syncNote(st) {
   let dot = 'dot', text;
@@ -285,7 +289,9 @@ function helpSheet() {
   });
 }
 let gPending = 0;
-function isTyping(t) { return t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]'); }
+// Only text-entry controls swallow shortcuts. Checkboxes, radios, buttons, ranges and the like keep j/k/p… working.
+const TEXT_ENTRY = 'textarea, select, [contenteditable=""], [contenteditable="true"], input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="tel"], input[type="url"], input[type="password"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="month"], input[type="week"], input[type="time"]';
+function isTyping(t) { return !!(t && t.closest && t.closest(TEXT_ENTRY)); }
 document.addEventListener('keydown', e => {
   if (e.defaultPrevented) return;
   const mod = e.metaKey || e.ctrlKey;
@@ -337,7 +343,7 @@ RB.shell = {
   root: () => (mounted ? mounted.root : null),
   /** Override the top-bar title (e.g. "November 2026"); null restores the view title. */
   setTitle(text) { titleOverride = text || null; const def = views[cur.view]; $('rb-title').textContent = text || (def && def.title) || ''; },
-  openPalette, quickAdd, helpSheet,
+  openPalette, quickAdd, helpSheet, lateTenants,
   start() {
     if (started) return; started = true;
     registerBuiltins();

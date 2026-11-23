@@ -1,7 +1,8 @@
 /* Tenants view (#tenants) + tenant detail drawer (#t-<id>) + tenant sheets. Layout only; tokens only. */
 
 /* ================= List ================= */
-.tn-summary { display: flex; flex-wrap: wrap; gap: 2px 0; margin: -4px 0 var(--s4); color: var(--ink-2); font-size: var(--t-13); }
+.tn-top { margin-bottom: var(--s4); }
+.tn-summary { display: flex; flex-wrap: wrap; gap: 2px 0; }
 .tn-summary > span + span::before { content: "·"; margin: 0 8px; color: var(--ink-3); }
 .tn-head { margin-bottom: var(--s3); gap: 10px 12px; }
 .tn-search { width: 260px; flex: 0 1 260px; }
@@ -9,7 +10,7 @@
 .tn-q-clear { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); }
 .tn-tools { display: flex; align-items: center; gap: 6px; min-height: 32px; margin-bottom: var(--s2); font-size: var(--t-12); }
 .tn-count { font-size: var(--t-12); }
-.tn-toggle[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.tn-groupby { font-size: var(--t-13); color: var(--ink-2); margin: 0 8px; }
 .tn-tools .seg > button { height: 22px; }
 
 .tn-tbl .tn-c-name { width: 30%; }
@@ -36,7 +37,9 @@
 .view-tenants.tn-narrow .tn-c-prop, .view-tenants.tn-narrow .tn-c-strip { display: none; }
 .view-tenants.tn-xnarrow .tn-c-lease, .view-tenants.tn-xnarrow .tn-tbl th.num:nth-child(3), .view-tenants.tn-xnarrow .tn-tbl td.num:nth-child(3) { display: none; }
 .view-tenants.tn-narrow .tn-search { flex: 1 1 200px; }
-.view-tenants.tn-narrow .tn-sortbtn span, .view-tenants.tn-narrow .tn-toggle span { display: none; }
+.view-tenants.tn-narrow .tn-sortbtn span { display: none; }
+/* icon-rail widths: property moves out of the table (the strip and lease still fit) */
+@media (min-width: 760px) and (max-width: 1099.98px) { .view-tenants .tn-c-prop { display: none; } .tn-search { flex: 0 1 220px; } }
 
 /* phone cards */
 .tn-card { grid-template-rows: auto auto; }
@@ -52,15 +55,15 @@
 .tn-clist .tn-card-group:first-child { padding-top: 4px; }
 
 @media (max-width: 759.98px) {
-  .tn-summary { font-size: var(--t-12); margin: 0 0 var(--s3); }
-  .tn-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-  .tn-head .tn-chips { grid-column: 1 / -1; grid-row: 2; }
+  .tn-top { margin-bottom: var(--s3); }
+  .tn-head { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .tn-head .tn-chips { grid-row: 2; }
   .tn-search { width: auto; flex: none; }
   .tn-summary .tn-sum-owed { flex-basis: 100%; }
   .tn-summary .tn-sum-owed::before { content: none; }
   .tn-tools { gap: 2px; }
-  .tn-tools .tn-sortbtn, .tn-tools .tn-toggle { height: 36px; }
-  .tn-toggle span { display: none; }
+  .tn-tools .tn-sortbtn { height: 36px; }
+  .tn-groupby { min-height: 44px; margin: 0 4px; }
   .tn-clist { border-top: 0; }
   .tn-card { min-height: 72px; }
 }

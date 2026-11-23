@@ -39,7 +39,9 @@ function buildRows(S, key, current) {
     let later = 0;
     if (!current) for (const k of Object.keys(lg.months)) if (k > key) later += lg.months[k].open;
     const payAmount = unpaid ? (current ? Math.max(0, lg.balance) : Math.max(0, Math.min(lg.balance, lg.balance - later))) : 0;
-    out.push({ t, i, lg, m, unpaid, payAmount, rank: unpaid ? (RANK[m.status] !== undefined ? RANK[m.status] : 3) : 4 });
+    // What quick pay records beyond this month's open amount (older months, fees): shown so the button is honest.
+    const earlier = unpaid ? Math.max(0, payAmount - m.open) : 0;
+    out.push({ t, i, lg, m, unpaid, payAmount, earlier, rank: unpaid ? (RANK[m.status] !== undefined ? RANK[m.status] : 3) : 4 });
   });
   return out;
 }
@@ -76,7 +78,7 @@ const lateFeeLink = (r, key, cls) => {
   return h`<button type="button" class="linkbtn linkbtn-muted rent-fee ${cls || ''}" id="rent-fee-${cls ? 'c' : ''}${r.t.id}" data-act="fee" data-id="${r.t.id}" data-write aria-label="Add late fee ${M.fmt(s.amount)} for ${D.monthName(key)}, ${r.t.name}">+ late fee ${M.fmt(s.amount)}</button>`;
 };
 const payBtn = (r, pre) => h`<span class="btn-group rent-pay">
-  <button type="button" class="btn btn-sm btn-soft" id="rent-${pre}pay-${r.t.id}" data-act="pay" data-id="${r.t.id}" data-write title="Record ${M.fmt(r.payAmount)} today" aria-label="Mark paid: record ${M.fmt(r.payAmount)} from ${r.t.name} today">Mark paid</button><button type="button" class="btn btn-sm btn-soft btn-caret" id="rent-${pre}sheet-${r.t.id}" data-act="sheet" data-id="${r.t.id}" data-write aria-label="Payment details for ${r.t.name}" title="Amount, date, method…">${ui.icon('chevron-down')}</button>
+  <button type="button" class="btn btn-sm btn-soft" id="rent-${pre}pay-${r.t.id}" data-act="pay" data-id="${r.t.id}" data-write title="Record ${M.fmt(r.payAmount)} today${r.earlier ? ' — includes ' + M.fmt(r.earlier) + ' owed from earlier' : ''}" aria-label="${r.earlier ? 'Pay' : 'Mark paid'}: record ${M.fmt(r.payAmount)} from ${r.t.name} today">${r.earlier ? 'Pay ' + M.fmt(r.payAmount) : 'Mark paid'}</button><button type="button" class="btn btn-sm btn-soft btn-caret" id="rent-${pre}sheet-${r.t.id}" data-act="sheet" data-id="${r.t.id}" data-write aria-label="Payment details for ${r.t.name}" title="Amount, date, method…">${ui.icon('chevron-down')}</button>
 </span>`;
 const menuBtn = (r, pre) => h`<button type="button" class="btn btn-ghost btn-icon btn-sm rent-menu" id="rent-${pre}menu-${r.t.id}" data-act="menu" data-id="${r.t.id}" aria-label="More for ${r.t.name}" aria-haspopup="menu">${ui.icon('more')}</button>`;
 function paidNote(r, today) {
@@ -86,6 +88,8 @@ function paidNote(r, today) {
   return [when, how].filter(Boolean).join(' · ');
 }
 const amt = (c, opts) => (c ? ui.money(c, opts) : h`<span class="faint" aria-label="none">—</span>`);
+/** Muted second line under the Open figure when quick pay would also clear older months. */
+const earlierNote = r => (r.earlier ? h`<span class="rent-earlier" title="Payments settle the oldest charges first">+ ${M.fmt(r.earlier)} earlier</span>` : '');
 
 function tableRow(r, key, today) {
   const sel = selected.has(r.t.id), cur = cursorId === r.t.id;
@@ -94,8 +98,8 @@ function tableRow(r, key, today) {
     <td class="rent-c-plate">${ui.plate(r.t.unit, { property: r.t.property })}</td>
     <td class="rent-c-name"><span class="cell-name">${r.t.name}</span>${!grouped ? h`<span class="cell-sub">${r.t.property}${r.t.status === 'past' ? ' · moved out' : ''}</span>` : r.t.status === 'past' ? h`<span class="cell-sub">moved out</span>` : ''}</td>
     <td class="num">${ui.money(r.m.charged)}</td>
-    <td class="num">${amt(r.m.paid)}</td>
-    <td class="num">${amt(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}</td>
+    <td class="num rent-c-paid">${amt(r.m.paid)}</td>
+    <td class="num">${amt(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}${earlierNote(r)}</td>
     <td class="rent-c-status"><span class="rent-status">${ui.pill(r.m.status, { daysLate: r.m.daysLate })}${lateFeeLink(r, key)}</span></td>
     <td class="rent-c-act"><span class="rent-act">${r.unpaid ? payBtn(r, '') : h`<span class="rent-paidon">${paidNote(r, today)}</span>`}${menuBtn(r, '')}</span></td>
   </tr>`;
@@ -111,7 +115,7 @@ function card(r, key, today) {
     <span class="crow-lead rent-card-lead">${showChk ? h`<label class="rent-cchk"><input type="checkbox" id="rent-cchk-${r.t.id}" data-change="sel" data-id="${r.t.id}" aria-label="Select ${r.t.name}"${sel ? RB.raw(' checked') : ''} data-write></label>` : ''}${ui.plate(r.t.unit, { property: r.t.property })}</span>
     <div class="crow-main"><div class="crow-title">${r.t.name}</div><div class="crow-sub">${sub}</div></div>
     ${r.unpaid
-      ? h`<div class="crow-aside">${ui.pill(r.m.status, { daysLate: r.m.daysLate, size: 'sm' })}${ui.money(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}</div>
+      ? h`<div class="crow-aside">${ui.pill(r.m.status, { daysLate: r.m.daysLate, size: 'sm' })}${ui.money(r.m.open, { tone: r.m.status === 'late' ? 'owed' : '' })}${earlierNote(r)}</div>
         <div class="crow-actions rent-cact">${lateFeeLink(r, key, 'c')}<span class="spacer"></span>${menuBtn(r, 'c')}${payBtn(r, 'c')}</div>`
       : h`<div class="crow-aside rent-caside-paid">${ui.pill(r.m.status, { daysLate: r.m.daysLate, size: 'sm' })}${menuBtn(r, 'c')}</div>`}
   </div>`;
@@ -217,6 +221,7 @@ function render(el, ctx) {
   const someSel = !allSel && unpaidShown.some(r => selected.has(r.t.id));
   const selRows = Array.from(selected).map(rowOf).filter(Boolean);
   const selTotal = selRows.reduce((a, r) => a + r.payAmount, 0);
+  const selEarlier = selRows.reduce((a, r) => a + r.earlier, 0);
   const chip = ([k, label]) => h`<button type="button" class="chip" id="rent-f-${k}" aria-pressed="${filter === k ? 'true' : 'false'}" data-act="filter" data-k="${k}">${label}<span class="chip-count${k === 'late' && counts.late ? ' is-bad' : ''}">${counts[k]}</span></button>`;
   const emptyMsg = { all: 'No rent was charged for ' + D.fmtMonth(period) + '.', unpaid: 'Everyone has paid ' + D.monthName(period) + ' rent.', late: 'No late rent for ' + D.fmtMonth(period) + '.', partial: 'No partial payments for ' + D.fmtMonth(period) + '.', paid: 'No one has paid ' + D.monthName(period) + ' rent yet.' }[filter];
 
@@ -227,9 +232,10 @@ function render(el, ctx) {
         <span class="stepper-label" aria-live="polite">${D.fmtMonth(period)}</span>
         <button type="button" class="btn btn-ghost btn-icon" id="rent-next" data-act="step" data-d="1" aria-label="Next month"${period >= b.max ? RB.raw(' disabled') : ''}>${ui.icon('chevron-right')}</button>
       </div>
-      ${current ? h`<span class="rent-now faint">This month</span>` : h`<button type="button" class="btn btn-sm" id="rent-today" data-act="now">${ui.icon('arrow-right')}<span>This month</span></button>`}
+      ${current ? h`<span class="rent-now faint">This month</span>` : h`<button type="button" class="btn btn-sm hide-phone" id="rent-today" data-act="now">${ui.icon('arrow-right')}<span>This month</span></button>`}
       <span class="spacer"></span>
       <label class="check rent-groupby"><input type="checkbox" id="rent-group" data-change="group"${grouped ? RB.raw(' checked') : ''}> <span><span class="hide-phone">Group by property</span><span class="show-phone">By property</span></span></label>
+      ${current ? '' : h`<div class="show-phone rent-pastline"><span class="faint">Past month</span><button type="button" class="linkbtn" id="rent-today-p" data-act="now">Back to ${D.monthName(b.cur)}${ui.icon('arrow-right', { size: 14 })}</button></div>`}
     </div>
     <div class="rent-tools">
       <div class="chips chips-scroll" role="group" aria-label="Filter">${FILTERS.map(chip)}</div>
@@ -242,7 +248,7 @@ function render(el, ctx) {
     <div class="tbl-wrap hide-phone"><table class="tbl rent-tbl">
       <thead><tr>
         <th class="tbl-check">${unpaidShown.length ? h`<input type="checkbox" id="rent-all" data-change="all" aria-label="Select all unpaid"${allSel ? RB.raw(' checked') : ''} data-write>` : ''}</th>
-        <th class="rent-c-plate">Unit</th><th>Tenant</th><th class="num">Due</th><th class="num">Paid</th><th class="num">Open</th><th>Status</th><th class="rent-c-act"><span class="vh">Actions</span></th>
+        <th class="rent-c-plate">Unit</th><th>Tenant</th><th class="num">Due</th><th class="num rent-c-paid">Paid</th><th class="num">Open</th><th>Status</th><th class="rent-c-act"><span class="vh">Actions</span></th>
       </tr></thead>
       <tbody>${groups.map(g => h`${g.prop !== null ? h`<tr class="tbl-group"><td colspan="8">${g.prop || 'No property'} <span class="rent-gcount">${g.list.filter(r => r.unpaid).length ? g.list.filter(r => r.unpaid).length + ' unpaid' : 'all paid'}</span></td></tr>` : ''}${g.list.map(r => tableRow(r, period, today))}`)}</tbody>
     </table></div>
@@ -258,7 +264,7 @@ function render(el, ctx) {
     </div>
 
     ${selected.size ? h`<div class="actionbar rent-bar" role="region" aria-label="Selected rows">
-      <span class="rent-bar-n">${selected.size} selected</span>
+      <span class="rent-bar-n">${selected.size} selected${selEarlier ? h`<span class="rent-bar-sub">incl. ${M.fmt(selEarlier)} from earlier months</span>` : ''}</span>
       <button type="button" class="btn btn-ghost btn-sm" id="rent-clear" data-act="clear">Clear</button>
       <button type="button" class="btn btn-primary" id="rent-bulk" data-act="bulk" data-write>Record ${RB.plural(selRows.length, 'payment')} · ${M.fmt(selTotal)}</button>
     </div>` : ''}
@@ -288,16 +294,6 @@ function render(el, ctx) {
       if (cursorId !== id) { cursorId = id; RB.shell.refresh(); }
     },
   });
-  // Keys while a tick box has focus (the shell treats any input as typing): keep j/k/p/x/o/Enter working.
-  if (!el._rentKeys) {
-    el._rentKeys = true;
-    el.addEventListener('keydown', e => {
-      if (!e.target.matches || !e.target.matches('input[type="checkbox"]') || e.target.id === 'rent-group') return;
-      if (['j', 'k', 'p', 'o', 'x', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        if (handleKey(e)) { e.preventDefault(); e.stopPropagation(); }
-      }
-    });
-  }
   if (pendingFocus) {
     const f = document.getElementById(pendingFocus);
     pendingFocus = null;

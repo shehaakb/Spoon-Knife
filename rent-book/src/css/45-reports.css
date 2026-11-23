@@ -2,7 +2,7 @@
 .rp-head { gap: 10px 12px; }
 .rp-actions { display: flex; gap: 4px; }
 .rp-year .stepper-label { min-width: 64px; }
-.rp-meta { margin-bottom: var(--s4); color: var(--ink-2); font-size: var(--t-15); }
+.rp-meta { margin-bottom: var(--s4); }
 .rp-meta strong { color: var(--ink); font-weight: 600; }
 .rp-note { margin-top: var(--s3); color: var(--ink-3); font-size: var(--t-12); }
 
@@ -20,15 +20,12 @@
 .rp-total td { font-size: var(--t-13); }
 .rp-tbl .plate { min-width: 52px; }
 
-/* scrolling table with sticky first column (phone) */
-.rp-scroll { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+/* phone: tables scroll sideways inside .tbl-scroll-phone with a sticky first column */
 .rp-sticky { min-width: 520px; }
-.rp-scroll .tbl thead th { top: auto; }
-@media (min-width: 760px) { .rp-scroll .tbl thead th { top: var(--sticky-top); } }
 .rp-sticky th:first-child, .rp-sticky td:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
 .rp-sticky thead th:first-child { background: var(--sunk); z-index: 3; }
 .rp-sticky tbody tr:hover td:first-child { background: var(--hover); }
-@media (min-width: 760px) { .rp-sticky { min-width: 0; } .rp-scroll { overflow: visible; } }
+@media (min-width: 760px) { .rp-sticky { min-width: 0; } }
 
 /* collection chart: bars drawn to scale with percentage heights against a nice axis */
 .rp-chart { margin: 0 0 var(--s5); }
@@ -67,7 +64,7 @@
   .rp-tabs > button { flex: 1 0 auto; }
   .rp-head > .spacer { display: none; }
   .rp-actions { margin-left: auto; }
-  .rp-meta { font-size: var(--t-13); }
+
   .rp-chart-plot { height: 180px; margin-left: 40px; }
   .rp-rate { display: none; }
   .rp-col { left: 16%; right: 16%; }
@@ -80,3 +77,4 @@
 .view-reports .plate-sm { display: inline-block; line-height: 20px; text-align: center; }
 @media (max-width: 759.98px) { #rp-collection th, #rp-collection td { padding-left: 6px; padding-right: 6px; } #rp-collection th:first-child, #rp-collection td:first-child { padding-left: 8px; } #rp-collection th:last-child, #rp-collection td:last-child { padding-right: 8px; } }
 @media (max-width: 759.98px) { .rp-sticky .rp-who .plate { min-width: 0; max-width: 4.5em; } .rp-sticky { min-width: 560px; } }
+#rp-roll .rp-name { white-space: nowrap; }
