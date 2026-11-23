@@ -359,7 +359,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 .form-grid > .span-2, .form-grid > .span-all { grid-column: 1 / -1; }
 .fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .fieldset + .fieldset { margin-top: var(--s5); padding-top: var(--s5); border-top: 1px solid var(--line); }
-.fieldset-title { display: block; margin-bottom: var(--s3); padding: 0; font-size: var(--t-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.fieldset-title { display: block; float: left; width: 100%; margin-bottom: var(--s3); padding: 0; /* float: keeps the legend off the fieldset's top rule */ font-size: var(--t-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.fieldset-title + * { clear: both; }
 .form-note { padding: 10px 12px; background: var(--sunk); border-radius: var(--r-ctl); font-size: var(--t-12); color: var(--ink-2); }
 .form-sum { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; border-top: 1px solid var(--line); font-size: var(--t-13); }
 .form-sum strong { font-weight: 600; }
@@ -1182,6 +1183,235 @@ th.num .th-sort { flex-direction: row-reverse; }
 .rent-caside-paid .rent-menu { width: 44px; height: 44px; }
 /* soft buttons must stay visible on tinted (selected / cursor) rows */
 .rent-row.is-selected .btn-soft, .rent-row.is-focused .btn-soft, .rent-card.is-selected .btn-soft, .rent-card.is-cursor .btn-soft { background: var(--surface); border-color: var(--accent-line); }
+/* ---- 42-tenants.css ---- */
+/* Tenants view (#tenants) + tenant detail drawer (#t-<id>) + tenant sheets. Layout only; tokens only. */
+
+/* ================= List ================= */
+.tn-summary { display: flex; flex-wrap: wrap; gap: 2px 0; margin: -4px 0 var(--s4); color: var(--ink-2); font-size: var(--t-13); }
+.tn-summary > span + span::before { content: "·"; margin: 0 8px; color: var(--ink-3); }
+.tn-head { margin-bottom: var(--s3); gap: 10px 12px; }
+.tn-search { width: 260px; flex: 0 1 260px; }
+.tn-search > .input { padding-right: 34px; }
+.tn-q-clear { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); }
+.tn-tools { display: flex; align-items: center; gap: 6px; min-height: 32px; margin-bottom: var(--s2); font-size: var(--t-12); }
+.tn-count { font-size: var(--t-12); }
+.tn-toggle[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.tn-tools .seg > button { height: 22px; }
+
+.tn-tbl .tn-c-name { width: 30%; }
+.tn-tbl .tn-c-strip { width: 1%; white-space: nowrap; }
+.tn-tbl .tn-c-status { white-space: nowrap; }
+.tn-tbl .tn-c-lease { width: 1%; }
+.tn-namecell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tn-namecell > .plate { min-width: 44px; flex: none; }
+.tn-namestack { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.tn-namelink { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-namelink:hover { color: var(--accent); text-decoration: none; }
+.tn-namelink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.tn-tbl .cell-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-tbl.tbl-compact .cell-sub { display: none; }
+.tn-tbl tr.is-muted .plate { color: var(--ink-3); border-style: dashed; }
+.tn-tbl tr.is-muted .tn-namelink { color: var(--ink-2); }
+.tn-tbl tr.is-selected td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+.tn-group { display: flex; align-items: baseline; gap: 10px; color: var(--ink); }
+.tn-group .faint { font-weight: 400; }
+.tn-ico-inline { display: inline-block; vertical-align: -1px; margin-right: 4px; }
+
+/* drawer open beside the list (desktop): columns drop out as the list narrows */
+.view-tenants.tn-split .tn-summary, .view-tenants.tn-split .tn-head, .view-tenants.tn-split .tn-tools { transition: none; }
+.view-tenants.tn-narrow .tn-c-prop, .view-tenants.tn-narrow .tn-c-strip { display: none; }
+.view-tenants.tn-xnarrow .tn-c-lease, .view-tenants.tn-xnarrow .tn-tbl th.num:nth-child(3), .view-tenants.tn-xnarrow .tn-tbl td.num:nth-child(3) { display: none; }
+.view-tenants.tn-narrow .tn-search { flex: 1 1 200px; }
+.view-tenants.tn-narrow .tn-sortbtn span, .view-tenants.tn-narrow .tn-toggle span { display: none; }
+
+/* phone cards */
+.tn-card { grid-template-rows: auto auto; }
+.tn-card .crow-title { display: block; }
+.tn-card-sub { color: var(--ink-2); display: block; }
+.tn-card-sub .money { color: var(--ink); }
+.tn-card-sub .amt-owed { color: var(--bad); }
+.tn-card-strip { grid-column: 2 / -1; line-height: 0; }
+.tn-card.is-muted .crow-title { color: var(--ink-2); }
+.tn-card.is-focused { box-shadow: inset 2px 0 0 var(--accent); }
+.tn-card-group { display: flex; align-items: baseline; gap: 10px; padding: 18px 0 6px; font-size: var(--t-12); font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--line-2); }
+.tn-card-group .faint { font-weight: 400; }
+.tn-clist .tn-card-group:first-child { padding-top: 4px; }
+
+@media (max-width: 759.98px) {
+  .tn-summary { font-size: var(--t-12); margin: 0 0 var(--s3); }
+  .tn-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .tn-head .tn-chips { grid-column: 1 / -1; grid-row: 2; }
+  .tn-search { width: auto; flex: none; }
+  .tn-summary .tn-sum-owed { flex-basis: 100%; }
+  .tn-summary .tn-sum-owed::before { content: none; }
+  .tn-tools { gap: 2px; }
+  .tn-tools .tn-sortbtn, .tn-tools .tn-toggle { height: 36px; }
+  .tn-toggle span { display: none; }
+  .tn-clist { border-top: 0; }
+  .tn-card { min-height: 72px; }
+}
+
+/* ================= Drawer ================= */
+.drawer[data-tid]:focus, .drawer[data-tid]:focus-visible { outline: none; }
+.tn-dhead { display: block; padding-top: 10px; padding-bottom: 14px; }
+.tn-dhead-bar { display: flex; align-items: center; gap: 2px; margin: 0 -8px 4px 0; min-height: 32px; }
+.tn-dhead-bar .drawer-close { margin-left: 4px; }
+.tn-pos { font-size: var(--t-12); margin-right: 6px; font-variant-numeric: tabular-nums; }
+.tn-back { margin-left: -8px; }
+.tn-dident { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.tn-dident .plate-lg { flex: none; }
+.tn-dident .drawer-title { overflow-wrap: anywhere; }
+.tn-dplace { color: var(--ink-2); margin-top: 2px; font-size: var(--t-13); overflow-wrap: anywhere; }
+.tn-dtags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.tn-dstat { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.tn-dbal { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; flex: 1 1 auto; min-width: 0; }
+.tn-dmonth { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-12); }
+.tn-dacts { display: flex; gap: 6px; flex: none; }
+.tn-balw { display: inline-flex; align-items: baseline; gap: 6px; font-family: var(--f-display); font-optical-sizing: auto; font-size: var(--t-24); line-height: 1.1; white-space: nowrap; }
+.tn-balw-owed { color: var(--bad); }
+.tn-balw-credit { color: var(--ink-2); }
+.tn-balw-zero { color: var(--ink); align-items: center; }
+.tn-balw-zero svg { color: var(--ok); }
+
+.tn-dbody { padding-top: 0; }
+.tn-dsec .sec { margin-top: var(--s5); }
+.tn-alerts { display: flex; flex-direction: column; gap: 0; margin: 0 -24px; }
+.tn-alert { display: flex; align-items: center; gap: 10px; padding: 10px 24px; border-bottom: 1px solid var(--line); background: var(--sunk); font-size: var(--t-13); color: var(--ink-2); }
+.tn-alert strong { font-weight: 600; }
+.tn-alert .linkbtn { flex: none; font-weight: 600; }
+
+.tn-kv > dt { padding-top: 10px; }
+.tn-kv-sub { font-size: var(--t-12); color: var(--ink-3); margin-top: 2px; }
+.tn-term { margin: 8px 0 2px; max-width: 280px; }
+.tn-add { display: inline-flex; align-items: center; gap: 4px; }
+.tn-person { display: flex; flex-direction: column; gap: 0; }
+.tn-person-line { display: block; }
+.tn-person .copyline { color: var(--ink-2); }
+.tn-link { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.tn-link svg { color: var(--ink-3); }
+.tn-hist { margin-top: 6px; font-size: var(--t-12); color: var(--ink-2); }
+.tn-hist summary { cursor: pointer; color: var(--ink-3); width: max-content; }
+.tn-hist summary:hover { color: var(--ink); }
+.tn-hist ul { margin-top: 6px; max-width: 240px; }
+.tn-hist li { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px dashed var(--line); }
+
+.tn-ltools { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: -4px 0 6px; }
+.tn-ledger .l-sub .tn-paidon { display: inline-flex; align-items: center; gap: 3px; color: var(--ok); }
+.tn-ledger .l-sub .tn-paidon svg { display: inline-block; }
+.tn-ledger tr.is-void .l-sub { text-decoration: none; }
+.tn-ledger .l-bal .money { color: var(--ink); }
+.tn-ledger .l-act .btn { opacity: .55; }
+.tn-ledger tr:hover .l-act .btn, .tn-ledger .l-act .btn:focus-visible, .tn-ledger .l-act .btn[aria-expanded="true"] { opacity: 1; }
+.tn-bal-lbl { display: none; }
+.tn-more-rows { display: flex; justify-content: center; padding: 10px 0 0; }
+
+/* composer + timeline */
+.tn-composer { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--sunk); border: 1px solid var(--line); border-radius: var(--r-panel); margin-bottom: var(--s3); }
+.tn-composer .tn-note-text { min-height: 56px; background: var(--surface); }
+.tn-composer-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.tn-composer-row .seg { background: var(--surface); }
+.tn-composer-row .seg > button { padding: 0 8px; }
+.tn-follow { display: inline-flex; align-items: center; gap: 6px; }
+.tn-follow .input { height: 28px; width: 148px; background: var(--surface); font-size: var(--t-12); }
+.tn-tl .tl-item { grid-template-columns: 56px minmax(0, 1fr) auto; }
+.tn-kind { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; padding: 0 6px; height: 18px; border-radius: 3px; background: var(--sunk); color: var(--ink-2); font-size: 11px; font-weight: 500; vertical-align: 1px; }
+.tn-tl .tl-meta { display: flex; align-items: center; gap: 5px; }
+.tn-tl-act { display: flex; align-items: center; gap: 2px; }
+.tn-tick { display: grid; place-items: center; width: 28px; height: 28px; cursor: pointer; }
+
+@media (max-width: 759.98px) {
+  .tn-dhead { padding-top: 6px; }
+  .tn-dhead-bar { margin-right: 0; }
+  .tn-dstat { margin-top: 12px; }
+  .tn-dacts { width: 100%; }
+  .tn-dacts .btn-primary { flex: 1 1 auto; }
+  .tn-alerts { margin: 0 -16px; }
+  .tn-alert { padding: 10px 16px; flex-wrap: wrap; }
+  .tn-ltools .btn { height: 36px; }
+  .tn-tick { width: 44px; height: 44px; }
+  /* ledger: two-line rows, no sideways scroll */
+  .tn-ledger, .tn-ledger tbody { display: block; width: 100%; }
+  .tn-ledger thead { display: none; }
+  .tn-ledger tr:not(.ledger-month) {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "desc amt act" "date bal act";
+    column-gap: 10px; row-gap: 1px; padding: 9px 0; border-bottom: 1px solid var(--line); align-items: baseline;
+  }
+  .tn-ledger tr:not(.ledger-month) > td { height: auto; padding: 0; border: 0; }
+  .tn-ledger .l-desc { grid-area: desc; }
+  .tn-ledger .l-date { grid-area: date; width: auto; font-size: 11.5px; color: var(--ink-3); }
+  .tn-ledger .l-amt { grid-area: amt; font-weight: 500; }
+  .tn-ledger .l-amt:empty { display: none; }
+  .tn-ledger .l-bal { grid-area: bal; font-size: var(--t-12); font-weight: 400; color: var(--ink-3); }
+  .tn-ledger .l-bal .money { color: var(--ink-3); }
+  .tn-bal-lbl { display: inline; }
+  .tn-ledger .l-act { grid-area: act; align-self: center; width: 36px; min-width: 36px; }
+  .tn-ledger .l-act .btn { width: 36px; min-width: 36px; height: 36px; opacity: 1; }
+  .tn-ledger tr.ledger-month { display: block; }
+  .tn-ledger tr.ledger-month td { display: block; height: auto; padding: 16px 0 4px; }
+  .tn-ledger tbody tr:not(.ledger-month):hover td { background: transparent; }
+  .tn-tl .tl-item { grid-template-columns: 48px minmax(0, 1fr) auto; gap: 8px; }
+  .tn-follow .input { height: 36px; width: 160px; }
+}
+
+/* ================= Sheets ================= */
+.tn-more-toggle {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; width: 100%; margin-top: var(--s5); padding: 14px 0 0;
+  border: 0; border-top: 1px solid var(--line); background: none; text-align: left; color: var(--accent); font-weight: 600; font-size: var(--t-13);
+}
+.tn-more-toggle svg { align-self: center; transition: transform 140ms; }
+.tn-more-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.tn-more-toggle .faint { font-weight: 400; font-size: var(--t-12); flex-basis: 100%; padding-left: 18px; }
+.tn-more-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tn-more-body { margin-top: var(--s5); }
+.tn-more-body > .fieldset:first-child { padding-top: 0; border-top: 0; margin-top: 0; }
+.tn-more-toggle + .tn-more-body > .fieldset:first-child { margin-top: 0; }
+.tn-static { display: flex; align-items: center; gap: 4px; height: var(--ctl-h); }
+.tn-inline-ico { display: inline-block; vertical-align: -2px; margin-right: 6px; color: var(--ink-3); }
+.form-note strong { color: var(--ink); font-weight: 600; }
+
+.tn-rep { display: flex; flex-direction: column; gap: 8px; }
+.tn-rep:empty { display: none; }
+.tn-rep-row { display: grid; gap: 8px; align-items: center; }
+.tn-rep-co { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr) auto; }
+.tn-rep-rec { grid-template-columns: minmax(0, 1.6fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1fr) auto; }
+.tn-rep-link { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto; }
+.tn-rep-ded { grid-template-columns: minmax(0, 1fr) 140px auto; }
+.tn-rep-row > span { display: block; min-width: 0; }
+.tn-rep-row .input { width: 100%; }
+.tn-rep-row .input[aria-invalid="true"] { border-color: var(--bad); }
+.tn-rep-add { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; }
+.tn-rep:empty + .tn-rep-err + .tn-rep-add { margin-top: 0; }
+.tn-rep-err { margin-top: 6px; }
+@media (max-width: 759.98px) {
+  .tn-rep-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+  .tn-rep-row > span:first-child { grid-column: 1 / 3; }
+  .tn-rep-row > .tn-rep-x { grid-column: 3; grid-row: 1; }
+  .tn-rep-co > span:nth-child(2), .tn-rep-co > span:nth-child(3), .tn-rep-link > span:nth-child(2) { grid-column: 1 / 3; }
+  .tn-rep-ded > span:nth-child(2) { grid-column: 1 / 3; }
+  .tn-rep-x { width: 44px; height: 44px; }
+}
+
+/* summaries in move-out / settle sheets */
+.tn-sum { border-top: 1px solid var(--line-2); }
+.tn-sum-row { display: grid; grid-template-columns: minmax(110px, auto) minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: var(--t-13); }
+.tn-sum-row > :last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tn-sum-val { color: var(--ink-2); min-width: 0; overflow-wrap: anywhere; }
+.tn-sum-minor { color: var(--ink-2); padding: 6px 0; font-size: var(--t-12); }
+.tn-sum-total { border-bottom: 0; border-top: 1px solid var(--line-2); padding-top: 12px; font-weight: 600; }
+.tn-sum-total strong { font-weight: 600; }
+.tn-dep-head { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 12px 14px; background: var(--sunk); border-radius: var(--r-ctl); }
+.tn-dep-head .micro { margin-bottom: 4px; }
+.tn-dep-due { font-family: var(--f-display); font-optical-sizing: auto; font-size: var(--t-18); line-height: 1.3; }
+@media (max-width: 759.98px) {
+  .tn-sum-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .tn-sum-row > .tn-sum-val { grid-column: 1; grid-row: 2; font-size: var(--t-12); }
+  .tn-sum-row > :last-child { grid-column: 2; grid-row: 1; }
+  .tn-sum-row > .tn-sum-val:empty { display: none; }
+}
+@media (max-width: 759.98px) {
+  .tn-settle-sheet .sheet-foot [data-action="copy"] { flex-basis: 100%; order: -1; }
+  .tn-dep-head { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 12px; }
+}
 /* ---- 43-leases.css ---- */
 /* Leases view: timeline + grouped list. Tokens only. */
 .view-leases { --lz-name-w: 232px; --lz-act-w: 124px; --lz-row-h: 48px; }
@@ -1261,6 +1491,13 @@ th.num .th-sort { flex-direction: row-reverse; }
   .lz-head-row { margin-bottom: var(--s4); }
   .view-leases .crow-actions .btn-group > .btn:first-child { flex: 1 1 auto; }
 }
+
+/* long unit labels never push the page sideways */
+.view-leases .plate { max-width: 9em; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
+.view-leases .plate-sm { display: inline-block; line-height: 20px; text-align: center; }
+.view-leases .crow { align-items: start; }
+.view-leases .crow-main { padding-top: 1px; }
+.view-leases .crow-aside { gap: 0; }
 /* ---- 44-upkeep.css ---- */
 /* Upkeep view: three status columns (desktop), one at a time under a segmented control (phone). Tokens only. */
 .uk-head { margin-bottom: var(--s4); }
@@ -1315,6 +1552,10 @@ th.num .th-sort { flex-direction: row-reverse; }
   .uk-actions .btn { flex: 1 1 auto; }
   .uk-inline .input { height: var(--ctl-h); }
 }
+
+/* long unit labels never push the page sideways */
+.view-upkeep .plate { max-width: 9em; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
+.view-upkeep .plate-sm { display: inline-block; line-height: 20px; text-align: center; }
 /* ---- 45-reports.css ---- */
 /* Reports view. Tokens only. */
 .rp-head { gap: 10px 12px; }
@@ -1339,7 +1580,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .rp-tbl .plate { min-width: 52px; }
 
 /* scrolling table with sticky first column (phone) */
-.rp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.rp-scroll { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 .rp-sticky { min-width: 520px; }
 .rp-scroll .tbl thead th { top: auto; }
 @media (min-width: 760px) { .rp-scroll .tbl thead th { top: var(--sticky-top); } }
@@ -1392,6 +1633,107 @@ th.num .th-sort { flex-direction: row-reverse; }
   .rp-xlab { font-size: 10.5px; }
   .rp-xyear { display: none; }
 }
+
+/* long unit labels never push the page sideways */
+.view-reports .plate { max-width: 9em; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
+.view-reports .plate-sm { display: inline-block; line-height: 20px; text-align: center; }
+@media (max-width: 759.98px) { #rp-collection th, #rp-collection td { padding-left: 6px; padding-right: 6px; } #rp-collection th:first-child, #rp-collection td:first-child { padding-left: 8px; } #rp-collection th:last-child, #rp-collection td:last-child { padding-right: 8px; } }
+@media (max-width: 759.98px) { .rp-sticky .rp-who .plate { min-width: 0; max-width: 4.5em; } .rp-sticky { min-width: 560px; } }
+/* ---- 46-setup.css ---- */
+/* Setup view: settings rows saved field by field, import, backup. Tokens only. */
+.st-layout { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: var(--s6); align-items: start; }
+.st-toc { position: sticky; top: calc(var(--sticky-top) + 24px); display: flex; flex-direction: column; gap: 2px; }
+.st-toc a { display: block; padding: 5px 10px; border-radius: var(--r-ctl); color: var(--ink-2); font-size: var(--t-13); }
+.st-toc a:hover { background: var(--hover); color: var(--ink); text-decoration: none; }
+.st-main { min-width: 0; max-width: 860px; }
+
+.st-sec { padding: var(--s5) 0 var(--s6); border-top: 1px solid var(--line); scroll-margin-top: calc(var(--sticky-top) + 12px); }
+.st-sec:first-child { padding-top: 0; border-top: 0; }
+.st-sec-head { margin-bottom: var(--s3); }
+.st-sec-title { font-size: var(--t-micro); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.st-p { color: var(--ink-2); max-width: 66ch; }
+
+.st-row { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 6px 24px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.st-sec .st-row:last-of-type { border-bottom: 0; }
+.st-label-text { display: block; font-weight: 500; color: var(--ink); }
+.st-hint { margin-top: 2px; font-size: var(--t-12); color: var(--ink-3); }
+.st-ctl { min-width: 0; }
+.st-ctl-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.st-ctl .field-error { margin-top: 6px; }
+.st-row.is-invalid .input, [data-row].is-invalid .input { border-color: var(--bad); }
+.st-wide { max-width: 360px; }
+.st-sel { width: 140px; }
+.st-num { display: inline-flex; align-items: center; gap: 8px; }
+.st-num .input { width: 72px; }
+.st-suffix { color: var(--ink-2); font-size: var(--t-13); }
+.st-money { width: 120px; }
+.st-saved { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-12); font-weight: 500; color: var(--ok); opacity: 0; transition: opacity 160ms; }
+.st-saved.is-on { opacity: 1; }
+.st-sentence { margin-top: var(--s3); padding: 12px 14px; border-left: 2px solid var(--line-2); background: var(--sunk); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; font-family: var(--f-display); font-optical-sizing: auto; font-size: var(--t-15); color: var(--ink); max-width: 66ch; }
+
+/* payment methods */
+.st-methods { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: var(--s3); }
+.st-method { display: inline-flex; align-items: center; gap: 2px; height: 30px; padding: 0 4px 0 12px; border: 1px solid var(--line-2); border-radius: 15px; background: var(--surface); font-size: var(--t-13); font-weight: 500; }
+.st-method-x { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 50%; background: none; color: var(--ink-3); }
+.st-method-x:hover { background: var(--hover); color: var(--bad); }
+.st-method-x:disabled { opacity: .3; }
+.st-method-add { display: inline-flex; gap: 6px; }
+.st-method-add .input { width: 150px; height: 30px; }
+.st-methods + .st-saved { margin-top: 6px; }
+
+/* import */
+.st-import-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--s5); }
+.st-import-in { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.st-import-text { font-family: var(--f-mono); font-size: 12px; min-height: 150px; white-space: pre; overflow-wrap: normal; }
+.st-import-btns { margin-top: 4px; gap: 6px; }
+.st-file { cursor: pointer; }
+.st-eg { position: relative; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--sunk); }
+.st-eg table { font-family: var(--f-mono); font-size: 11px; white-space: nowrap; }
+.st-eg th, .st-eg td { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); }
+.st-eg th { color: var(--ink-2); font-weight: 500; background: var(--surface); }
+.st-eg tr:last-child td { border-bottom: 0; }
+.st-eg td { color: var(--ink-2); }
+
+.st-prev-head { display: flex; flex-direction: column; gap: 2px; margin: var(--s5) 0 var(--s2); }
+.st-prev-scroll { position: relative; overflow-x: auto; max-height: 460px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--r-ctl); }
+.st-prev { min-width: 100%; }
+.st-prev thead th { position: sticky; top: 0; height: auto; padding-top: 8px; padding-bottom: 8px; vertical-align: top; }
+.st-prev thead th:first-child { border-top-left-radius: 0; }
+.st-src { display: block; margin-bottom: 4px; font-family: var(--f-mono); font-size: 11px; color: var(--ink-2); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.st-map { min-width: 128px; }
+.st-map .input { height: 28px; font-size: var(--t-12); background: var(--surface); }
+.st-prev td { white-space: nowrap; }
+.st-cell { display: block; max-width: 180px; }
+.st-prev-n { width: 1%; text-align: right; }
+.st-prev-skip { color: var(--ink-3); }
+.st-prev-skip .st-cell { text-decoration: line-through; text-decoration-color: var(--line-2); }
+.st-prev-bad td { background: var(--bad-soft); }
+.st-prev tbody tr.st-prev-bad:hover td { background: var(--bad-soft); }
+.st-problem { font-size: var(--t-12); font-weight: 500; white-space: normal; display: block; min-width: 180px; }
+.st-import-go { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: var(--s4); }
+
+.st-done, .st-restore { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 var(--s4); padding: 12px 14px; border: 1px solid var(--ok-line); background: var(--ok-soft); border-radius: var(--r-panel); }
+.st-done > svg { color: var(--ok); }
+.st-restore { margin: var(--s4) 0 0; border-color: var(--line-2); background: var(--sunk); }
+.st-restore.is-bad { border-color: var(--bad-line); background: var(--bad-soft); }
+.st-restore.is-bad > svg { color: var(--bad); }
+
+@media (max-width: 1099.98px) { .st-layout { grid-template-columns: minmax(0, 1fr); } .st-toc { display: none; } }
+@media (max-width: 759.98px) {
+  .st-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .st-import-grid { grid-template-columns: minmax(0, 1fr); }
+  .st-num .input { width: 80px; }
+  .st-wide { max-width: none; }
+  .st-sel { width: 160px; }
+  .st-method { height: 36px; border-radius: 18px; }
+  .st-method-x { width: 30px; height: 30px; }
+  .st-method-add .input { height: 36px; width: 160px; }
+  .st-import-go .btn-primary { flex: 1 1 100%; }
+  .st-done .btn, .st-restore .btn:not(.btn-icon) { flex: 1 1 auto; }
+}
+.st-ready { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-12); font-weight: 500; }
+.st-prev-check { min-width: 150px; white-space: normal !important; }
+.st-prev-checkh { vertical-align: bottom !important; }
 </style>
 <div class="app" id="rb-app">
   <aside class="rail" id="rb-rail" aria-label="Sections">
@@ -5603,10 +5945,10 @@ function collection(today) {
       </div>
       <figcaption class="bar-legend rp-legend"><span class="rp-key rp-key-charged">Charged</span><span class="rp-key rp-key-collected">Collected</span><span class="faint">Percent = collected of charged</span></figcaption>
     </figure>
-    <div class="rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-collection">
-      <thead><tr><th>Month</th><th class="num">Charged</th><th class="num">Collected</th><th class="num">Outstanding</th><th class="num">Rate</th></tr></thead>
-      <tbody>${rows.slice().reverse().map(r => h`<tr><td>${D.fmtMonth(r.period)}${r.period === curKey ? h` <span class="faint t-12">so far</span>` : ''}</td><td class="num">${ui.money(r.charged)}</td><td class="num">${ui.money(r.collected)}</td><td class="num">${r.outstanding ? ui.money(r.outstanding, { tone: 'owed' }) : h`<span class="faint">—</span>`}</td><td class="num">${pctTxt(r.rate)}</td></tr>`)}</tbody>
-      <tfoot><tr><td>12 months</td><td class="num" data-total="charged">${ui.money(tot.charged)}</td><td class="num" data-total="collected">${ui.money(tot.collected)}</td><td class="num">${ui.money(tot.outstanding)}</td><td class="num">${pctTxt(rate)}</td></tr></tfoot>
+    <div class="rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-collection">
+      <thead><tr><th>Month</th><th class="num">Charged</th><th class="num">Collected</th><th class="num hide-phone">Outstanding</th><th class="num">Rate</th></tr></thead>
+      <tbody>${rows.slice().reverse().map(r => h`<tr><td><span class="hide-phone">${D.fmtMonth(r.period)}</span><span class="show-phone">${D.MON[+r.period.slice(5, 7) - 1] + ' ' + r.period.slice(0, 4)}</span>${r.period === curKey ? h` <span class="faint t-12 hide-phone">so far</span>` : ''}</td><td class="num">${ui.money(r.charged)}</td><td class="num">${ui.money(r.collected)}</td><td class="num hide-phone">${r.outstanding ? ui.money(r.outstanding, { tone: 'owed' }) : h`<span class="faint">—</span>`}</td><td class="num">${pctTxt(r.rate)}</td></tr>`)}</tbody>
+      <tfoot><tr><td>12 months</td><td class="num" data-total="charged">${ui.money(tot.charged)}</td><td class="num" data-total="collected">${ui.money(tot.collected)}</td><td class="num hide-phone">${ui.money(tot.outstanding)}</td><td class="num">${pctTxt(rate)}</td></tr></tfoot>
     </table></div>`;
   return { title: 'Collection by month', file: 'collection', csv: () => RB.model.collectionCsv(rows), meta, body };
 }
@@ -5627,11 +5969,11 @@ function income(today) {
       <button type="button" class="btn btn-ghost btn-icon" id="rp-year-prev" data-act="year" data-d="-1" aria-label="Previous year"${yr <= lo ? RB.raw(' disabled') : ''}>${ui.icon('chevron-left')}</button>
       <span class="stepper-label" id="rp-year-label">${yr}</span>
       <button type="button" class="btn btn-ghost btn-icon" id="rp-year-next" data-act="year" data-d="1" aria-label="Next year"${yr >= cy ? RB.raw(' disabled') : ''}>${ui.icon('chevron-right')}</button></div>`;
-  const body = inc.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-income">
-      <thead><tr><th>Tenant</th><th class="hide-phone">Property</th><th class="num">Payments</th><th class="num">Received</th><th class="num">Credits given</th></tr></thead>
+  const body = inc.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-income">
+      <thead><tr><th>Tenant</th><th class="hide-phone">Property</th><th class="num hide-phone">Payments</th><th class="num">Received</th><th class="num hide-phone">Credits given</th></tr></thead>
       <tbody>${inc.rows.map(r => h`<tr data-tenant="${r.tenantId}"><td><span class="rp-who">${ui.plate(r.unit)}<button type="button" class="rp-name truncate" data-act="open" data-id="${r.tenantId}">${r.name}</button></span></td>
-        <td class="hide-phone muted">${r.property}</td><td class="num faint">${r.count}</td><td class="num">${ui.money(r.payments)}</td><td class="num">${r.credits ? ui.money(r.credits) : h`<span class="faint">—</span>`}</td></tr>`)}</tbody>
-      <tfoot><tr><td>Total</td><td class="hide-phone"></td><td class="num">${inc.rows.reduce((s, r) => s + r.count, 0)}</td><td class="num" data-total="payments">${ui.money(inc.totals.payments)}</td><td class="num" data-total="credits">${ui.money(inc.totals.credits)}</td></tr></tfoot>
+        <td class="hide-phone muted">${r.property}</td><td class="num faint hide-phone">${r.count}</td><td class="num">${ui.money(r.payments)}</td><td class="num hide-phone">${r.credits ? ui.money(r.credits) : h`<span class="faint">—</span>`}</td></tr>`)}</tbody>
+      <tfoot><tr><td>Total</td><td class="hide-phone"></td><td class="num hide-phone">${inc.rows.reduce((s, r) => s + r.count, 0)}</td><td class="num" data-total="payments">${ui.money(inc.totals.payments)}</td><td class="num hide-phone" data-total="credits">${ui.money(inc.totals.credits)}</td></tr></tfoot>
     </table></div>
     <p class="rp-note">Cash basis: payments dated in ${yr}, whatever month they paid for. The CSV adds a column for each month.</p>`
     : ui.empty({ icon: 'reports', title: 'No payments in ' + yr, body: 'Payments recorded with a date in ' + yr + ' add up here.' });
@@ -5681,39 +6023,436 @@ RB.views.register('reports', {
 })();
 /* ---- js/views/setup.js ---- */
 ;(function(){'use strict';
-// views/setup.js — PLACEHOLDER (to be replaced wholesale by the Setup view author). Sample-data buttons work.
+// views/setup.js — Setup: rules saved field by field, payment methods, spreadsheet import, backup/restore, sample data.
 const RB = globalThis.RB;
-const { html: h, ui, money: M } = RB;
+const { html: h, ui, date: D, money: M } = RB;
+const S = () => RB.store;
+
+// ------------------------------------------------------------------ view state (survives store re-renders)
+const drafts = {};          // key -> raw text the user typed but that isn't saved yet
+const errs = {};            // key -> message
+let flash = null;           // {key, until}
+let methodDraft = '';
+const imp = { text: '', fileName: '', map: null, mapFor: null, removeSample: null, done: null, fileErr: '' };
+let restore = null;         // {data, name, summary} | {error, name}
+
+// ------------------------------------------------------------------ helpers
+const ord = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+function canWrite() { if (!S().canWrite()) { ui.toast('View only — you can’t change this rent book.', { tone: 'bad' }); return false; } return true; }
+
+/** Plain-language rule sentence for the given settings. */
+function ruleSentence(s) {
+  const due = +s.dueDay || 1, g = +s.graceDays || 0, last = due + g;
+  const first = 'Rent is due on the ' + ord(due) + (g ? ', with ' + RB.plural(g, 'day') + ' of grace.' : ', with no grace period.');
+  const when = last <= 28 ? 'After the ' + ord(last) : 'More than ' + RB.plural(g, 'day') + ' after the due date';
+  const lf = s.lateFee || {};
+  if (lf.type === 'none' || !(+lf.amount > 0)) return first + ' Late fees are off — nothing is suggested.';
+  if (lf.type === 'flat') return first + ' ' + when + ', suggest a ' + M.fmt(+lf.amount) + ' late fee.';
+  const rents = S().tenantsList({ includePast: false }).map(t => RB.model.rentOn(t, S().today())).filter(Boolean).sort((a, b) => a - b);
+  const ex = rents.length ? rents[Math.floor(rents.length / 2)] : 145000;
+  return first + ' ' + when + ', suggest a late fee of ' + (+lf.amount) + '% of that month’s rent (' + M.fmt(Math.round(ex * lf.amount / 100)) + ' on ' + M.fmt(ex) + ').';
+}
+
+function showFlash(el, key) {
+  flash = { key, until: Date.now() + 2200 };
+  const f = el && el.querySelector('#st-saved-' + key);
+  if (f) f.classList.add('is-on');
+  setTimeout(() => {
+    if (flash && flash.key === key && Date.now() >= flash.until - 5) flash = null;
+    const x = document.getElementById('st-saved-' + key); if (x) x.classList.remove('is-on');
+  }, 2200);
+}
+function setErr(el, key, msg) {
+  if (msg) errs[key] = msg; else delete errs[key];
+  const row = el && el.querySelector('[data-row="' + key + '"]');
+  if (row) { row.classList.toggle('is-invalid', !!msg); const e = row.querySelector('.field-error'); if (e) e.textContent = msg || ''; }
+}
+
+/** Parse + validate a settings field; returns {patch} or {error}. */
+function parseSetting(key, raw, s) {
+  const v = String(raw == null ? '' : raw).trim();
+  const int = (lo, hi, what) => { if (!/^\d+$/.test(v)) return { error: 'Enter a whole number of ' + what }; const n = +v; if (n < lo || n > hi) return { error: 'Between ' + lo + ' and ' + hi + ' ' + what }; return { n }; };
+  switch (key) {
+    case 'portfolioName': return { patch: { portfolioName: v.slice(0, 80) } };
+    case 'dueDay': { const r = int(1, 28, 'days'); return r.error ? r : { patch: { dueDay: r.n } }; }
+    case 'graceDays': { const r = int(0, 27, 'days'); return r.error ? r : { patch: { graceDays: r.n } }; }
+    case 'depositReturnDays': { const r = int(0, 120, 'days'); return r.error ? r : { patch: { depositReturnDays: r.n } }; }
+    case 'leaseNoticeDays': { const r = int(7, 365, 'days'); return r.error ? r : { patch: { leaseNoticeDays: r.n } }; }
+    case 'lateFeeAmount': {
+      if (s.lateFee.type === 'flat') { const c = M.parse(v); if (c === null || c <= 0) return { error: 'Enter an amount like 50' }; return { patch: { lateFee: { type: 'flat', amount: c } } }; }
+      const p = Number(v.replace('%', '')); if (!v || !isFinite(p) || p <= 0 || p > 50) return { error: 'Enter a percentage between 0 and 50' };
+      return { patch: { lateFee: { type: 'percent', amount: Math.round(p * 100) / 100 } } };
+    }
+  }
+  return { error: 'Unknown setting' };
+}
+function saveSetting(el, key, raw) {
+  if (!canWrite()) return;
+  const s = S().settings();
+  const r = parseSetting(key, raw, s);
+  if (r.error) { setErr(el, key, r.error); return; }
+  setErr(el, key, null);
+  const cur = JSON.stringify(Object.keys(r.patch).reduce((o, k) => (o[k] = s[k], o), {}));
+  delete drafts[key];
+  if (JSON.stringify(r.patch) === cur || (key === 'lateFeeAmount' && s.lateFee.amount === r.patch.lateFee.amount)) return;
+  S().saveSettings(r.patch).catch(() => {});
+  showFlash(el, key);
+}
+function previewSettings() {
+  const s = RB.clone(S().settings());
+  ['dueDay', 'graceDays', 'lateFeeAmount'].forEach(k => {
+    if (drafts[k] === undefined) return;
+    const r = parseSetting(k, drafts[k], S().settings());
+    if (r.patch) { if (r.patch.lateFee) s.lateFee = r.patch.lateFee; else Object.assign(s, r.patch); }
+  });
+  return s;
+}
+
+// ------------------------------------------------------------------ import
+const FIELDS = [
+  { key: '', label: 'Don’t import' },
+  { key: 'name', label: 'Name', re: /(^|\b)(name|tenant|resident|lessee|occupant)/ },
+  { key: 'unit', label: 'Unit', re: /(^|\b)(unit|apt|apartment|suite|door|house|no\.?$|#)/ },
+  { key: 'property', label: 'Property', re: /(property|building|address|street|complex|bldg)/ },
+  { key: 'phone', label: 'Phone', re: /(phone|mobile|cell|tel)/ },
+  { key: 'email', label: 'Email', re: /e-?mail/ },
+  { key: 'rent', label: 'Rent', re: /rent|monthly/ },
+  { key: 'start', label: 'Lease start', re: /(start|move.?in|begin|commence|from)/ },
+  { key: 'end', label: 'Lease end', re: /(end|expir|until|through|term.?date)/ },
+  { key: 'deposit', label: 'Deposit', re: /deposit/ },
+  { key: 'balance', label: 'Balance owed', re: /(balance|owed|owing|arrears|past.?due|outstanding)/ },
+];
+// matching order: specific words first, so "Tenant email" is email and "Rent deposit" is deposit
+const MATCH_ORDER = ['email', 'phone', 'deposit', 'balance', 'start', 'end', 'rent', 'property', 'unit', 'name'];
+function autoMap(header) {
+  const used = new Set();
+  return header.map(raw => {
+    const s = String(raw || '').toLowerCase().trim();
+    if (!s) return '';
+    for (const k of MATCH_ORDER) { if (used.has(k)) continue; const f = FIELDS.find(x => x.key === k); if (f.re.test(s)) { used.add(k); return k; } }
+    return '';
+  });
+}
+/** Parse the pasted text into {header, rows, map, hasHeader}. */
+function parsed() {
+  const all = RB.model.parseDelimited(imp.text).slice(0, 1001);
+  if (!all.length) return null;
+  const width = Math.min(30, Math.max(...all.map(r => r.length)));
+  const norm = all.map(r => Array.from({ length: width }, (_, i) => r[i] || ''));
+  const auto = autoMap(norm[0]);
+  const hasHeader = auto.some(Boolean);
+  if (imp.mapFor !== imp.text.split(/\r?\n/, 1)[0] || !imp.map || imp.map.length !== width) {
+    imp.map = hasHeader ? auto : norm[0].map(() => '');
+    imp.mapFor = imp.text.split(/\r?\n/, 1)[0];
+  }
+  return { header: hasHeader ? norm[0] : norm[0].map((_, i) => 'Column ' + (i + 1)), rows: hasHeader ? norm.slice(1) : norm, hasHeader, width };
+}
+/** Validate one row under the current mapping → {ok, problems, data}. */
+function checkRow(row, existing, today) {
+  const get = k => { const i = imp.map.indexOf(k); return i >= 0 ? String(row[i] || '').trim() : ''; };
+  const problems = [];
+  const name = get('name').slice(0, 120);
+  if (!name) problems.push('Missing name');
+  const rentRaw = get('rent');
+  const rent = rentRaw ? M.parse(rentRaw) : null;
+  if (!rentRaw) problems.push('Missing rent'); else if (rent === null || rent <= 0) problems.push('Rent “' + rentRaw.slice(0, 20) + '” isn’t an amount');
+  const date = (k, label) => { const v = get(k); if (!v) return null; const d = D.parseLoose(v, today); if (!d) problems.push(label + ' “' + v.slice(0, 20) + '” isn’t a date'); return d; };
+  const start = date('start', 'Lease start'), end = date('end', 'Lease end');
+  if (start && end && end <= start) problems.push('Lease ends before it starts');
+  const money = (k, label) => { const v = get(k); if (!v) return 0; const c = M.parse(v); if (c === null) { problems.push(label + ' “' + v.slice(0, 20) + '” isn’t an amount'); return 0; } return c; };
+  const deposit = money('deposit', 'Deposit'), balance = money('balance', 'Balance');
+  if (deposit < 0) problems.push('Deposit can’t be negative');
+  const unit = get('unit').slice(0, 40), property = get('property').slice(0, 120);
+  if (name && existing.has((name + '|' + unit).toLowerCase())) problems.push('Already in your rent book');
+  return { ok: !problems.length, problems, data: { name, unit, property, phone: get('phone').slice(0, 60), email: get('email').slice(0, 160), rent, start, end, deposit, balance } };
+}
+function checkAll(p, today) {
+  const existing = new Set(S().tenantsList().filter(t => !t.sample).map(t => (t.name + '|' + (t.unit || '')).toLowerCase()));
+  const seen = new Set();
+  return p.rows.map(r => {
+    const c = checkRow(r, existing, today);
+    const key = (c.data.name + '|' + c.data.unit).toLowerCase();
+    if (c.data.name && seen.has(key)) { c.problems.push('Same name and unit as a row above'); c.ok = false; }
+    seen.add(key);
+    return c;
+  });
+}
+function tenantDoc(d, today) {
+  const tf = D.monthStart(D.monthKey(today));
+  const start = d.start || tf;
+  const now = D.nowIso();
+  return {
+    name: d.name, phone: d.phone, email: d.email, coTenants: [], emergency: { name: '', phone: '' }, property: d.property, unit: d.unit, status: 'active',
+    lease: { start, end: d.end || null, moveIn: start, noticeDate: null, moveOut: null, dueDay: null, graceDays: null },
+    rent: [{ from: start, amount: d.rent }], recurring: [], trackFrom: D.max(tf, start),
+    opening: d.balance ? { amount: d.balance } : null,
+    deposit: { amount: d.deposit || 0, received: d.deposit ? start : null, heldAt: '', returned: null },
+    insurance: null, links: [], about: '', log: {}, createdAt: now, updatedAt: now,
+  };
+}
+const TEMPLATE = 'Name,Unit,Property,Phone,Email,Rent,Lease start,Lease end,Deposit,Balance owed\r\n' +
+  'Maya Okafor,2B,Alder Court,(555) 014-2233,maya@example.com,1450,1/1/2026,12/31/2026,1450,0\r\n' +
+  'Theo Lindqvist,102,418 Marlow Street,(555) 019-8870,,1520,2025-10-01,2027-09-30,1520,250\r\n' +
+  'Lena Fischer,No. 4,Fenwick Row,,lena@example.com,1950,Mar 1 2025,,1950,\r\n';
+
+async function doImport(el, today) {
+  if (!canWrite()) return;
+  const p = parsed(); if (!p) return;
+  const checks = checkAll(p, today).filter(c => c.ok);
+  if (!checks.length) return;
+  const removeSample = S().hasSample() && imp.removeSample !== false;
+  if (removeSample) {
+    const ts = S().tenantsList().filter(t => t.sample).length;
+    const ok = await ui.confirm({
+      title: 'Import ' + RB.plural(checks.length, 'tenant') + ' and remove sample data?',
+      body: h`<p class="muted">The <strong>${RB.plural(ts, 'sample tenant')}</strong>, their ledgers and sample upkeep requests are deleted first. Then <strong>${RB.plural(checks.length, 'tenant')}</strong> from your spreadsheet are added.</p>`,
+      confirmLabel: 'Remove sample and import', danger: true,
+    });
+    if (!ok) return;
+    try { await S().removeSample(); } catch (e) { return; }
+  }
+  const tenants = {};
+  checks.forEach(c => { tenants[RB.id()] = tenantDoc(c.data, today); });
+  const ids = Object.keys(tenants);
+  try { await S().importAll({ tenants }); } catch (e) { ui.toast('Some tenants couldn’t be saved — check the Tenants list and try again.', { tone: 'bad' }); }
+  imp.done = { count: ids.length, skipped: p.rows.length - ids.length, removed: removeSample };
+  imp.text = ''; imp.fileName = ''; imp.map = null; imp.mapFor = null;
+  ui.toast('Imported ' + RB.plural(ids.length, 'tenant'), { undo: () => { ids.forEach(id => S().deleteTenant(id).catch(() => {})); imp.done = null; } });
+  RB.shell.refresh();
+}
+
+// ------------------------------------------------------------------ render pieces
+const savedTag = key => h`<span class="st-saved${flash && flash.key === key && Date.now() < flash.until ? ' is-on' : ''}" id="st-saved-${key}" aria-live="polite">${ui.icon('check', { size: 12 })}Saved</span>`;
+function row(key, label, hint, control) {
+  return h`<div class="st-row${errs[key] ? ' is-invalid' : ''}" data-row="${key}">
+    <div class="st-label"><label class="st-label-text" for="st-${key}">${label}</label>${hint ? h`<div class="st-hint">${hint}</div>` : ''}</div>
+    <div class="st-ctl"><div class="st-ctl-line">${control}${savedTag(key)}</div><div class="field-error" aria-live="polite">${errs[key] || ''}</div></div>
+  </div>`;
+}
+const val = (key, v) => (drafts[key] !== undefined ? drafts[key] : v);
+function numInput(key, value, suffix, attrs) {
+  return h`<span class="st-num"><input class="input input-num" type="text" id="st-${key}" data-key="${key}" data-change="save" data-input="draft" value="${val(key, value)}" autocomplete="off" data-write${ui.attrs(Object.assign({ inputmode: 'numeric' }, attrs))}><span class="st-suffix">${suffix}</span></span>`;
+}
+
+function importSection(today) {
+  const p = imp.text.trim() ? parsed() : null;
+  const checks = p ? checkAll(p, today) : [];
+  const good = checks.filter(c => c.ok).length;
+  const bad = checks.length - good;
+  const mapped = imp.map || [];
+  const missing = p ? ['name', 'rent'].filter(k => !mapped.includes(k)) : [];
+  const fieldLabel = k => (FIELDS.find(f => f.key === k) || {}).label;
+  return h`
+    ${imp.done ? h`<div class="st-done" role="status">${ui.icon('check')}<div class="grow"><strong>Imported ${RB.plural(imp.done.count, 'tenant')}.</strong> ${imp.done.skipped ? RB.plural(imp.done.skipped, 'row') + ' with problems ' + (imp.done.skipped === 1 ? 'was' : 'were') + ' left out. ' : ''}Their ledgers start on ${D.fmt(D.monthStart(D.monthKey(today)), today)} with the balance you gave as the opening line.</div>
+      <button type="button" class="btn btn-sm" data-act="goTenants">See tenants</button><button type="button" class="btn btn-sm btn-ghost btn-icon" data-act="doneClose" aria-label="Dismiss">${ui.icon('x')}</button></div>` : ''}
+    <div class="st-import-grid">
+      <div class="st-import-in">
+        <label class="field-label" for="st-import-text">Paste rows from a spreadsheet</label>
+        <textarea class="input textarea st-import-text" id="st-import-text" rows="7" data-input="impText" spellcheck="false" placeholder="Copy the rows in Excel, Numbers or Google Sheets — header row included — and paste here." data-write>${imp.text}</textarea>
+        <div class="row row-wrap st-import-btns">
+          <label class="btn btn-sm st-file" for="st-import-file" data-write>${ui.icon('upload')}<span>Choose a CSV file</span></label>
+          <input type="file" id="st-import-file" class="vh" accept=".csv,.tsv,.txt,text/csv,text/plain" data-change="impFile">
+          ${imp.fileName ? h`<span class="faint t-12 truncate">${imp.fileName}</span>` : ''}
+          <span class="spacer"></span>
+          <button type="button" class="btn btn-sm btn-ghost" data-act="template">${ui.icon('download')}<span>Download a template CSV</span></button>
+          ${imp.text ? h`<button type="button" class="btn btn-sm btn-ghost" data-act="impClear">Clear</button>` : ''}
+        </div>
+        ${imp.fileErr ? h`<div class="field-error">${imp.fileErr}</div>` : ''}
+      </div>
+      <div class="st-import-eg">
+        <div class="micro mb-2">Expected shape</div>
+        <div class="st-eg" aria-label="Example spreadsheet">
+          <table><thead><tr><th>Name</th><th>Unit</th><th>Rent</th><th>Lease end</th><th>Balance owed</th></tr></thead>
+          <tbody><tr><td>Maya Okafor</td><td>2B</td><td>1450</td><td>12/31/2026</td><td>0</td></tr>
+          <tr><td>Theo Lindqvist</td><td>102</td><td>1520</td><td>2027-09-30</td><td>250</td></tr></tbody></table>
+        </div>
+        <p class="st-hint mt-2">One row per tenant. Name and rent are needed; property, phone, email, lease start, deposit and balance are optional. Dates like 1/15/2026, 2026-01-15 or Jan 15 2026 all work. “Balance owed” is what they owed before ${D.monthName(D.monthKey(today))}’s rent.</p>
+      </div>
+    </div>
+    <div id="st-import-preview">${p ? h`
+      <div class="st-prev-head">
+        <div><strong>${RB.plural(p.rows.length, 'row')}</strong> found${p.hasHeader ? '' : ' (no header row recognised — match the columns below)'} · <span class="tone-ok">${good} ready</span>${bad ? h` · <span class="tone-bad">${RB.plural(bad, 'row')} with problems will be skipped</span>` : ''}</div>
+        ${missing.length ? h`<div class="tone-bad t-12">Choose which column holds the ${missing.map(fieldLabel).join(' and ').toLowerCase()}.</div>` : h`<div class="faint t-12">Columns were matched by their headings — change any that are wrong.</div>`}
+      </div>
+      <div class="st-prev-scroll"><table class="tbl tbl-compact st-prev" id="st-import-table">
+        <thead><tr><th class="st-prev-n">#</th><th class="st-prev-checkh">Check</th>${p.header.map((hd, i) => h`<th><span class="st-src">${hd || 'Column ' + (i + 1)}</span>
+          <span class="select st-map"><select class="input" id="st-map-${i}" data-change="map" data-i="${i}" aria-label="Import column ${hd || i + 1} as">${FIELDS.map(f => h`<option value="${f.key}"${mapped[i] === f.key ? RB.raw(' selected') : ''}>${f.label}</option>`)}</select></span></th>`)}</tr></thead>
+        <tbody>${p.rows.slice(0, 200).map((r, ri) => h`<tr class="${checks[ri].ok ? '' : 'st-prev-bad'}"><td class="st-prev-n faint">${ri + 1}</td>
+          <td class="st-prev-check">${checks[ri].ok ? h`<span class="tone-ok st-ready">${ui.icon('check', { size: 14 })}Ready</span>` : h`<span class="tone-bad st-problem">${checks[ri].problems.join(' · ')}</span>`}</td>
+          ${r.map((c, i) => h`<td class="${mapped[i] ? '' : 'st-prev-skip'}"><span class="truncate st-cell">${c}</span></td>`)}</tr>`)}</tbody>
+      </table></div>
+      ${p.rows.length > 200 ? h`<p class="st-hint mt-2">Showing the first 200 rows; all ${p.rows.length} are checked.</p>` : ''}
+      <div class="st-import-go">
+        ${S().hasSample() ? h`<label class="check"><input type="checkbox" id="st-import-rmsample" data-change="impSample"${imp.removeSample !== false ? RB.raw(' checked') : ''}><span>Remove the sample tenants first</span></label>` : ''}
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-primary" id="st-import-go" data-act="doImport" data-write${good && !missing.length ? '' : RB.raw(' disabled')}>Import ${RB.plural(good, 'tenant')}</button>
+      </div>` : ''}</div>`;
+}
+
+function backupSection(today) {
+  const r = restore;
+  return h`
+    <p class="st-p">A backup is one JSON file with every tenant, ledger entry, note, upkeep request and setting. Keep one somewhere safe now and then.</p>
+    <div class="row row-wrap mt-4">
+      <button type="button" class="btn" id="st-backup" data-cmd="backup:download">${ui.icon('download')}<span>Download backup</span></button>
+      <label class="btn btn-ghost" for="st-restore-file" data-write>${ui.icon('upload')}<span>Restore from backup…</span></label>
+      <input type="file" id="st-restore-file" class="vh" accept=".json,application/json" data-change="restoreFile">
+    </div>
+    ${r ? r.error ? h`<div class="st-restore is-bad" role="alert">${ui.icon('alert')}<div class="grow"><strong>${r.name}</strong> can’t be restored: ${r.error}</div><button type="button" class="btn btn-sm btn-ghost btn-icon" data-act="restoreClose" aria-label="Dismiss">${ui.icon('x')}</button></div>`
+      : h`<div class="st-restore" id="st-restore-summary">
+        <div class="grow"><div class="strong">${r.name}</div>
+          <div class="muted t-13">Backup from ${r.summary.when} · ${RB.plural(r.summary.tenants, 'tenant')} · ${RB.plural(r.summary.entries, 'ledger entry', 'ledger entries')} · ${RB.plural(r.summary.tickets, 'upkeep request')}${r.summary.portfolio ? ' · “' + r.summary.portfolio + '”' : ''}</div>
+          <div class="tone-bad t-12 mt-2">Restoring replaces everything in this rent book.</div></div>
+        <button type="button" class="btn btn-danger-soft" id="st-restore-go" data-act="restoreGo" data-write>Replace with this backup…</button>
+        <button type="button" class="btn btn-ghost btn-icon" data-act="restoreClose" aria-label="Cancel">${ui.icon('x')}</button>
+      </div>` : ''}`;
+}
+
+function summarize(data) {
+  if (!data || data.format !== 'rent-book-backup' || !RB.isObj(data.tenants)) return null;
+  const ledgers = RB.isObj(data.ledgers) ? data.ledgers : {};
+  const entries = Object.keys(ledgers).reduce((n, k) => n + Object.keys((ledgers[k] && ledgers[k].entries) || {}).length, 0);
+  const at = String(data.exportedAt || '').slice(0, 10);
+  return { tenants: Object.keys(data.tenants).length, entries, tickets: RB.isObj(data.tickets) ? Object.keys(data.tickets).length : 0,
+    when: D.valid(at) ? D.fmtLong(at) : 'an unknown date', portfolio: data.settings && typeof data.settings.portfolioName === 'string' ? data.settings.portfolioName.slice(0, 80) : '' };
+}
+function readFile(input, cb) {
+  const f = input.files && input.files[0]; if (!f) return;
+  if (f.size > 15 * 1024 * 1024) { cb(null, f.name, 'The file is larger than 15 MB.'); input.value = ''; return; }
+  const fr = new FileReader();
+  fr.onload = () => { cb(String(fr.result || ''), f.name); input.value = ''; };
+  fr.onerror = () => { cb(null, f.name, 'The file couldn’t be read.'); input.value = ''; };
+  fr.readAsText(f);
+}
+
+// ------------------------------------------------------------------ view
+const SECTIONS = [['rules', 'Rent rules'], ['leases', 'Deposits & leases'], ['methods', 'Payment methods'], ['import', 'Import tenants'], ['backup', 'Backup'], ['sample', 'Sample data'], ['about', 'Sharing & shortcuts']];
+let previewPatch = null;
 
 RB.views.register('setup', {
   title: 'Setup',
   firstRun: false,
   render(el, ctx) {
     const s = ctx.state.settings;
+    const today = ctx.today;
     const hasSample = ctx.store.hasSample();
-    const lf = s.lateFee.type === 'none' ? 'None' : s.lateFee.type === 'flat' ? M.fmt(s.lateFee.amount) + ' flat' : s.lateFee.amount + '% of rent';
+    const lf = s.lateFee;
+    const sec = (id, title, body, meta) => h`<section class="st-sec" id="st-sec-${id}" aria-labelledby="st-h-${id}"><div class="st-sec-head"><h2 class="st-sec-title" id="st-h-${id}">${title}</h2>${meta || ''}</div>${body}</section>`;
     el.innerHTML = String(h`
-      ${ctx.intent === 'import' ? h`<div class="form-note mb-4">Spreadsheet import lands here (Setup view author).</div>` : ''}
-      <div class="sec"><h2 class="sec-title">Rules</h2></div>
-      <dl class="kv">
-        <dt>Portfolio</dt><dd>${s.portfolioName || h`<span class="faint">Not named</span>`}</dd>
-        <dt>Rent due</dt><dd>Day ${s.dueDay} of the month, ${s.graceDays}-day grace</dd>
-        <dt>Late fee</dt><dd>${lf}</dd>
-        <dt>Deposit return</dt><dd>${s.depositReturnDays} days after move-out</dd>
-        <dt>Lease notice window</dt><dd>${s.leaseNoticeDays} days</dd>
-        <dt>Payment methods</dt><dd>${s.methods.join(', ')}</dd>
-      </dl>
-      <div class="sec"><h2 class="sec-title">Sample data</h2></div>
-      <p class="muted mb-4">${hasSample ? 'Sample tenants are loaded. Remove them before you add your own, or keep exploring.' : 'Load 27 invented tenants across three buildings to see how everything works.'}</p>
-      <div class="row row-wrap">
-        <button type="button" class="btn${hasSample ? '' : ' btn-primary'}" id="setup-load-sample" data-cmd="sample:load" data-write${hasSample ? RB.raw(' disabled') : ''}>${ui.icon('sample')}Load sample data</button>
-        <button type="button" class="btn btn-danger-soft" id="setup-remove-sample" data-cmd="sample:remove" data-write${hasSample ? '' : RB.raw(' disabled')}>${ui.icon('trash')}Remove sample data</button>
-      </div>
-      <div class="sec"><h2 class="sec-title">Backup</h2></div>
-      <div class="row row-wrap"><button type="button" class="btn" data-cmd="backup:download">${ui.icon('download')}Download backup</button></div>
-      <div class="sec"><h2 class="sec-title">Keyboard</h2></div>
-      <button type="button" class="btn btn-ghost" data-cmd="help:keys">${ui.icon('keyboard')}Show shortcuts ${ui.kbd('?')}</button>`);
+      <div class="st-layout">
+        <nav class="st-toc hide-phone" aria-label="Setup sections">${[['portfolio', 'Portfolio']].concat(SECTIONS).map(([id, t]) => h`<a href="#setup" data-act="toc" data-id="${id}">${t}</a>`)}</nav>
+        <div class="st-main">
+          ${sec('portfolio', 'Portfolio', row('portfolioName', 'Portfolio name', 'Shown in the sidebar and on receipts and statements.',
+            h`<input class="input st-wide" type="text" id="st-portfolioName" data-key="portfolioName" data-change="save" data-input="draft" value="${val('portfolioName', s.portfolioName)}" placeholder="e.g. Calder & Vane Rentals" maxlength="80" autocomplete="off" data-write>`))}
+          ${sec('rules', 'Rent rules', h`
+            ${row('dueDay', 'Rent is due on', 'Day of the month. Individual leases can override it.', h`<span class="select st-sel"><select class="input" id="st-dueDay" data-key="dueDay" data-change="save" data-write>${Array.from({ length: 28 }, (_, i) => h`<option value="${i + 1}"${+val('dueDay', s.dueDay) === i + 1 ? RB.raw(' selected') : ''}>the ${ord(i + 1)}</option>`)}</select></span>`)}
+            ${row('graceDays', 'Grace period', 'Rent paid within this many days of the due date isn’t late.', numInput('graceDays', s.graceDays, 'days', { maxlength: 2 }))}
+            <div class="st-row" data-row="lateFee">
+              <div class="st-label"><span class="st-label-text" id="st-latefee-label">Late fee</span><div class="st-hint">Suggested on Today and Rent once rent is late. Nothing is charged until you click it.</div></div>
+              <div class="st-ctl">
+                <div class="st-ctl-line"><div class="seg" role="radiogroup" aria-labelledby="st-latefee-label">${[['none', 'None'], ['flat', 'Flat amount'], ['percent', 'Percent of rent']].map(([v, l]) => h`<button type="button" role="radio" id="st-lf-${v}" data-act="lfType" data-v="${v}" aria-checked="${String(lf.type === v)}" aria-pressed="${String(lf.type === v)}" data-write>${l}</button>`)}</div>${savedTag('lateFeeType')}</div>
+                ${lf.type !== 'none' ? h`<div class="st-ctl-line mt-2" data-row="lateFeeAmount">
+                  ${lf.type === 'flat'
+                    ? h`<span class="money-input st-money"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input" type="text" inputmode="decimal" id="st-lateFeeAmount" data-key="lateFeeAmount" data-change="save" data-input="draft" value="${val('lateFeeAmount', M.input(lf.amount))}" aria-label="Late fee amount" autocomplete="off" data-write></span>`
+                    : numInput('lateFeeAmount', lf.amount, '% of the month’s rent', { inputmode: 'decimal', 'aria-label': 'Late fee percent' })}
+                  ${savedTag('lateFeeAmount')}</div><div class="field-error" aria-live="polite">${errs.lateFeeAmount || ''}</div>` : ''}
+              </div>
+            </div>
+            <p class="st-sentence" id="st-rule-sentence">${ruleSentence(previewSettings())}</p>`)}
+          ${sec('leases', 'Deposits & leases', h`
+            ${row('depositReturnDays', 'Return deposits within', 'Counted from the move-out date. Today warns you as the deadline nears.', numInput('depositReturnDays', s.depositReturnDays, 'days after move-out', { maxlength: 3 }))}
+            ${row('leaseNoticeDays', 'Lease notice window', 'Leases ending within this window ask for a decision — renew, month-to-month or notice.', numInput('leaseNoticeDays', s.leaseNoticeDays, 'days before the end', { maxlength: 3 }))}`)}
+          ${sec('methods', 'Payment methods', h`
+            <p class="st-p">Offered when you record a payment. Removing one doesn’t change payments already recorded with it.</p>
+            <div class="st-methods" id="st-methods">${s.methods.map((m, i) => h`<span class="st-method">${m}<button type="button" class="st-method-x" data-act="rmMethod" data-i="${i}" aria-label="Remove ${m}" data-write${s.methods.length <= 1 ? RB.raw(' disabled') : ''}>${ui.icon('x', { size: 12 })}</button></span>`)}
+              <form class="st-method-add" data-submit="addMethod"><input class="input" type="text" id="st-method-new" data-input="methodDraft" value="${methodDraft}" placeholder="Add a method…" maxlength="30" autocomplete="off" aria-label="New payment method" data-write><button type="submit" class="btn btn-sm" data-write>Add</button></form>
+            </div>${savedTag('methods')}`)}
+          ${sec('import', 'Import tenants', importSection(today))}
+          ${sec('backup', 'Backup', backupSection(today))}
+          ${sec('sample', 'Sample data', h`
+            <p class="st-p">${hasSample ? 'Sample tenants are loaded. Remove them before you add your own, or keep exploring.' : 'Load 27 invented tenants across three buildings to see how everything works. Your own tenants are kept.'}</p>
+            <div class="row row-wrap mt-4">
+              <button type="button" class="btn${hasSample ? '' : ' btn-soft'}" id="setup-load-sample" data-cmd="sample:load" data-write${hasSample ? RB.raw(' disabled') : ''}>${ui.icon('sample')}<span>Load sample data</span></button>
+              <button type="button" class="btn btn-danger-soft" id="setup-remove-sample" data-cmd="sample:remove" data-write${hasSample ? '' : RB.raw(' disabled')}>${ui.icon('trash')}<span>Remove sample data…</span></button>
+            </div>`)}
+          ${sec('about', 'Sharing & shortcuts', h`
+            <p class="st-p">Your rent book is saved with this page. Anyone you share the page with as an editor sees every tenant, phone number and payment in it and can change them; nobody else can. ${ctx.state.mode === 'local' ? 'Right now it isn’t syncing, so changes are saved on this device only.' : ''}</p>
+            <div class="row row-wrap mt-4"><button type="button" class="btn btn-ghost" id="st-keys" data-cmd="help:keys">${ui.icon('keyboard')}<span>Keyboard shortcuts</span> ${ui.kbd('?')}</button>
+              <span class="faint t-12">${ui.kbd('/')} search · ${ui.kbd('n')} add · ${ui.kbd('g')} ${ui.kbd('r')} go to Rent</span></div>`)}
+        </div>
+      </div>`);
+
+    const patchPreview = () => { const x = el.querySelector('#st-rule-sentence'); if (x) x.textContent = ruleSentence(previewSettings()); };
+    previewPatch = previewPatch || RB.debounce(() => {
+      const box = el.querySelector('#st-import-preview'); if (!box) return;
+      // replace only the preview region so the textarea keeps focus and caret
+      const tmp = document.createElement('div'); tmp.innerHTML = String(importSection(S().today()));
+      const np = tmp.querySelector('#st-import-preview'); if (np) box.replaceWith(np);
+    }, 200);
+    ui.bind(el, {
+      toc: (a, e) => { e.preventDefault(); const t = el.querySelector('#st-sec-' + a.dataset.id); if (t) t.scrollIntoView({ block: 'start', behavior: 'smooth' }); },
+      draft: i => { drafts[i.dataset.key] = i.value; if (errs[i.dataset.key]) setErr(el, i.dataset.key, null); patchPreview(); },
+      save: i => saveSetting(el, i.dataset.key, i.value),
+      lfType: b => {
+        if (!canWrite()) return;
+        const v = b.dataset.v; const cur = S().settings().lateFee;
+        if (cur.type === v) return;
+        const amount = v === 'none' ? cur.amount : v === cur.type ? cur.amount : v === 'flat' ? 5000 : 5;
+        delete drafts.lateFeeAmount; delete errs.lateFeeAmount;
+        flash = { key: 'lateFeeType', until: Date.now() + 2200 };
+        S().saveSettings({ lateFee: { type: v, amount } }).catch(() => {});
+        setTimeout(() => { if (flash && flash.key === 'lateFeeType') { flash = null; const x = document.getElementById('st-saved-lateFeeType'); if (x) x.classList.remove('is-on'); } }, 2200);
+      },
+      methodDraft: i => { methodDraft = i.value; },
+      addMethod: () => {
+        if (!canWrite()) return;
+        const m = methodDraft.trim().slice(0, 30); const list = S().settings().methods;
+        if (!m) return;
+        if (list.some(x => x.toLowerCase() === m.toLowerCase())) { ui.toast(m + ' is already in the list'); return; }
+        methodDraft = '';
+        S().saveSettings({ methods: list.concat([m]) }).catch(() => {});
+        flash = { key: 'methods', until: Date.now() + 2200 };
+        setTimeout(() => { const x = document.getElementById('st-saved-methods'); if (x) x.classList.remove('is-on'); }, 2200);
+      },
+      rmMethod: b => {
+        if (!canWrite()) return;
+        const list = S().settings().methods.slice(); const i = +b.dataset.i; const m = list[i];
+        if (list.length <= 1 || m === undefined) return;
+        const before = list.slice(); list.splice(i, 1);
+        S().saveSettings({ methods: list }).catch(() => {});
+        ui.toast('Removed ' + m + ' from payment methods', { undo: () => S().saveSettings({ methods: before }) });
+      },
+      impText: t => { imp.text = t.value; imp.done = null; previewPatch(); },
+      impFile: inp => readFile(inp, (text, name, err) => {
+        if (err || text == null) { imp.fileErr = (name ? name + ': ' : '') + (err || 'couldn’t be read'); RB.shell.refresh(); return; }
+        imp.text = text; imp.fileName = name; imp.fileErr = ''; imp.done = null; imp.map = null; imp.mapFor = null; RB.shell.refresh();
+      }),
+      impClear: () => { imp.text = ''; imp.fileName = ''; imp.map = null; imp.mapFor = null; imp.fileErr = ''; RB.shell.refresh(); },
+      impSample: c => { imp.removeSample = c.checked; },
+      map: sel => {
+        const i = +sel.dataset.i; const k = sel.value;
+        if (k) imp.map = imp.map.map((x, j) => (j !== i && x === k ? '' : x)); // each field maps from one column
+        imp.map[i] = k; RB.shell.refresh();
+      },
+      template: () => RB.actions.downloadFile('rent-book-import-template.csv', TEMPLATE, 'text/csv'),
+      doImport: () => doImport(el, today),
+      goTenants: () => RB.shell.go('tenants'),
+      doneClose: () => { imp.done = null; RB.shell.refresh(); },
+      restoreFile: inp => readFile(inp, (text, name, err) => {
+        if (err || text == null) { restore = { error: err || 'it couldn’t be read.', name }; RB.shell.refresh(); return; }
+        let data = null; try { data = JSON.parse(text); } catch (e) { data = null; }
+        const summary = summarize(data);
+        restore = summary ? { data, name, summary } : { error: data ? 'it isn’t a Rent Book backup.' : 'it isn’t valid JSON.', name };
+        RB.shell.refresh();
+      }),
+      restoreGo: async () => { if (!restore || !restore.data) return; const ok = await RB.actions.restore(restore.data); if (ok) { restore = null; RB.shell.refresh(); } },
+      restoreClose: () => { restore = null; RB.shell.refresh(); },
+    });
+    if (ctx.intent === 'import') {
+      requestAnimationFrame(() => { const t = el.querySelector('#st-sec-import'); if (t) t.scrollIntoView({ block: 'start' }); const ta = el.querySelector('#st-import-text'); if (ta) ta.focus({ preventScroll: true }); });
+    }
   },
+  destroy() { if (previewPatch) previewPatch.cancel(); previewPatch = null; },
 });
 })();
 /* ---- js/views/tenant-detail.js ---- */
@@ -5859,7 +6598,7 @@ function headPart(t, lg, ls, today) {
     <div class="tn-dstat">
       <div class="tn-dbal">${T.balanceWords(lg.balance)}${month}</div>
       <div class="tn-dacts">
-        <button type="button" class="btn btn-primary" data-act="pay" data-write data-autofocus>${ui.icon('cash')}<span>Record payment</span></button>
+        <button type="button" class="btn btn-primary" data-act="pay" data-write>${ui.icon('cash')}<span>Record payment</span></button>
         <button type="button" class="btn btn-icon" data-act="more" aria-label="More actions" aria-haspopup="menu" title="More actions">${ui.icon('more')}</button>
       </div>
     </div>`;
@@ -5975,7 +6714,7 @@ function rowSub(r, today) {
   if (r.kind === 'entry') {
     if (r.ref) bits.push(h`<span class="mono">Ref ${r.ref}</span>`);
     if (r.type === 'payment' && r.memo) bits.push(r.memo);
-    if (r.type === 'charge' && r.category && r.memo) bits.push(RB.model.CATEGORY_LABEL[r.category] || '');
+    if (r.type === 'charge' && r.category && r.memo && !String(r.memo).toLowerCase().startsWith(String(RB.model.CATEGORY_LABEL[r.category] || '~').toLowerCase())) bits.push(RB.model.CATEGORY_LABEL[r.category] || '');
     if (r.type !== 'charge' && !r.void && r.unapplied > 0) bits.push(h`${M.fmt(r.unapplied)} to credit`);
   }
   const b = bits.filter(Boolean);
@@ -6116,77 +6855,831 @@ T.overflowMenu = function overflowMenu(anchor, id) {
   ui.menu(anchor, items, { align: 'end' });
 };
 })();
-/* ---- js/views/tenants.js ---- */
+/* ---- js/views/tenant-forms.js ---- */
 ;(function(){'use strict';
-// views/tenants.js — PLACEHOLDER (to be replaced wholesale by the Tenants view author).
-// Shows the list and a basic #t-<id> drawer so the shell, drawer and ledger components are reviewable.
+// views/tenant-forms.js — tenant sheets: add / edit details, change rent, give notice, move out, settle deposit,
+// delete, edit note. Assigns the shared hooks RB.actions.addTenant / editTenant / changeRent / giveNotice /
+// moveOut / settleDeposit (renewLease belongs to the Leases view).
 const RB = globalThis.RB;
-const { html: h, ui, date: D } = RB;
+const { html: h, ui, date: D, money: M } = RB;
+const T = (RB._tn = RB._tn || {});
+const S = () => RB.store;
+const A = () => RB.actions;
+const sub = t => [t.name, [t.property, t.unit].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+let repSeq = 0;
+const show = (el, on) => { if (el) el.hidden = !on; };
 
-function ledgerTable(lg, today) {
-  const rows = lg.rows.slice().reverse();
-  let lastMonth = null;
-  const out = [];
-  for (const r of rows) {
-    const mk = D.monthKey(r.date);
-    if (mk !== lastMonth) { out.push(h`<tr class="ledger-month"><td colspan="5">${D.fmtMonth(mk)}</td></tr>`); lastMonth = mk; }
-    out.push(h`<tr class="${r.void ? 'is-void' : ''}"><td class="l-date">${D.fmtNum(r.date, { mon: true })}</td>
-      <td class="l-desc"><span class="l-desc-text">${r.label}</span>${r.prorate ? h`<span class="l-sub">${r.prorate.days} of ${r.prorate.ofDays} days</span>` : r.ref ? h`<span class="l-sub">Ref ${r.ref}</span>` : ''}</td>
-      <td class="l-amt">${r.type === 'charge' ? ui.money(r.amount) : ''}</td><td class="l-amt l-pay">${r.type !== 'charge' ? ui.money(r.amount) : ''}</td><td class="l-bal">${ui.money(r.balance)}</td></tr>`);
-  }
-  return h`<table class="ledger"><thead><tr><th>Date</th><th>Description</th><th class="l-amt">Charge</th><th class="l-amt">Payment</th><th class="l-bal">Balance</th></tr></thead><tbody>${out}</tbody></table>`;
+// ------------------------------------------------------------------ repeaters (co-tenants, recurring charges, links, deductions)
+const REP = {
+  co: { label: 'co-tenant', cols: [['name', 'text', 'Name'], ['phone', 'tel', 'Phone'], ['email', 'email', 'Email']] },
+  rec: { label: 'charge', cols: [['label', 'text', 'What (parking, pet rent…)'], ['amount', 'money', 'Per month'], ['from', 'date', 'From'], ['to', 'date', 'Until (optional)']] },
+  link: { label: 'link', cols: [['label', 'text', 'Label (Lease PDF…)'], ['url', 'url', 'https://…']] },
+  ded: { label: 'deduction', cols: [['reason', 'text', 'Reason (cleaning, repairs…)'], ['amount', 'money', 'Amount']] },
+};
+function repRow(kind, v) {
+  const n = ++repSeq;
+  const cfg = REP[kind];
+  v = v || {};
+  return h`<div class="tn-rep-row tn-rep-${kind}" data-rep="${kind}" data-rid="${v.id || ''}">${cfg.cols.map(([k, type, ph]) => {
+    const id = 'tf-' + kind + '-' + k + '-' + n;
+    const label = h`<label class="vh" for="${id}">${ph}</label>`;
+    if (type === 'money') return h`<span class="money-input tn-rep-${k}">${label}<span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input" type="text" inputmode="decimal" data-kind="money" data-k="${k}" id="${id}" placeholder="0.00" value="${v[k] != null && v[k] !== '' ? M.input(v[k]) : ''}" autocomplete="off"></span>`;
+    if (type === 'date') return h`<span class="tn-rep-${k}">${label}<input class="input" type="date" data-k="${k}" id="${id}" value="${v[k] || ''}" title="${ph}"></span>`;
+    return h`<span class="tn-rep-${k}">${label}<input class="input" type="${type === 'url' ? 'url' : type}" data-k="${k}" id="${id}" placeholder="${ph}" value="${v[k] || ''}" autocomplete="off"></span>`;
+  })}<button type="button" class="btn btn-ghost btn-icon btn-sm tn-rep-x" data-rep-remove aria-label="Remove this ${cfg.label}" title="Remove">${ui.icon('x')}</button></div>`;
+}
+function repeater(kind, rows, addLabel, id) {
+  return h`<div class="tn-rep" data-rep-list="${kind}">${(rows || []).map(r => repRow(kind, r))}</div>
+    <div class="field-error tn-rep-err" data-rep-err="${kind}" aria-live="polite"></div>
+    <button type="button" class="linkbtn tn-rep-add" data-rep-add="${kind}" id="${id}">${ui.icon('plus', { size: 14 })}${addLabel}</button>`;
+}
+function wireRepeaters(root) {
+  root.addEventListener('click', e => {
+    const add = e.target.closest('[data-rep-add]');
+    if (add) {
+      const kind = add.dataset.repAdd;
+      const list = root.querySelector('[data-rep-list="' + kind + '"]');
+      list.insertAdjacentHTML('beforeend', String(repRow(kind, kind === 'rec' ? { from: S().today() } : null)));
+      const first = list.lastElementChild.querySelector('input');
+      if (first) first.focus();
+      root.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    const rm = e.target.closest('[data-rep-remove]');
+    if (rm) { const row = rm.closest('.tn-rep-row'); const next = row.nextElementSibling || row.previousElementSibling; row.remove(); root.dispatchEvent(new Event('input', { bubbles: true })); const f = next && next.querySelector('input'); if (f) f.focus(); }
+  });
+}
+function readRep(root, kind) {
+  return Array.from(root.querySelectorAll('[data-rep="' + kind + '"]')).map(row => {
+    const o = { _row: row, id: row.dataset.rid || null };
+    row.querySelectorAll('[data-k]').forEach(inp => {
+      const k = inp.dataset.k;
+      if (inp.dataset.kind === 'money') { const s = inp.value.trim(); o[k] = s ? M.parse(s) : null; o['_' + k + 'Bad'] = !!s && o[k] === null; }
+      else o[k] = inp.value.trim();
+    });
+    return o;
+  });
+}
+function repError(root, kind, msg, row) {
+  const e = root.querySelector('[data-rep-err="' + kind + '"]');
+  if (e) e.textContent = msg || '';
+  root.querySelectorAll('[data-rep="' + kind + '"] .input').forEach(i => i.removeAttribute('aria-invalid'));
+  if (row && msg) { const i = row.querySelector('.input'); row.querySelectorAll('.input').forEach(x => x.setAttribute('aria-invalid', 'true')); if (i) i.focus(); }
 }
 
-function drawerFor(id, ctx) {
-  const S = ctx.store;
-  ui.drawer({
-    label: 'Tenant details',
-    onClose: () => { if (/^#t-/.test(location.hash)) location.hash = 'tenants'; },
-    render(el) {
-      const t = S.tenant(id);
-      if (!t) { el.innerHTML = String(h`<div class="drawer-head"><div class="drawer-title">Not found</div>${ui.drawerClose()}</div>`); return; }
-      const lg = S.ledger(id);
-      el.innerHTML = String(h`<div class="drawer-head"><div class="stack stack-1 grow">${ui.plate(t.unit, { size: 'lg', status: lg.current.status })}<div class="drawer-title">${t.name}</div><div class="muted">${t.property} · ${ui.balance(lg.balance, { zero: 'Nothing owed' })}</div></div>${ui.drawerClose()}</div>
-        <div class="drawer-body">
-          <div class="sec"><h3 class="sec-title">Contact</h3></div>
-          <dl class="kv"><dt>Phone</dt><dd>${ui.copyline(t.phone, 'phone number')}</dd><dt>Email</dt><dd>${ui.copyline(t.email, 'email address')}</dd></dl>
-          <div class="sec"><h3 class="sec-title">Ledger</h3><div class="sec-actions"><button type="button" class="btn btn-sm btn-ghost" data-act="stmt">${ui.icon('copy')}Copy statement</button></div></div>
-          ${ledgerTable(lg, ctx.today)}
-        </div>
-        <div class="drawer-foot"><button type="button" class="btn btn-primary" data-act="pay" data-write>${ui.icon('cash')}Record payment</button><button type="button" class="btn" data-act="note" data-write>${ui.icon('note')}Add note</button></div>`);
-      ui.bind(el, { pay: () => RB.actions.recordPayment(id), note: () => RB.actions.addNote(id), stmt: () => RB.actions.copyStatement(id) });
-    },
+// ------------------------------------------------------------------ add / edit tenant
+function defaultTrackFrom(moveIn, today) {
+  if (!moveIn) return today;
+  const ms = D.monthStart(D.monthKey(today));
+  return moveIn >= ms ? moveIn : ms;
+}
+
+/** Full add/edit form. id = null → add. section: contact | cotenants | emergency | lease | terms | recurring | deposit | insurance | links | about | money */
+function tenantForm(id, section, preset) {
+  if (!T.guard()) return Promise.resolve(null);
+  const edit = !!id;
+  const t0 = edit ? S().tenant(id) : null;
+  if (edit && !t0) return Promise.resolve(null);
+  const today = S().today();
+  const settings = S().settings();
+  const p = preset || {};
+  const t = t0 || {
+    name: p.name || '', phone: p.phone || '', email: p.email || '', property: p.property || '', unit: p.unit || '',
+    lease: { start: p.start || today, end: p.end || null, moveIn: p.moveIn || null, dueDay: null, graceDays: null },
+    rent: p.rent ? [{ from: p.start || today, amount: p.rent }] : [], coTenants: [], emergency: { name: '', phone: '' },
+    recurring: [], deposit: { amount: p.deposit || null, received: null, heldAt: '' }, opening: p.opening ? { amount: p.opening } : null,
+    insurance: null, links: [], about: '', trackFrom: null,
+  };
+  const l = t.lease || {};
+  const props = Array.from(new Set(S().tenantsList().map(x => x.property).filter(Boolean))).sort(RB.natCmp);
+  const sched = (t.rent || []).filter(r => r && D.isDate(r.from)).slice().sort((a, b) => D.cmp(a.from, b.from));
+  const rentEditable = !edit || sched.length <= 1;
+  const moveIn0 = l.moveIn || l.start || today;
+  const track0 = edit ? (t.trackFrom || moveIn0) : defaultTrackFrom(moveIn0, today);
+  const ins = t.insurance || {};
+  const dep = t.deposit || {};
+  const em = t.emergency || {};
+  const moreOpen = edit || ['contact', 'cotenants', 'emergency', 'terms', 'recurring', 'insurance', 'links', 'about'].includes(section);
+
+  return new Promise(resolve => {
+    let saved = null;
+    ui.sheet({
+      title: edit ? 'Edit details' : 'Add tenant', sub: edit ? sub(t0) : 'The minimum to start — everything else can wait.', size: 'wide',
+      body: (el, sh) => {
+        el.innerHTML = String(h`
+          <fieldset class="fieldset" data-sec="who"><legend class="fieldset-title">Tenant and home</legend><div class="form-grid">
+            ${ui.field({ name: 'name', id: 'tf-name', label: 'Name', value: t.name, required: true, span: 2, placeholder: 'Full name as on the lease' })}
+            ${ui.field({ name: 'property', id: 'tf-property', label: 'Property', value: t.property || (edit ? '' : props[0] || ''), required: true, attrs: { list: 'tf-props' }, placeholder: 'Alder Court', hint: props.length ? 'Pick one you already have or type a new one' : null })}
+            ${ui.field({ name: 'unit', id: 'tf-unit', label: 'Unit', value: t.unit, required: true, placeholder: '2B, 101, No. 4' })}
+          </div><datalist id="tf-props">${props.map(x => h`<option value="${x}"></option>`)}</datalist></fieldset>
+
+          <fieldset class="fieldset" data-sec="lease"><legend class="fieldset-title">Lease</legend><div class="form-grid">
+            ${ui.field({ name: 'start', id: 'tf-start', label: 'Lease start', type: 'date', value: l.start || today, required: true })}
+            ${ui.field({ name: 'term', id: 'tf-term', label: 'Term', type: 'seg', value: l.end || (!edit && !p.mtm) ? 'fixed' : 'mtm', options: [{ value: 'fixed', label: 'Fixed end date' }, { value: 'mtm', label: 'Month-to-month' }] })}
+            ${ui.field({ name: 'end', id: 'tf-end', label: 'Lease end', type: 'date', value: l.end || (edit ? '' : D.addDays(D.addMonths(l.start || today, 12), -1)) })}
+            ${ui.field({ name: 'moveIn', id: 'tf-movein', label: 'Move-in', type: 'date', value: l.moveIn || l.start || today, required: true, hint: 'Usually the lease start' })}
+          </div></fieldset>
+
+          <fieldset class="fieldset" data-sec="money"><legend class="fieldset-title">Rent and money</legend><div class="form-grid">
+            ${rentEditable
+              ? ui.field({ name: 'rent', id: 'tf-rent', label: 'Monthly rent', type: 'money', value: sched.length ? sched[0].amount : null, required: true })
+              : h`<div class="field"><span class="field-label">Monthly rent</span><div class="tn-static">${ui.money(RB.model.rentOn(t, today))} <span class="faint">· ${RB.plural(sched.length, 'amount')} on file</span></div><div class="field-hint">History is kept. <button type="button" class="linkbtn" data-tf="changerent">Change rent from a date…</button></div></div>`}
+            ${ui.field({ name: 'deposit', id: 'tf-deposit', label: 'Security deposit', type: 'money', value: dep.amount || null, optional: true })}
+            ${ui.field({ name: 'trackFrom', id: 'tf-track', label: 'Start tracking rent from', type: 'date', value: track0, required: true })}
+            ${ui.field({ name: 'opening', id: 'tf-opening', label: 'Opening balance', type: 'money', value: t.opening ? t.opening.amount : null, optional: true, placeholder: '0.00', hint: 'Owed on that date. Negative = credit.' })}
+            <div class="form-note span-2" id="tf-track-note"></div>
+          </div></fieldset>
+
+          ${edit ? '' : h`<button type="button" class="tn-more-toggle" id="tf-more" aria-expanded="${moreOpen}" aria-controls="tf-more-body">${ui.icon('chevron-down', { size: 14 })}<span>More details</span><span class="faint">phone, email, co-tenants, emergency contact, due day, recurring charges, insurance, links, notes</span></button>`}
+          <div class="tn-more-body" id="tf-more-body"${moreOpen ? '' : RB.raw(' hidden')}>
+            <fieldset class="fieldset" data-sec="contact"><legend class="fieldset-title">Contact</legend><div class="form-grid">
+              ${ui.field({ name: 'phone', id: 'tf-phone', label: 'Phone', type: 'tel', value: t.phone, optional: true })}
+              ${ui.field({ name: 'email', id: 'tf-email', label: 'Email', type: 'email', value: t.email, optional: true })}
+            </div></fieldset>
+            <fieldset class="fieldset" data-sec="cotenants"><legend class="fieldset-title">Co-tenants</legend>
+              ${repeater('co', (t.coTenants || []).filter(Boolean), 'Add co-tenant', 'tf-co-add')}
+            </fieldset>
+            <fieldset class="fieldset" data-sec="emergency"><legend class="fieldset-title">Emergency contact</legend><div class="form-grid">
+              ${ui.field({ name: 'emName', id: 'tf-em-name', label: 'Name', value: em.name, optional: true })}
+              ${ui.field({ name: 'emPhone', id: 'tf-em-phone', label: 'Phone', type: 'tel', value: em.phone, optional: true })}
+            </div></fieldset>
+            <fieldset class="fieldset" data-sec="terms"><legend class="fieldset-title">Due day and grace</legend><div class="form-grid">
+              ${ui.field({ name: 'dueDay', id: 'tf-dueday', label: 'Rent due on day', type: 'number', value: l.dueDay, min: 1, max: 31, optional: true, placeholder: String(settings.dueDay), hint: 'Leave empty to use the ' + T.ordinal(settings.dueDay) + ' (Setup)' })}
+              ${ui.field({ name: 'graceDays', id: 'tf-grace', label: 'Grace days', type: 'number', value: l.graceDays, min: 0, max: 31, optional: true, placeholder: String(settings.graceDays), hint: 'Leave empty to use ' + RB.plural(settings.graceDays, 'day') })}
+            </div></fieldset>
+            <fieldset class="fieldset" data-sec="recurring"><legend class="fieldset-title">Recurring charges</legend>
+              ${repeater('rec', (t.recurring || []).filter(Boolean), 'Add recurring charge', 'tf-rec-add')}
+            </fieldset>
+            <fieldset class="fieldset" data-sec="deposit"><legend class="fieldset-title">Deposit details</legend><div class="form-grid">
+              ${ui.field({ name: 'depReceived', id: 'tf-dep-received', label: 'Received on', type: 'date', value: dep.received || '', optional: true, hint: 'Defaults to move-in' })}
+              ${ui.field({ name: 'heldAt', id: 'tf-heldat', label: 'Held at', value: dep.heldAt || '', optional: true, placeholder: 'Bank, escrow account…' })}
+            </div></fieldset>
+            <fieldset class="fieldset" data-sec="insurance"><legend class="fieldset-title">Renter’s insurance</legend><div class="form-grid form-grid-3">
+              ${ui.field({ name: 'insCarrier', id: 'tf-ins-carrier', label: 'Insurer', value: ins.carrier || '', optional: true })}
+              ${ui.field({ name: 'insPolicy', id: 'tf-ins-policy', label: 'Policy no.', value: ins.policy || '', optional: true })}
+              ${ui.field({ name: 'insExpires', id: 'tf-ins-expires', label: 'Expires', type: 'date', value: ins.expires || '', optional: true })}
+            </div></fieldset>
+            <fieldset class="fieldset" data-sec="links"><legend class="fieldset-title">Links</legend>
+              ${repeater('link', (t.links || []).filter(Boolean), 'Add link', 'tf-link-add')}
+              <div class="field-hint mt-2">Secure links only (https://) — they open in a new tab.</div>
+            </fieldset>
+            <fieldset class="fieldset" data-sec="about"><legend class="fieldset-title">About</legend>
+              ${ui.field({ name: 'about', id: 'tf-about', label: 'Notes', type: 'textarea', value: t.about || '', optional: true, rows: 3, placeholder: 'Pets, vehicles, quirks, gate codes…' })}
+            </fieldset>
+          </div>`);
+        wireRepeaters(el);
+        const $ = s => el.querySelector(s);
+        let moveInTouched = edit, trackTouched = edit;
+        const sync = () => {
+          const mtm = $('#tf-term').value === 'mtm';
+          show($('[data-field="end"]'), !mtm);
+          const start = $('#tf-start').value;
+          if (!moveInTouched && start) $('#tf-movein').value = start;
+          const mi = $('#tf-movein').value;
+          if (!trackTouched && mi) $('#tf-track').value = defaultTrackFrom(mi, today);
+          const tf = $('#tf-track').value;
+          const note = $('#tf-track-note');
+          if (tf && D.valid(tf)) {
+            const prorate = mi && tf === mi && D.parts(tf).d !== 1;
+            note.innerHTML = String(h`${ui.icon('calendar', { size: 14, cls: 'tn-inline-ico' })}Rent charges are generated from <strong>${D.fmt(tf, today)}</strong>${prorate ? ' (first month prorated)' : ''}. Anything already owed before then goes in <em>Opening balance</em>.`);
+          } else note.textContent = 'Rent charges are generated from this date. Anything already owed before it goes in Opening balance.';
+        };
+        el.addEventListener('input', e => { if (e.target.id === 'tf-movein') moveInTouched = true; if (e.target.id === 'tf-track') trackTouched = true; sync(); });
+        el.addEventListener('change', e => { if (e.target.id === 'tf-movein') moveInTouched = true; if (e.target.id === 'tf-track') trackTouched = true; sync(); });
+        sync();
+        const more = $('#tf-more');
+        if (more) more.addEventListener('click', () => { const open = more.getAttribute('aria-expanded') !== 'true'; more.setAttribute('aria-expanded', String(open)); $('#tf-more-body').hidden = !open; if (open) { const f = $('#tf-phone'); f.scrollIntoView({ block: 'nearest' }); f.focus(); } });
+        const cr = el.querySelector('[data-tf="changerent"]');
+        if (cr) cr.addEventListener('click', () => { sh.close(); setTimeout(() => A().changeRent(id), 0); });
+        if (section) {
+          const target = { contact: '#tf-phone', cotenants: '#tf-co-add', emergency: '#tf-em-name', lease: '#tf-start', terms: '#tf-dueday', recurring: '#tf-rec-add', deposit: '#tf-deposit', insurance: '#tf-ins-carrier', links: '#tf-link-add', about: '#tf-about', money: rentEditable ? '#tf-rent' : '#tf-deposit' }[section];
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            let f = target && $(target);
+            if (f && f.dataset.repAdd && !el.querySelector('[data-rep="' + f.dataset.repAdd + '"]')) { f.click(); return; }
+            if (f && f.dataset.repAdd) f = el.querySelector('[data-rep="' + f.dataset.repAdd + '"] input') || f;
+            if (f) { f.scrollIntoView({ block: 'center' }); f.focus(); }
+          }));
+        }
+      },
+      initialFocus: section ? '#tf-name' : '#tf-name',
+      actions: [{ id: 'save', label: edit ? 'Save changes' : 'Add tenant', kind: 'primary', onClick: s => {
+        const root = s.body;
+        const mtm = root.querySelector('#tf-term').value === 'mtm';
+        const others = S().tenantsList().filter(x => x.id !== id && x.status === 'active');
+        const v = ui.form(root, { validate: v => ({
+          end: !mtm && !v.end ? 'Add the end date, or choose Month-to-month' : !mtm && v.end && v.start && v.end <= v.start ? 'The lease has to end after it starts (' + D.fmt(v.start, today) + ')' : '',
+          rent: rentEditable && v.rent !== null && v.rent <= 0 ? 'Enter the monthly rent, like 1,450' : '',
+          deposit: v.deposit !== null && v.deposit < 0 ? 'A deposit can’t be negative' : '',
+          trackFrom: v.trackFrom && v.moveIn && v.trackFrom < v.moveIn ? 'Tracking can’t start before move-in — use ' + D.fmt(v.moveIn, today) + ' or later' : '',
+          unit: v.unit && v.property && others.some(x => RB.natCmp(x.property, v.property) === 0 && RB.natCmp(x.unit, v.unit) === 0) ? (others.find(x => RB.natCmp(x.property, v.property) === 0 && RB.natCmp(x.unit, v.unit) === 0).name || 'Someone') + ' already lives in ' + v.property + ' ' + v.unit + '. Give them notice first, or check the unit.' : '',
+          dueDay: v.dueDay !== null && !(v.dueDay >= 1 && v.dueDay <= 31 && Number.isInteger(v.dueDay)) ? 'Use a day from 1 to 31' : '',
+          graceDays: v.graceDays !== null && !(v.graceDays >= 0 && v.graceDays <= 31 && Number.isInteger(v.graceDays)) ? 'Use 0 to 31 days' : '',
+          email: v.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email) ? 'That doesn’t look like an email address — check for typos' : '',
+        }) });
+        if (!v) { const more = root.querySelector('#tf-more'); const bad = root.querySelector('.field.is-invalid'); if (more && bad && bad.closest('#tf-more-body') && root.querySelector('#tf-more-body').hidden) { more.click(); bad.querySelector('input,select,textarea').focus(); } return false; }
+        // repeaters
+        const co = readRep(root, 'co').filter(r => r.name || r.phone || r.email);
+        const badCo = co.find(r => !r.name);
+        repError(root, 'co', badCo ? 'Give each co-tenant a name (or remove the row)' : '', badCo && badCo._row);
+        const rec = readRep(root, 'rec').filter(r => r.label || r.amount !== null || r._amountBad);
+        const badRec = rec.find(r => !r.label || r._amountBad || !(r.amount > 0) || (r.to && r.from && r.to < r.from));
+        repError(root, 'rec', badRec ? (!badRec.label ? 'Say what each recurring charge is for' : badRec.to && badRec.from && badRec.to < badRec.from ? '“Until” must be after “From”' : 'Enter a monthly amount above zero, like 35') : '', badRec && badRec._row);
+        const links = readRep(root, 'link').filter(r => r.label || r.url);
+        const badLink = links.find(r => !RB.safeUrl(r.url));
+        repError(root, 'link', badLink ? 'Links must be full secure addresses starting with https://' : '', badLink && badLink._row);
+        if (badCo || badRec || badLink) { const more = root.querySelector('#tf-more'); if (more && root.querySelector('#tf-more-body').hidden) more.click(); return false; }
+        const moveIn = v.moveIn || v.start;
+        const insurance = v.insCarrier || v.insPolicy || v.insExpires ? { carrier: v.insCarrier, policy: v.insPolicy, expires: v.insExpires || null } : null;
+        const data = {
+          name: v.name, phone: v.phone, email: v.email, property: v.property, unit: v.unit,
+          coTenants: co.map(r => ({ name: r.name, phone: r.phone, email: r.email })),
+          emergency: { name: v.emName, phone: v.emPhone },
+          lease: { start: v.start, end: mtm ? null : v.end, moveIn, dueDay: v.dueDay, graceDays: v.graceDays },
+          recurring: rec.map(r => ({ id: r.id || RB.id(8), label: r.label, amount: r.amount, from: r.from || moveIn, to: r.to || null })),
+          trackFrom: v.trackFrom, opening: v.opening ? { amount: v.opening } : null,
+          deposit: { amount: v.deposit || 0, received: v.depReceived || (v.deposit ? (edit ? dep.received || moveIn : moveIn) : null), heldAt: v.heldAt },
+          insurance, links: links.map(r => ({ id: r.id || RB.id(8), label: r.label || r.url.replace(/^https:\/\//, '').slice(0, 40), url: r.url })), about: v.about,
+        };
+        if (rentEditable) data.rent = [{ from: D.min(v.start, moveIn), amount: v.rent }];
+        if (!edit) {
+          const nid = RB.id();
+          data.lease = Object.assign({ noticeDate: null, moveOut: null }, data.lease);
+          data.deposit.returned = null;
+          S().addTenant(Object.assign({ id: nid, status: 'active', log: {} }, data)).catch(() => {});
+          saved = nid;
+          location.hash = 't-' + nid;
+          ui.toast('Added ' + v.name + ' · ' + [v.property, v.unit].join(' '), { undo: () => { S().deleteTenant(nid).catch(() => {}); if (location.hash === '#t-' + nid) location.hash = 'tenants'; } });
+        } else {
+          const prev = {};
+          Object.keys(data).forEach(k => { prev[k] = t0[k] === undefined ? null : RB.clone(t0[k]); });
+          S().updateTenant(id, data).catch(() => {});
+          saved = id;
+          ui.toast('Saved changes to ' + v.name, { undo: () => S().updateTenant(id, prev) });
+        }
+      } }],
+      onClose: () => resolve(saved),
+    });
   });
+}
+
+// ------------------------------------------------------------------ change rent
+function changeRent(id) {
+  if (!T.guard()) return Promise.resolve(false);
+  const t = S().tenant(id); if (!t) return Promise.resolve(false);
+  const today = S().today();
+  const sched = (t.rent || []).filter(r => r && D.isDate(r.from)).slice().sort((a, b) => D.cmp(a.from, b.from));
+  const last = sched[sched.length - 1];
+  let from0 = D.monthStart(D.addMonthKey(D.monthKey(today), 1));
+  if (last && from0 <= last.from) from0 = D.monthStart(D.addMonthKey(D.monthKey(last.from), 1));
+  const cur = RB.model.rentOn(t, today);
+  return new Promise(resolve => {
+    let ok = false;
+    ui.sheet({
+      title: 'Change rent', sub: sub(t),
+      body: (el, sh) => {
+        el.innerHTML = String(h`<div class="form-grid">
+          ${ui.field({ name: 'amount', id: 'cr-amount', label: 'New monthly rent', type: 'money', value: null, required: true, hint: 'Now ' + M.fmt(cur) })}
+          ${ui.field({ name: 'from', id: 'cr-from', label: 'Starting', type: 'date', value: from0, required: true, hint: last ? 'After ' + D.fmt(last.from, today) + ', the last change' : null })}
+        </div>
+        <div class="form-note mt-4" id="cr-sum" aria-live="polite"></div>`);
+        const upd = () => {
+          const a = M.parse(el.querySelector('#cr-amount').value);
+          const f = el.querySelector('#cr-from').value;
+          const was = f && D.valid(f) ? RB.model.rentOn(t, f) : cur;
+          const box = el.querySelector('#cr-sum');
+          if (a > 0 && f && D.valid(f)) {
+            const diff = a - was;
+            box.innerHTML = String(h`Rent changes from <strong>${M.fmt(was)}</strong> to <strong>${M.fmt(a)}</strong> on <strong>${D.fmtLong(f)}</strong>${diff ? h` <span class="faint">(${M.fmt(diff, { sign: true })} a month${was ? ', ' + (Math.round(diff / was * 1000) / 10).toFixed(1).replace(/\.0$/, '') + '%' : ''})</span>` : ''}.${f <= today ? h`<br><span class="tone-warn">That date has passed — charges already posted from ${D.fmt(f, today)} will use the new amount.</span>` : ''} Earlier months keep the old rent.`);
+            sh.setAction('save', { label: 'Change rent to ' + M.fmt(a) });
+          } else { box.textContent = 'Earlier months keep the old rent — the change is added to the rent history.'; sh.setAction('save', { label: 'Change rent' }); }
+        };
+        el.addEventListener('input', upd); el.addEventListener('change', upd); upd();
+      },
+      actions: [{ id: 'save', label: 'Change rent', kind: 'primary', onClick: s => {
+        const v = ui.form(s.body, { validate: v => ({
+          amount: v.amount !== null && v.amount <= 0 ? 'Enter the new monthly rent, like 1,450' : v.amount !== null && v.from && v.amount === RB.model.rentOn(t, v.from) ? 'That’s already the rent on that date' : '',
+          from: last && v.from && v.from <= last.from ? 'Pick a date after ' + D.fmt(last.from, today) + ' — the last change starts then, and history isn’t rewritten' : '',
+        }) });
+        if (!v) return false;
+        const prev = RB.clone(t.rent || []);
+        S().updateTenant(id, { rent: prev.concat([{ from: v.from, amount: v.amount }]) }).catch(() => {});
+        ok = true;
+        ui.toast('Rent changes to ' + M.fmt(v.amount) + ' on ' + D.fmt(v.from, today), { undo: () => S().updateTenant(id, { rent: prev }) });
+      } }],
+      onClose: () => resolve(ok),
+    });
+  });
+}
+
+// ------------------------------------------------------------------ give notice
+function giveNotice(id) {
+  if (!T.guard()) return Promise.resolve(false);
+  const t = S().tenant(id); if (!t) return Promise.resolve(false);
+  const today = S().today();
+  const l = t.lease || {};
+  const mo0 = l.moveOut || (l.end && l.end >= today ? l.end : D.monthEnd(D.addMonthKey(D.monthKey(today), 1)));
+  return new Promise(resolve => {
+    let ok = false;
+    ui.sheet({
+      title: 'Give notice', sub: sub(t),
+      body: el => {
+        el.innerHTML = String(h`<div class="form-grid">
+          ${ui.field({ name: 'noticeDate', id: 'gn-notice', label: 'Notice given on', type: 'date', value: l.noticeDate || today, required: true })}
+          ${ui.field({ name: 'moveOut', id: 'gn-moveout', label: 'Moving out on', type: 'date', value: mo0, required: true, hint: l.end ? 'Lease ends ' + D.fmt(l.end, today) : 'Month-to-month' })}
+        </div><div class="form-note mt-4" id="gn-sum"></div>`);
+        const upd = () => {
+          const mo = el.querySelector('#gn-moveout').value;
+          const box = el.querySelector('#gn-sum');
+          if (!mo || !D.valid(mo)) { box.textContent = ''; return; }
+          const last = D.monthKey(mo);
+          const pr = mo !== D.monthEnd(last);
+          box.innerHTML = String(h`They’ll show as <strong>Notice given</strong>. Rent is charged through ${D.fmtLong(mo)}${pr ? h` — ${D.monthName(last)} is prorated to ${D.parts(mo).d} of ${D.daysInMonth(last)} days` : ''}. Record the actual move-out when they leave.`);
+        };
+        el.addEventListener('input', upd); el.addEventListener('change', upd); upd();
+      },
+      actions: [{ id: 'save', label: 'Record notice', kind: 'primary', onClick: s => {
+        const v = ui.form(s.body, { validate: v => ({
+          moveOut: v.moveOut && v.noticeDate && v.moveOut < v.noticeDate ? 'Move-out can’t be before the notice date' : v.moveOut && l.moveIn && v.moveOut < l.moveIn ? 'Move-out can’t be before move-in (' + D.fmt(l.moveIn, today) + ')' : '',
+        }) });
+        if (!v) return false;
+        const prev = { status: t.status || 'active', lease: { noticeDate: l.noticeDate || null, moveOut: l.moveOut || null } };
+        const lid = RB.id();
+        S().updateTenant(id, { status: 'notice', lease: { noticeDate: v.noticeDate, moveOut: v.moveOut } }).catch(() => {});
+        S().addLog(id, { id: lid, kind: 'notice', text: 'Notice given — moving out ' + D.fmtLong(v.moveOut) + '.', followUp: null, done: false }).catch(() => {});
+        ok = true;
+        ui.toast('Notice recorded — ' + T.who(t) + ' moves out ' + D.fmt(v.moveOut, today), { undo: () => { S().updateTenant(id, prev); S().deleteLog(id, lid); } });
+      } }],
+      onClose: () => resolve(ok),
+    });
+  });
+}
+
+// ------------------------------------------------------------------ move out
+function moveOut(id) {
+  if (!T.guard()) return Promise.resolve(false);
+  const t = S().tenant(id); if (!t) return Promise.resolve(false);
+  const today = S().today();
+  const settings = S().settings();
+  const l = t.lease || {};
+  const dep = t.deposit || {};
+  return new Promise(resolve => {
+    let ok = false;
+    ui.sheet({
+      title: 'Move out', sub: sub(t), size: 'wide',
+      body: (el, sh) => {
+        el.innerHTML = String(h`<div class="form-grid">
+          ${ui.field({ name: 'moveOut', id: 'mo-date', label: 'Moved out on', type: 'date', value: l.moveOut || today, required: true, hint: l.noticeDate ? 'Notice given ' + D.fmt(l.noticeDate, today) : null })}
+        </div><div class="tn-sum mt-4" id="mo-sum" aria-live="polite"></div>`);
+        const upd = () => {
+          const mo = el.querySelector('#mo-date').value;
+          const box = el.querySelector('#mo-sum');
+          if (!mo || !D.valid(mo) || (l.moveIn && mo < l.moveIn)) { box.innerHTML = ''; sh.setAction('save', { label: 'Move out' }); return; }
+          const pv = RB.model.moveOutPreview(t, S().entries(id), settings, today, mo);
+          const fr = pv.finalRows;
+          const rentRow = fr.find(r => r.kind === 'rent');
+          box.innerHTML = String(h`
+            <div class="tn-sum-row"><span>Final month</span><span class="tn-sum-val">${rentRow ? h`${D.monthName(pv.period)} rent${rentRow.prorate ? h` <span class="faint">· ${rentRow.prorate.days} of ${rentRow.prorate.ofDays} days × ${M.fmt(rentRow.prorate.full)}</span>` : h` <span class="faint">· full month</span>`}` : h`<span class="faint">no rent charged in ${D.monthName(pv.period)}</span>`}</span><strong>${ui.money(pv.finalTotal)}</strong></div>
+            ${fr.filter(r => r.kind === 'recurring').map(r => h`<div class="tn-sum-row tn-sum-minor"><span></span><span class="tn-sum-val">${r.label}</span><span>${ui.money(r.amount)}</span></div>`)}
+            <div class="tn-sum-row tn-sum-total"><span>${pv.balance >= 0 ? 'Still owed at move-out' : 'Credit at move-out'}</span><span class="tn-sum-val faint">${pv.balance !== pv.balanceNow ? 'if nothing more is paid · owed today ' + M.fmt(Math.max(0, pv.balanceNow)) : 'if nothing more is paid'}</span><strong>${pv.balance > 0 ? ui.money(pv.balance, { tone: 'owed' }) : pv.balance < 0 ? ui.money(-pv.balance) : ui.money(0)}</strong></div>
+            ${+dep.amount > 0 && !dep.returned ? h`<div class="tn-sum-row"><span>Deposit held</span><span class="tn-sum-val">return by ${D.fmtLong(pv.depositDueDate)} <span class="faint">(${settings.depositReturnDays} days after move-out)</span></span><strong>${ui.money(dep.amount)}</strong></div>` : ''}
+            ${mo > today ? h`<div class="form-note mt-2">${ui.icon('alert', { size: 14, cls: 'tn-inline-ico' })}That date is still ahead. To plan a future move-out, use <button type="button" class="linkbtn" id="mo-notice">Give notice</button> instead.</div>` : ''}`);
+          const gn = box.querySelector('#mo-notice');
+          if (gn) gn.addEventListener('click', () => { sh.close(); setTimeout(() => A().giveNotice(id), 0); });
+          sh.setAction('save', { label: 'Move out on ' + D.fmt(mo, today) });
+        };
+        el.addEventListener('input', upd); el.addEventListener('change', upd); upd();
+      },
+      actions: [{ id: 'save', label: 'Move out', kind: 'primary', onClick: s => {
+        const v = ui.form(s.body, { validate: v => ({ moveOut: v.moveOut && l.moveIn && v.moveOut < l.moveIn ? 'Move-out can’t be before move-in (' + D.fmt(l.moveIn, today) + ')' : '' }) });
+        if (!v) return false;
+        const prev = { status: t.status || 'active', lease: { moveOut: l.moveOut || null } };
+        S().updateTenant(id, { status: 'past', lease: { moveOut: v.moveOut } }).catch(() => {});
+        ok = true;
+        ui.toast(t.name + ' moved out ' + D.fmt(v.moveOut, today), { undo: () => S().updateTenant(id, prev) });
+        if (+dep.amount > 0 && !dep.returned) setTimeout(() => settleDeposit(id, { afterMoveOut: true }), 220);
+      } }],
+      onClose: () => resolve(ok),
+    });
+  });
+}
+
+// ------------------------------------------------------------------ settle deposit
+function settlementText(t, st, date, settings) {
+  const W = 46;
+  const line = (a, b) => { a = String(a); b = String(b); return a + ' '.repeat(Math.max(1, W - a.length - b.length)) + b; };
+  const m = c => M.fmt(c, { cents: 'always' });
+  const out = [];
+  out.push((settings.portfolioName ? settings.portfolioName + ' — ' : '') + 'Security deposit statement');
+  out.push('');
+  out.push('Tenant:     ' + t.name);
+  out.push('Unit:       ' + RB.model.unitLabel(t));
+  if (t.lease && t.lease.moveOut) out.push('Moved out:  ' + D.fmtLong(t.lease.moveOut));
+  out.push('-'.repeat(W));
+  out.push(line('Deposit held', m(st.deposit)));
+  st.lines.forEach(d => out.push(line('Less: ' + (d.reason || 'Deduction').slice(0, 30), '−' + m(d.amount))));
+  if (st.applied) out.push(line('Applied to unpaid rent', '−' + m(st.applied)));
+  out.push('-'.repeat(W));
+  out.push(line('Refund to tenant', m(st.refund)));
+  if (st.shortfall) out.push(line('Still owed beyond the deposit', m(st.shortfall)));
+  out.push('');
+  out.push('Returned on ' + (date && D.valid(date) ? D.fmtLong(date) : '—'));
+  return out.join('\n');
+}
+
+function settleDeposit(id, opts) {
+  if (!T.guard()) return Promise.resolve(false);
+  const t = S().tenant(id); if (!t) return Promise.resolve(false);
+  const today = S().today();
+  const settings = S().settings();
+  const dep = t.deposit || {};
+  if (!(+dep.amount > 0)) { ui.toast('No deposit is recorded for ' + t.name + ' — add one in Edit details.'); return Promise.resolve(false); }
+  if (dep.returned) { ui.toast('The deposit was already settled on ' + D.fmt(dep.returned.date, today) + '.'); return Promise.resolve(false); }
+  const l = t.lease || {};
+  const dueDate = l.moveOut ? D.addDays(l.moveOut, +settings.depositReturnDays || 0) : null;
+  let cur = null;
+  return new Promise(resolve => {
+    let ok = false;
+    const sh = ui.sheet({
+      title: 'Settle deposit', size: 'wide',
+      sub: (opts && opts.afterMoveOut ? 'Moved out · ' : '') + sub(t),
+      body: (el, sh2) => {
+        sh2.el.classList.add('tn-settle-sheet');
+        const bal0 = S().ledger(id).balance;
+        el.innerHTML = String(h`
+          ${opts && opts.afterMoveOut ? h`<p class="muted mb-4">Moved out. Settle the deposit now, or close this and do it later from the tenant page.</p>` : ''}
+          <div class="tn-dep-head">
+            <div><div class="micro">Deposit held</div><div class="tn-dep-amt">${ui.money(dep.amount, { size: 'md' })}</div><div class="faint t-12">${dep.received ? 'Received ' + D.fmt(dep.received, today) : ''}${dep.heldAt ? ' · ' + dep.heldAt : ''}</div></div>
+            <div><div class="micro">Return by</div>${dueDate ? h`<div class="tn-dep-due ${dueDate < today ? 'tone-bad' : D.diffDays(today, dueDate) <= 7 ? 'tone-warn' : ''}">${D.fmtLong(dueDate)}</div><div class="faint t-12">${settings.depositReturnDays} days after move-out · <span class="nowrap">${dueDate < today ? -D.diffDays(today, dueDate) + ' d overdue' : D.rel(dueDate, today)}</span></div>` : h`<div class="faint">No move-out date yet</div>`}</div>
+          </div>
+          <div class="mt-5"><fieldset class="fieldset"><legend class="fieldset-title">Deductions</legend>
+            ${repeater('ded', [], 'Add deduction', 'sd-add')}
+          </fieldset></div>
+          <div class="stack stack-3 mt-4">
+            ${bal0 > 0 ? ui.field({ name: 'apply', id: 'sd-apply', type: 'checkbox', value: true, label: h`Apply the deposit to the unpaid balance (${M.fmt(bal0)} owed)` }) : ''}
+            <div id="sd-short-wrap" hidden>${ui.field({ name: 'chargeShort', id: 'sd-short', type: 'checkbox', value: true, label: 'Add what the deductions exceed the deposit by to the ledger as a charge' })}</div>
+          </div>
+          <div class="form-grid mt-4">
+            ${ui.field({ name: 'date', id: 'sd-date', label: 'Returned on', type: 'date', value: today, required: true })}
+          </div>
+          <div class="tn-sum mt-5" id="sd-sum" aria-live="polite"></div>`);
+        wireRepeaters(el);
+        el.querySelector('[data-rep-list="ded"]').insertAdjacentHTML('beforeend', String(repRow('ded')));
+        const upd = () => {
+          const ded = readRep(el, 'ded');
+          const apply = el.querySelector('#sd-apply');
+          const bal = S().ledger(id).balance;
+          cur = RB.model.depositSettlement({ deposit: +dep.amount, deductions: ded.map(d => ({ reason: d.reason, amount: d.amount })), balance: bal, applyToBalance: !!(apply && apply.checked) });
+          show(el.querySelector('#sd-short-wrap'), cur.shortfall > 0);
+          el.querySelector('#sd-sum').innerHTML = String(h`
+            <div class="tn-sum-row"><span>Deposit</span><span></span>${ui.money(cur.deposit)}</div>
+            ${cur.lines.map(d => h`<div class="tn-sum-row tn-sum-minor"><span>Less</span><span class="tn-sum-val">${d.reason || 'Deduction'}</span><span>−${ui.money(d.amount)}</span></div>`)}
+            ${cur.applied ? h`<div class="tn-sum-row tn-sum-minor"><span>Less</span><span class="tn-sum-val">applied to unpaid balance</span><span>−${ui.money(cur.applied)}</span></div>` : ''}
+            <div class="tn-sum-row tn-sum-total"><span>Refund to tenant</span><span></span><strong>${ui.money(cur.refund, { size: 'md' })}</strong></div>
+            ${cur.shortfall ? h`<div class="tn-sum-row tn-sum-minor tone-bad"><span>Beyond the deposit</span><span class="tn-sum-val">still owed by the tenant</span>${ui.money(cur.shortfall)}</div>` : ''}
+            ${cur.balanceAfter > 0 ? h`<div class="tn-sum-row tn-sum-minor"><span>Ledger after</span><span class="tn-sum-val">still owed</span>${ui.money(cur.balanceAfter, { tone: 'owed' })}</div>` : ''}`);
+          sh2.setAction('save', { label: cur.refund > 0 ? 'Record refund of ' + M.fmt(cur.refund) : 'Settle deposit' });
+        };
+        el.addEventListener('input', upd); el.addEventListener('change', upd); upd();
+      },
+      actions: [
+        { id: 'copy', label: 'Copy itemized statement', kind: '', onClick: s => {
+          const date = s.body.querySelector('#sd-date').value;
+          ui.copy(settlementText(S().tenant(id) || t, cur, date, settings), 'itemized statement');
+          return false;
+        } },
+        { id: 'save', label: 'Settle deposit', kind: 'primary', onClick: s => {
+          const root = s.body;
+          const v = ui.form(root);
+          if (!v) return false;
+          const ded = readRep(root, 'ded').filter(d => d.reason || d.amount !== null || d._amountBad);
+          const bad = ded.find(d => d._amountBad || !(d.amount > 0) || !d.reason);
+          repError(root, 'ded', bad ? (!bad.reason ? 'Say what each deduction is for — it goes on the statement' : 'Enter an amount above zero, like 150') : '', bad && bad._row);
+          if (bad) return false;
+          const st = cur;
+          const entryIds = [];
+          if (st.applied > 0) { const eid = RB.id(); entryIds.push(eid); S().addEntry(id, { id: eid, type: 'credit', date: v.date, amount: st.applied, memo: 'Security deposit applied to balance' }).catch(() => {}); }
+          if (st.shortfall > 0 && v.chargeShort) { const eid = RB.id(); entryIds.push(eid); S().addEntry(id, { id: eid, type: 'charge', date: v.date, amount: st.shortfall, category: 'damage', period: D.monthKey(v.date), memo: 'Deductions beyond the deposit' }).catch(() => {}); }
+          S().updateTenant(id, { deposit: { returned: { date: v.date, refund: st.refund, deductions: st.lines, applied: st.applied } } }).catch(() => {});
+          ok = true;
+          ui.toast('Deposit settled — ' + (st.refund ? M.fmt(st.refund) + ' refund to ' + t.name : 'nothing to refund'), { undo: () => { S().updateTenant(id, { deposit: { returned: null } }); entryIds.forEach(eid => S().undoEntry(id, eid)); } });
+        } },
+      ],
+      onClose: () => resolve(ok),
+    });
+    return sh;
+  });
+}
+
+// ------------------------------------------------------------------ delete tenant (confirm — irreversible)
+T.deleteTenant = async function deleteTenant(id) {
+  if (!T.guard()) return false;
+  const t = S().tenant(id); if (!t) return false;
+  const n = Object.keys(S().entries(id)).length;
+  const notes = T.logList(t).length;
+  const ok = await ui.confirm({
+    title: 'Delete ' + (t.name || 'this tenant') + '?',
+    body: h`<p class="muted">This permanently removes <strong>${t.name}</strong> (${RB.model.unitLabel(t)}), their ledger${n ? h` with <strong>${RB.plural(n, 'recorded payment or charge', 'recorded payments and charges')}</strong>` : ''}${notes ? h` and <strong>${RB.plural(notes, 'note')}</strong>` : ''}. It can’t be undone.</p>
+      <p class="muted mt-2">${t.status !== 'past' ? h`If they’ve left, <strong>Move out</strong> keeps their history instead. ` : ''}Download the ledger CSV first if you need a record.</p>`,
+    confirmLabel: 'Delete ' + (t.name || 'tenant'), danger: true,
+  });
+  if (!ok) return false;
+  if (location.hash === '#t-' + id) location.hash = 'tenants';
+  try { await S().deleteTenant(id); ui.toast('Deleted ' + t.name); return true; } catch (e) { return false; }
+};
+
+// ------------------------------------------------------------------ edit a timeline note
+T.editNote = function editNote(id, lid) {
+  if (!T.guard()) return;
+  const t = S().tenant(id); const e = t && t.log && t.log[lid]; if (!e) return;
+  ui.sheet({
+    title: 'Edit note', sub: sub(t),
+    body: h`<div class="form-grid">
+      ${ui.field({ name: 'kind', id: 'en-kind', label: 'Kind', type: 'seg', value: e.kind || 'note', options: RB.actions.LOG_KINDS, span: 2 })}
+      ${ui.field({ name: 'text', id: 'en-text', label: 'What happened', type: 'textarea', value: e.text || '', required: true, span: 2, rows: 4 })}
+      ${ui.field({ name: 'followUp', id: 'en-followup', label: 'Follow up on', type: 'date', value: e.followUp || '', optional: true })}
+    </div>`,
+    initialFocus: '#en-text',
+    actions: [{ id: 'save', label: 'Save note', kind: 'primary', onClick: s => {
+      const v = ui.form(s.body);
+      if (!v) return false;
+      const prev = { kind: e.kind || 'note', text: e.text || '', followUp: e.followUp || null, done: !!e.done };
+      const patch = { kind: v.kind || 'note', text: v.text, followUp: v.followUp || null };
+      if (patch.followUp !== prev.followUp) patch.done = false;
+      S().updateLog(id, lid, patch).catch(() => {});
+      ui.toast('Note saved', { undo: () => S().updateLog(id, lid, prev) });
+    } }],
+  });
+};
+
+// ------------------------------------------------------------------ hooks
+Object.assign(RB.actions, {
+  addTenant: preset => tenantForm(null, null, preset),
+  editTenant: (id, section) => tenantForm(id, section || null),
+  changeRent,
+  giveNotice,
+  moveOut,
+  settleDeposit: id => settleDeposit(id),
+});
+})();
+/* ---- js/views/tenants.js ---- */
+;(function(){'use strict';
+// views/tenants.js — Tenants list (#tenants): table on desktop, cards on phone. Hosts the #t-<id> drawer
+// (tenant-detail.js) and uses the sheets in tenant-forms.js. UI state lives in module variables; conveniences
+// (filter, sort, grouping, density) are remembered with RB.prefs.
+const RB = globalThis.RB;
+const { html: h, ui, date: D, money: M } = RB;
+const T = (RB._tn = RB._tn || {});
+
+const FILTERS = [['all', 'All'], ['owing', 'Owing'], ['ending', 'Lease ending'], ['notice', 'Notice'], ['past', 'Past']];
+const SORTS = {
+  urgency: { label: 'Urgency', dir: 1 },
+  name: { label: 'Name', dir: 1 },
+  property: { label: 'Property and unit', dir: 1 },
+  rent: { label: 'Rent', dir: -1 },
+  status: { label: 'This month', dir: 1 },
+  balance: { label: 'Balance', dir: -1 },
+  lease: { label: 'Lease end', dir: 1 },
+};
+const STATUS_ORDER = { late: 0, partial: 1, due: 2, paid_late: 3, paid: 4, none: 5 };
+
+let filter = RB.prefs.get('tn:filter', 'all');
+if (!FILTERS.some(f => f[0] === filter)) filter = 'all';
+let sort = RB.prefs.get('tn:sort', { key: 'urgency', dir: 1 });
+if (!sort || !SORTS[sort.key]) sort = { key: 'urgency', dir: 1 };
+let group = !!RB.prefs.get('tn:group', false);
+let density = RB.prefs.get('tn:density', 'comfortable') === 'compact' ? 'compact' : 'comfortable';
+let query = '';
+let cursor = null;   // tenant id under the keyboard cursor
+
+// ------------------------------------------------------------------ data
+function rowsFor(ctx) {
+  const S = ctx.store;
+  const end = D.monthKey(ctx.today);
+  return S.tenantsList().map(t => {
+    const lg = S.ledger(t.id);
+    const sum = RB.model.tenantSummary(t, lg, ctx.state.settings, ctx.today);
+    return { t, lg, sum, ls: sum.lease, cells: RB.model.monthsBack(lg, end, 12) };
+  });
+}
+const PRED = {
+  all: r => r.t.status !== 'past',
+  owing: r => r.lg.balance > 0,
+  ending: r => r.t.status === 'active' && r.ls.kind === 'fixed' && r.ls.inNoticeWindow,
+  notice: r => r.t.status === 'notice',
+  past: r => r.t.status === 'past',
+};
+const hay = t => [t.name, t.unit, t.property, [t.property, t.unit].join(' '), t.phone, t.email, (t.coTenants || []).map(c => c && c.name).join(' ')].join(' · ');
+function leaseKey(r) {
+  if (r.t.status === 'past') return 1e7;
+  if (r.ls.moveOut && r.t.status === 'notice') return D.toDays(r.ls.moveOut) - 1e5;
+  if (r.ls.kind === 'fixed' || r.ls.kind === 'upcoming') return r.ls.end ? D.toDays(r.ls.end) : 1e6;
+  return 1e6; // month-to-month after dated leases
+}
+function cmp(a, b) {
+  const k = sort.key;
+  let c = 0;
+  if (k === 'urgency') c = a.sum.urgency - b.sum.urgency || b.lg.balance - a.lg.balance;
+  else if (k === 'name') c = RB.natCmp(a.t.name, b.t.name);
+  else if (k === 'property') c = RB.natCmp(a.t.property, b.t.property) || RB.natCmp(a.t.unit, b.t.unit);
+  else if (k === 'rent') c = a.sum.rent - b.sum.rent;
+  else if (k === 'status') c = STATUS_ORDER[a.lg.current.status] - STATUS_ORDER[b.lg.current.status] || b.lg.current.daysLate - a.lg.current.daysLate;
+  else if (k === 'balance') c = a.lg.balance - b.lg.balance;
+  else if (k === 'lease') c = leaseKey(a) - leaseKey(b);
+  c *= sort.dir;
+  return c || RB.natCmp(a.t.property, b.t.property) || RB.natCmp(a.t.unit, b.t.unit) || RB.natCmp(a.t.name, b.t.name);
+}
+function visible(rows) {
+  const q = query.trim();
+  let out;
+  if (q) {
+    const base = filter === 'all' ? rows : rows.filter(PRED[filter]);
+    out = base.filter(r => ui.match(hay(r.t), q) >= 0);
+  } else out = rows.filter(PRED[filter]);
+  out.sort(cmp);
+  if (group) {
+    const by = new Map();
+    out.forEach(r => { const k = r.t.property || '—'; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+    return Array.from(by.keys()).sort(RB.natCmp).map(k => ({ property: k, rows: by.get(k) }));
+  }
+  return [{ property: null, rows: out }];
+}
+
+// ------------------------------------------------------------------ cells
+const coNames = t => (t.coTenants || []).filter(c => c && c.name).map(c => c.name).join(', ');
+function leaseCell(r, today) {
+  const ls = r.ls;
+  if (r.t.status === 'past') return h`<span class="faint">ended${ls.moveOut ? ' ' + D.fmt(ls.moveOut, today) : ''}</span>`;
+  if (r.t.status === 'notice' && ls.moveOut) return h`<span class="tone-warn" title="Moves out ${D.fmt(ls.moveOut, today)}">${ui.icon('door', { size: 12, cls: 'tn-ico-inline' })}out ${D.rel(ls.moveOut, today)}</span>`;
+  if (ls.kind === 'mtm') return h`<span class="faint">month-to-month</span>`;
+  if (ls.kind === 'upcoming') return h`<span class="tone-accent">${ls.label}</span>`;
+  return h`<span class="${ls.inNoticeWindow ? 'tone-warn' : 'muted'}" title="Lease ends ${D.fmt(ls.end, today)}">${ls.label}</span>`;
+}
+const pill = (r, size) => ui.pill(r.lg.current.status, { daysLate: r.lg.current.daysLate, size, title: r.lg.current.status === 'none' ? (r.t.status === 'past' ? 'Moved out' : 'No charge this month') : null });
+
+function th(key, label, cls) {
+  const on = sort.key === key;
+  return h`<th class="${cls || ''}"${on ? h` aria-sort="${sort.dir === 1 ? 'ascending' : 'descending'}"` : ''}><button type="button" class="th-sort" data-act="sort" data-k="${key}">${label}${ui.icon('arrow-up', { cls: 'sort-ind' })}</button></th>`;
+}
+
+function tableRow(r, ctx) {
+  const t = r.t;
+  const co = coNames(t);
+  const cls = ['is-link', t.status === 'past' ? 'is-muted' : '', ctx.param === t.id ? 'is-selected' : '', cursor === t.id && ctx.param !== t.id ? 'is-focused' : ''].filter(Boolean).join(' ');
+  return h`<tr class="${cls}" data-act="open" data-id="${t.id}">
+    <td class="tn-c-name"><span class="tn-namecell">${ui.plate(t.unit, { title: RB.model.unitLabel(t), status: ['late', 'partial'].includes(r.lg.current.status) ? r.lg.current.status : '' })}<span class="tn-namestack"><a class="cell-name tn-namelink" href="#t-${t.id}">${t.name || 'Unnamed tenant'}</a>${co ? h`<span class="cell-sub">${co}</span>` : ''}</span></span></td>
+    <td class="tn-c-prop muted">${t.property}</td>
+    <td class="num">${ui.money(r.sum.rent)}</td>
+    <td class="tn-c-status">${pill(r)}</td>
+    <td class="tn-c-strip">${ui.strip(r.cells, { today: ctx.today })}</td>
+    <td class="num tn-c-bal">${ui.balance(r.lg.balance, { zero: '' })}</td>
+    <td class="tn-c-lease nowrap">${leaseCell(r, ctx.today)}</td>
+  </tr>`;
+}
+function card(r, ctx) {
+  const t = r.t;
+  const bal = r.lg.balance;
+  const cls = ['crow', 'is-link', 'tn-card', t.status === 'past' ? 'is-muted' : '', ctx.param === t.id ? 'is-selected' : '', cursor === t.id ? 'is-focused' : ''].filter(Boolean).join(' ');
+  return h`<div class="${cls}" data-act="open" data-id="${t.id}">
+    <span class="crow-lead">${ui.plate(t.unit, { title: RB.model.unitLabel(t) })}</span>
+    <div class="crow-main"><a class="crow-title tn-namelink" href="#t-${t.id}">${t.name || 'Unnamed tenant'}</a>
+      <div class="crow-sub tn-card-sub">${ui.money(r.sum.rent)}<span class="faint">/mo</span>${bal ? h` · ${bal > 0 ? h`${ui.balance(bal)} owed` : ui.balance(bal)}` : ''} · ${leaseCell(r, ctx.today)}</div></div>
+    <div class="crow-aside">${pill(r, 'sm')}</div>
+    <div class="tn-card-strip">${ui.strip(r.cells, { today: ctx.today })}</div>
+  </div>`;
+}
+
+// ------------------------------------------------------------------ render
+function render(el, ctx) {
+  const all = rowsFor(ctx);
+  const counts = {};
+  FILTERS.forEach(([k]) => { counts[k] = all.filter(PRED[k]).length; });
+  const groups = visible(all);
+  const flat = groups.flatMap(g => g.rows);
+  T.order = flat.map(r => r.t.id);
+  if (cursor && !T.order.includes(cursor)) cursor = null;
+  if (ctx.param && T.order.includes(ctx.param)) cursor = ctx.param;
+
+  const current = all.filter(PRED.all);
+  const props = new Set(current.map(r => r.t.property).filter(Boolean));
+  const monthly = current.reduce((s, r) => s + r.sum.rent, 0);
+  const owed = all.reduce((s, r) => s + Math.max(0, r.lg.balance), 0);
+  const chip = ([k, label]) => h`<button type="button" class="chip" aria-pressed="${filter === k}" data-act="filter" data-k="${k}">${label}<span class="chip-count${k === 'owing' && counts.owing ? ' is-bad' : ''}">${counts[k]}</span></button>`;
+  const sortLabel = SORTS[sort.key].label;
+  const sortDefault = sort.key === 'urgency' && sort.dir === 1;
+  const q = query.trim();
+  const empty = !flat.length;
+  const filterLabel = FILTERS.find(f => f[0] === filter)[1];
+
+  const head = h`<thead><tr>${th('name', 'Tenant', 'tn-c-name')}${th('property', 'Property', 'tn-c-prop')}${th('rent', 'Rent', 'num')}${th('status', 'This month', 'tn-c-status')}<th class="tn-c-strip">12 months</th>${th('balance', 'Balance', 'num tn-c-bal')}${th('lease', 'Lease end', 'tn-c-lease')}</tr></thead>`;
+  const body = groups.map(g => h`${g.property !== null ? h`<tr class="tbl-group"><td colspan="7"><span class="tn-group">${g.property}<span class="faint">${RB.plural(g.rows.length, 'tenant')} · ${M.fmt(g.rows.filter(r => r.t.status !== 'past').reduce((s, r) => s + r.sum.rent, 0))}/mo</span></span></td></tr>` : ''}${g.rows.map(r => tableRow(r, ctx))}`);
+  const cards = groups.map(g => h`${g.property !== null ? h`<div class="tn-card-group">${g.property}<span class="faint">${RB.plural(g.rows.length, 'tenant')}</span></div>` : ''}${g.rows.map(r => card(r, ctx))}`);
+
+  el.innerHTML = String(h`
+    <div class="tn-summary"><span>${RB.plural(current.length, 'tenant')}</span><span>${RB.plural(props.size, 'property', 'properties')}</span><span>${M.fmt(monthly)} monthly rent</span>${owed ? h`<span class="tone-bad tn-sum-owed">${M.fmt(owed)} owed</span>` : ''}</div>
+    <div class="view-head tn-head">
+      <div class="chips chips-scroll tn-chips" role="group" aria-label="Show">${FILTERS.map(chip)}</div>
+      <span class="spacer hide-phone"></span>
+      <label class="search tn-search" for="tn-q"><span class="search-icon">${ui.icon('filter')}</span><input class="input" type="search" id="tn-q" placeholder="Filter by name, unit, phone…" value="${query}" data-input="q" autocomplete="off" spellcheck="false" aria-label="Filter tenants">${q ? h`<button type="button" class="btn btn-ghost btn-icon btn-sm tn-q-clear" data-act="clearq" aria-label="Clear filter">${ui.icon('x', { size: 14 })}</button>` : ''}</label>
+      <button type="button" class="btn btn-primary tn-add-btn" data-act="add" data-write>${ui.icon('plus')}<span>Add tenant</span></button>
+    </div>
+    <div class="tn-tools">
+      <span class="tn-count faint">${q ? h`${RB.plural(flat.length, 'match', 'matches')} for “${q}”${filter !== 'all' ? ' in ' + filterLabel : ''}` : h`Showing ${RB.plural(flat.length, 'tenant')}`}</span>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-ghost btn-sm tn-sortbtn" data-act="sortmenu" aria-haspopup="menu">${ui.icon('sort')}<span>Sort: ${sortLabel}${sortDefault ? '' : sort.dir === SORTS[sort.key].dir ? '' : ' (reversed)'}</span></button>
+      <button type="button" class="btn btn-ghost btn-sm tn-toggle" data-act="group" aria-pressed="${group}">${ui.icon('grid')}<span>Group by property</span></button>
+      <div class="seg hide-phone" role="group" aria-label="Row density"><button type="button" data-act="density" data-v="comfortable" aria-pressed="${density === 'comfortable'}">Comfortable</button><button type="button" data-act="density" data-v="compact" aria-pressed="${density === 'compact'}">Compact</button></div>
+    </div>
+    ${empty ? ui.empty(q
+      ? { icon: 'search', title: 'No tenants match “' + q + '”', body: filter !== 'all' ? 'Only ' + filterLabel + ' is being searched. Try All, or check the spelling.' : 'Search covers names, co-tenants, units, properties, phone numbers and emails.', actions: [{ label: 'Clear filter', act: 'clearq' }].concat(filter !== 'all' ? [{ label: 'Search all tenants', kind: 'soft', act: 'filter', attrs: { 'data-k': 'all' } }] : []) }
+      : { icon: 'tenants', title: { owing: 'Nobody owes anything', ending: 'No leases ending soon', notice: 'Nobody has given notice', past: 'No past tenants yet', all: 'No current tenants' }[filter], body: { owing: 'Every balance is paid up or in credit.', ending: 'No fixed-term lease ends within the next ' + ctx.state.settings.leaseNoticeDays + ' days.', notice: 'Tenants show here once you record their notice.', past: 'Tenants you move out stay here with their ledger.', all: 'Add a tenant to start their ledger.' }[filter], quiet: false, actions: filter === 'all' ? [{ label: 'Add tenant', kind: 'primary', act: 'add', icon: 'plus' }] : [{ label: 'Show all tenants', act: 'filter', attrs: { 'data-k': 'all' } }] })
+    : h`<div class="tbl-wrap hide-phone tn-tbl-wrap"><table class="tbl tn-tbl${density === 'compact' ? ' tbl-compact' : ''}" aria-label="Tenants">${head}<tbody>${body}</tbody></table></div>
+      <div class="clist show-phone tn-clist">${cards}</div>`}
+  `);
+
+  ui.bind(el, {
+    open: (b, e) => { if (e.target.closest('a.tn-namelink') && (e.metaKey || e.ctrlKey)) return; e.preventDefault(); cursor = b.dataset.id; RB.actions.openTenant(b.dataset.id); },
+    filter: b => { filter = b.dataset.k; RB.prefs.set('tn:filter', filter); cursor = null; RB.shell.refresh(); },
+    sort: b => { const k = b.dataset.k; sort = sort.key === k ? { key: k, dir: -sort.dir } : { key: k, dir: SORTS[k].dir }; RB.prefs.set('tn:sort', sort); RB.shell.refresh(); },
+    sortmenu: b => ui.menu(b, Object.keys(SORTS).map(k => ({ label: SORTS[k].label, checked: sort.key === k, hint: k === 'urgency' ? 'default' : '', onSelect: () => { sort = { key: k, dir: SORTS[k].dir }; RB.prefs.set('tn:sort', sort); RB.shell.refresh(); } })), { align: 'end' }),
+    group: () => { group = !group; RB.prefs.set('tn:group', group); RB.shell.refresh(); },
+    density: b => { density = b.dataset.v; RB.prefs.set('tn:density', density); RB.shell.refresh(); },
+    q: inp => { query = inp.value; refreshSoon(); },
+    clearq: () => { query = ''; RB.shell.refresh(); const i = document.getElementById('tn-q'); if (i) i.focus(); },
+    add: () => RB.actions.addTenant(),
+  });
+  const qi = el.querySelector('#tn-q');
+  if (qi && !qi._tnKeys) {
+    qi._tnKeys = true;
+    qi.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && qi.value) { e.preventDefault(); e.stopPropagation(); query = ''; RB.shell.refresh(); }
+      else if (e.key === 'ArrowDown' || e.key === 'Enter') { const first = T.order[0]; if (first) { e.preventDefault(); cursor = first; qi.blur(); if (e.key === 'Enter') RB.actions.openTenant(first); else RB.shell.refresh(); } }
+    });
+  }
+
+  // drawer
+  const d = ui.currentDrawer();
+  if (ctx.param) {
+    if (!d || ctx.reason === 'mount' || ctx.reason === 'route' || !d.el.dataset.tid || d.el.dataset.tid !== ctx.param) T.openDrawer(ctx.param);
+    else d.rerender();
+  } else if (d) d.close({ silent: true });
+  layout(el, !!ctx.param);
+  if (ctx.reason === 'route' && ctx.param) scrollToRow(el, ctx.param);
+}
+const refreshSoon = RB.debounce(() => RB.shell.refresh(), 60);
+
+/** Desktop: keep the list visible beside the drawer — pad the list so the drawer doesn't cover it, and drop columns as it narrows. */
+function layout(el, open) {
+  el.style.paddingRight = '';
+  el.classList.remove('tn-split', 'tn-narrow', 'tn-xnarrow');
+  if (!open || ui.isPhone()) return;
+  const r = el.getBoundingClientRect();
+  const drawerLeft = window.innerWidth - Math.min(520, window.innerWidth);
+  const pad = Math.max(0, Math.round(r.right - drawerLeft + 24));
+  const avail = r.width - pad;
+  if (avail < 420) return;    // too narrow to share: the drawer simply overlays the list
+  el.classList.add('tn-split');
+  el.style.paddingRight = pad + 'px';
+  if (avail < 980) el.classList.add('tn-narrow');
+  if (avail < 640) el.classList.add('tn-xnarrow');
+}
+window.addEventListener('resize', RB.debounce(() => { const c = RB.shell.current(); const root = RB.shell.root(); if (c.view === 'tenants' && root && root.dataset.view === 'tenants') layout(root, !!c.param); }, 100));
+
+function scrollToRow(el, id) {
+  const row = Array.from(el.querySelectorAll('[data-id]')).find(x => x.dataset.id === id && x.offsetParent);
+  if (!row) return;
+  const r = row.getBoundingClientRect();
+  const top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-h')) || 56;
+  if (r.top < top + 40 || r.bottom > window.innerHeight - 8) row.scrollIntoView({ block: 'center' });
+}
+
+function moveCursor(dir) {
+  if (!T.order.length) return;
+  const i = T.order.indexOf(cursor);
+  cursor = T.order[i < 0 ? (dir > 0 ? 0 : T.order.length - 1) : Math.max(0, Math.min(T.order.length - 1, i + dir))];
+  RB.shell.refresh();
+  const root = RB.shell.root();
+  if (root) scrollToRow(root, cursor);
 }
 
 RB.views.register('tenants', {
   title: 'Tenants',
-  render(el, ctx) {
-    const S = ctx.store;
-    const list = S.tenantsList();
-    const end = D.monthKey(ctx.today);
-    el.innerHTML = String(h`
-      <div class="tbl-wrap hide-phone"><table class="tbl">
-        <thead><tr><th>Tenant</th><th>Property</th><th class="num">Rent</th><th>This month</th><th>12 months</th><th class="num">Balance</th><th>Lease</th></tr></thead>
-        <tbody>${list.map(t => { const lg = S.ledger(t.id); const ls = RB.model.leaseState(t, ctx.state.settings, ctx.today); return h`<tr class="is-link${t.status === 'past' ? ' is-muted' : ''}${ctx.param === t.id ? ' is-selected' : ''}" data-act="open" data-id="${t.id}">
-          <td><span class="row">${ui.plate(t.unit)}<span><span class="cell-name">${t.name}</span>${t.coTenants && t.coTenants.length ? h`<span class="cell-sub">${t.coTenants.map(c => c.name).join(', ')}</span>` : ''}</span></span></td>
-          <td class="muted">${t.property}</td><td class="num">${ui.money(lg.rent)}</td><td>${ui.pill(lg.current.status, { daysLate: lg.current.daysLate })}</td>
-          <td>${ui.strip(RB.model.monthsBack(lg, end, 12), { today: ctx.today })}</td><td class="num">${ui.balance(lg.balance, { zero: '' })}</td><td class="muted nowrap">${ls.label}</td></tr>`; })}</tbody>
-      </table></div>
-      <div class="clist show-phone">${list.map(t => { const lg = S.ledger(t.id); return h`<div class="crow is-link" data-act="open" data-id="${t.id}"><span class="crow-lead">${ui.plate(t.unit)}</span><div class="crow-main"><div class="crow-title">${t.name}</div><div class="crow-sub">${t.property}</div></div><div class="crow-aside">${ui.pill(lg.current.status, { daysLate: lg.current.daysLate, size: 'sm' })}${ui.balance(lg.balance, { zero: '' })}</div></div>`; })}</div>
-    `);
-    ui.bind(el, { open: b => RB.actions.openTenant(b.dataset.id) });
-    const d = ui.currentDrawer();
-    if (ctx.param) { if (!d || ctx.reason !== 'store') drawerFor(ctx.param, ctx); else d.rerender(); }
-    else if (d) d.close({ silent: true });
-  },
+  shortcuts: [['j / k', 'Move between tenants'], ['↓ / ↑', 'Move between tenants'], ['Enter', 'Open tenant'], ['p', 'Record payment'], ['e', 'Edit details'], ['Esc', 'Close tenant']],
+  render,
   onKey(e, ctx) {
-    if (!ctx.param || !['j', 'k', 'ArrowDown', 'ArrowUp'].includes(e.key)) return false;
-    const list = ctx.store.tenantsList();
-    const i = list.findIndex(t => t.id === ctx.param);
-    const n = list[i + (e.key === 'j' || e.key === 'ArrowDown' ? 1 : -1)];
-    if (n) location.hash = 't-' + n.id;
-    return true;
+    const k = e.key;
+    const down = k === 'j' || k === 'ArrowDown', up = k === 'k' || k === 'ArrowUp';
+    if (ctx.param) {
+      if (down || up) { T.step(down ? 1 : -1); return true; }
+      if (k === 'p') { RB.actions.recordPayment(ctx.param); return true; }
+      if (k === 'e') { RB.actions.editTenant(ctx.param); return true; }
+      return false;
+    }
+    if (down || up) { moveCursor(down ? 1 : -1); return true; }
+    if (k === 'Enter' && cursor) { RB.actions.openTenant(cursor); return true; }
+    if (k === 'p' && cursor) { RB.actions.recordPayment(cursor); return true; }
+    if (k === 'e' && cursor) { RB.actions.editTenant(cursor); return true; }
+    if (k === 'f') { const i = document.getElementById('tn-q'); if (i) { i.focus(); i.select(); return true; } }
+    return false;
   },
   destroy() { const d = ui.currentDrawer(); if (d) d.close({ silent: true }); },
 });

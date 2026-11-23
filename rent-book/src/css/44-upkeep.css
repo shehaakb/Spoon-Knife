@@ -51,3 +51,7 @@
   .uk-actions .btn { flex: 1 1 auto; }
   .uk-inline .input { height: var(--ctl-h); }
 }
+
+/* long unit labels never push the page sideways */
+.view-upkeep .plate { max-width: 9em; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
+.view-upkeep .plate-sm { display: inline-block; line-height: 20px; text-align: center; }

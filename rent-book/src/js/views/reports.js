@@ -113,10 +113,10 @@ function collection(today) {
       </div>
       <figcaption class="bar-legend rp-legend"><span class="rp-key rp-key-charged">Charged</span><span class="rp-key rp-key-collected">Collected</span><span class="faint">Percent = collected of charged</span></figcaption>
     </figure>
-    <div class="rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-collection">
-      <thead><tr><th>Month</th><th class="num">Charged</th><th class="num">Collected</th><th class="num">Outstanding</th><th class="num">Rate</th></tr></thead>
-      <tbody>${rows.slice().reverse().map(r => h`<tr><td>${D.fmtMonth(r.period)}${r.period === curKey ? h` <span class="faint t-12">so far</span>` : ''}</td><td class="num">${ui.money(r.charged)}</td><td class="num">${ui.money(r.collected)}</td><td class="num">${r.outstanding ? ui.money(r.outstanding, { tone: 'owed' }) : h`<span class="faint">—</span>`}</td><td class="num">${pctTxt(r.rate)}</td></tr>`)}</tbody>
-      <tfoot><tr><td>12 months</td><td class="num" data-total="charged">${ui.money(tot.charged)}</td><td class="num" data-total="collected">${ui.money(tot.collected)}</td><td class="num">${ui.money(tot.outstanding)}</td><td class="num">${pctTxt(rate)}</td></tr></tfoot>
+    <div class="rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-collection">
+      <thead><tr><th>Month</th><th class="num">Charged</th><th class="num">Collected</th><th class="num hide-phone">Outstanding</th><th class="num">Rate</th></tr></thead>
+      <tbody>${rows.slice().reverse().map(r => h`<tr><td><span class="hide-phone">${D.fmtMonth(r.period)}</span><span class="show-phone">${D.MON[+r.period.slice(5, 7) - 1] + ' ' + r.period.slice(0, 4)}</span>${r.period === curKey ? h` <span class="faint t-12 hide-phone">so far</span>` : ''}</td><td class="num">${ui.money(r.charged)}</td><td class="num">${ui.money(r.collected)}</td><td class="num hide-phone">${r.outstanding ? ui.money(r.outstanding, { tone: 'owed' }) : h`<span class="faint">—</span>`}</td><td class="num">${pctTxt(r.rate)}</td></tr>`)}</tbody>
+      <tfoot><tr><td>12 months</td><td class="num" data-total="charged">${ui.money(tot.charged)}</td><td class="num" data-total="collected">${ui.money(tot.collected)}</td><td class="num hide-phone">${ui.money(tot.outstanding)}</td><td class="num">${pctTxt(rate)}</td></tr></tfoot>
     </table></div>`;
   return { title: 'Collection by month', file: 'collection', csv: () => RB.model.collectionCsv(rows), meta, body };
 }
@@ -137,11 +137,11 @@ function income(today) {
       <button type="button" class="btn btn-ghost btn-icon" id="rp-year-prev" data-act="year" data-d="-1" aria-label="Previous year"${yr <= lo ? RB.raw(' disabled') : ''}>${ui.icon('chevron-left')}</button>
       <span class="stepper-label" id="rp-year-label">${yr}</span>
       <button type="button" class="btn btn-ghost btn-icon" id="rp-year-next" data-act="year" data-d="1" aria-label="Next year"${yr >= cy ? RB.raw(' disabled') : ''}>${ui.icon('chevron-right')}</button></div>`;
-  const body = inc.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl rp-sticky" id="rp-income">
-      <thead><tr><th>Tenant</th><th class="hide-phone">Property</th><th class="num">Payments</th><th class="num">Received</th><th class="num">Credits given</th></tr></thead>
+  const body = inc.rows.length ? h`<div class="rp-scroll"><table class="tbl tbl-compact rp-tbl" id="rp-income">
+      <thead><tr><th>Tenant</th><th class="hide-phone">Property</th><th class="num hide-phone">Payments</th><th class="num">Received</th><th class="num hide-phone">Credits given</th></tr></thead>
       <tbody>${inc.rows.map(r => h`<tr data-tenant="${r.tenantId}"><td><span class="rp-who">${ui.plate(r.unit)}<button type="button" class="rp-name truncate" data-act="open" data-id="${r.tenantId}">${r.name}</button></span></td>
-        <td class="hide-phone muted">${r.property}</td><td class="num faint">${r.count}</td><td class="num">${ui.money(r.payments)}</td><td class="num">${r.credits ? ui.money(r.credits) : h`<span class="faint">—</span>`}</td></tr>`)}</tbody>
-      <tfoot><tr><td>Total</td><td class="hide-phone"></td><td class="num">${inc.rows.reduce((s, r) => s + r.count, 0)}</td><td class="num" data-total="payments">${ui.money(inc.totals.payments)}</td><td class="num" data-total="credits">${ui.money(inc.totals.credits)}</td></tr></tfoot>
+        <td class="hide-phone muted">${r.property}</td><td class="num faint hide-phone">${r.count}</td><td class="num">${ui.money(r.payments)}</td><td class="num hide-phone">${r.credits ? ui.money(r.credits) : h`<span class="faint">—</span>`}</td></tr>`)}</tbody>
+      <tfoot><tr><td>Total</td><td class="hide-phone"></td><td class="num hide-phone">${inc.rows.reduce((s, r) => s + r.count, 0)}</td><td class="num" data-total="payments">${ui.money(inc.totals.payments)}</td><td class="num hide-phone" data-total="credits">${ui.money(inc.totals.credits)}</td></tr></tfoot>
     </table></div>
     <p class="rp-note">Cash basis: payments dated in ${yr}, whatever month they paid for. The CSV adds a column for each month.</p>`
     : ui.empty({ icon: 'reports', title: 'No payments in ' + yr, body: 'Payments recorded with a date in ' + yr + ' add up here.' });

@@ -444,16 +444,17 @@ function settleDeposit(id, opts) {
       title: 'Settle deposit', size: 'wide',
       sub: (opts && opts.afterMoveOut ? 'Moved out · ' : '') + sub(t),
       body: (el, sh2) => {
+        sh2.el.classList.add('tn-settle-sheet');
         const bal0 = S().ledger(id).balance;
         el.innerHTML = String(h`
           ${opts && opts.afterMoveOut ? h`<p class="muted mb-4">Moved out. Settle the deposit now, or close this and do it later from the tenant page.</p>` : ''}
           <div class="tn-dep-head">
             <div><div class="micro">Deposit held</div><div class="tn-dep-amt">${ui.money(dep.amount, { size: 'md' })}</div><div class="faint t-12">${dep.received ? 'Received ' + D.fmt(dep.received, today) : ''}${dep.heldAt ? ' · ' + dep.heldAt : ''}</div></div>
-            <div><div class="micro">Return by</div>${dueDate ? h`<div class="tn-dep-due ${dueDate < today ? 'tone-bad' : D.diffDays(today, dueDate) <= 7 ? 'tone-warn' : ''}">${D.fmtLong(dueDate)}</div><div class="faint t-12">${settings.depositReturnDays} days after move-out · ${dueDate < today ? -D.diffDays(today, dueDate) + ' d overdue' : D.rel(dueDate, today)}</div>` : h`<div class="faint">No move-out date yet</div>`}</div>
+            <div><div class="micro">Return by</div>${dueDate ? h`<div class="tn-dep-due ${dueDate < today ? 'tone-bad' : D.diffDays(today, dueDate) <= 7 ? 'tone-warn' : ''}">${D.fmtLong(dueDate)}</div><div class="faint t-12">${settings.depositReturnDays} days after move-out · <span class="nowrap">${dueDate < today ? -D.diffDays(today, dueDate) + ' d overdue' : D.rel(dueDate, today)}</span></div>` : h`<div class="faint">No move-out date yet</div>`}</div>
           </div>
-          <fieldset class="fieldset mt-5"><legend class="fieldset-title">Deductions</legend>
+          <div class="mt-5"><fieldset class="fieldset"><legend class="fieldset-title">Deductions</legend>
             ${repeater('ded', [], 'Add deduction', 'sd-add')}
-          </fieldset>
+          </fieldset></div>
           <div class="stack stack-3 mt-4">
             ${bal0 > 0 ? ui.field({ name: 'apply', id: 'sd-apply', type: 'checkbox', value: true, label: h`Apply the deposit to the unpaid balance (${M.fmt(bal0)} owed)` }) : ''}
             <div id="sd-short-wrap" hidden>${ui.field({ name: 'chargeShort', id: 'sd-short', type: 'checkbox', value: true, label: 'Add what the deductions exceed the deposit by to the ledger as a charge' })}</div>
@@ -472,8 +473,8 @@ function settleDeposit(id, opts) {
           show(el.querySelector('#sd-short-wrap'), cur.shortfall > 0);
           el.querySelector('#sd-sum').innerHTML = String(h`
             <div class="tn-sum-row"><span>Deposit</span><span></span>${ui.money(cur.deposit)}</div>
-            ${cur.lines.map(d => h`<div class="tn-sum-row tn-sum-minor"><span>Less</span><span class="tn-sum-val">${d.reason || 'Deduction'}</span>−${ui.money(d.amount)}</div>`)}
-            ${cur.applied ? h`<div class="tn-sum-row tn-sum-minor"><span>Less</span><span class="tn-sum-val">applied to unpaid balance</span>−${ui.money(cur.applied)}</div>` : ''}
+            ${cur.lines.map(d => h`<div class="tn-sum-row tn-sum-minor"><span>Less</span><span class="tn-sum-val">${d.reason || 'Deduction'}</span><span>−${ui.money(d.amount)}</span></div>`)}
+            ${cur.applied ? h`<div class="tn-sum-row tn-sum-minor"><span>Less</span><span class="tn-sum-val">applied to unpaid balance</span><span>−${ui.money(cur.applied)}</span></div>` : ''}
             <div class="tn-sum-row tn-sum-total"><span>Refund to tenant</span><span></span><strong>${ui.money(cur.refund, { size: 'md' })}</strong></div>
             ${cur.shortfall ? h`<div class="tn-sum-row tn-sum-minor tone-bad"><span>Beyond the deposit</span><span class="tn-sum-val">still owed by the tenant</span>${ui.money(cur.shortfall)}</div>` : ''}
             ${cur.balanceAfter > 0 ? h`<div class="tn-sum-row tn-sum-minor"><span>Ledger after</span><span class="tn-sum-val">still owed</span>${ui.money(cur.balanceAfter, { tone: 'owed' })}</div>` : ''}`);

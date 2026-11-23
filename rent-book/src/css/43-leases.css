@@ -76,3 +76,10 @@
   .lz-head-row { margin-bottom: var(--s4); }
   .view-leases .crow-actions .btn-group > .btn:first-child { flex: 1 1 auto; }
 }
+
+/* long unit labels never push the page sideways */
+.view-leases .plate { max-width: 9em; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
+.view-leases .plate-sm { display: inline-block; line-height: 20px; text-align: center; }
+.view-leases .crow { align-items: start; }
+.view-leases .crow-main { padding-top: 1px; }
+.view-leases .crow-aside { gap: 0; }

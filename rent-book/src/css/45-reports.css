@@ -21,7 +21,7 @@
 .rp-tbl .plate { min-width: 52px; }
 
 /* scrolling table with sticky first column (phone) */
-.rp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.rp-scroll { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 .rp-sticky { min-width: 520px; }
 .rp-scroll .tbl thead th { top: auto; }
 @media (min-width: 760px) { .rp-scroll .tbl thead th { top: var(--sticky-top); } }
@@ -74,3 +74,9 @@
   .rp-xlab { font-size: 10.5px; }
   .rp-xyear { display: none; }
 }
+
+/* long unit labels never push the page sideways */
+.view-reports .plate { max-width: 9em; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
+.view-reports .plate-sm { display: inline-block; line-height: 20px; text-align: center; }
+@media (max-width: 759.98px) { #rp-collection th, #rp-collection td { padding-left: 6px; padding-right: 6px; } #rp-collection th:first-child, #rp-collection td:first-child { padding-left: 8px; } #rp-collection th:last-child, #rp-collection td:last-child { padding-right: 8px; } }
+@media (max-width: 759.98px) { .rp-sticky .rp-who .plate { min-width: 0; max-width: 4.5em; } .rp-sticky { min-width: 560px; } }

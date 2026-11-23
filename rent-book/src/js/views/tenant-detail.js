@@ -139,7 +139,7 @@ function headPart(t, lg, ls, today) {
     <div class="tn-dstat">
       <div class="tn-dbal">${T.balanceWords(lg.balance)}${month}</div>
       <div class="tn-dacts">
-        <button type="button" class="btn btn-primary" data-act="pay" data-write data-autofocus>${ui.icon('cash')}<span>Record payment</span></button>
+        <button type="button" class="btn btn-primary" data-act="pay" data-write>${ui.icon('cash')}<span>Record payment</span></button>
         <button type="button" class="btn btn-icon" data-act="more" aria-label="More actions" aria-haspopup="menu" title="More actions">${ui.icon('more')}</button>
       </div>
     </div>`;
@@ -255,7 +255,7 @@ function rowSub(r, today) {
   if (r.kind === 'entry') {
     if (r.ref) bits.push(h`<span class="mono">Ref ${r.ref}</span>`);
     if (r.type === 'payment' && r.memo) bits.push(r.memo);
-    if (r.type === 'charge' && r.category && r.memo) bits.push(RB.model.CATEGORY_LABEL[r.category] || '');
+    if (r.type === 'charge' && r.category && r.memo && !String(r.memo).toLowerCase().startsWith(String(RB.model.CATEGORY_LABEL[r.category] || '~').toLowerCase())) bits.push(RB.model.CATEGORY_LABEL[r.category] || '');
     if (r.type !== 'charge' && !r.void && r.unapplied > 0) bits.push(h`${M.fmt(r.unapplied)} to credit`);
   }
   const b = bits.filter(Boolean);
