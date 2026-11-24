@@ -1,12 +1,14 @@
 /* Design tokens. Every colour lives here; component rules use var(--token) only.
-   Light on bare :root, dark under prefers-color-scheme (unless data-theme="light"), and again for data-theme="dark". */
+   Light on bare :root, dark under prefers-color-scheme (unless data-theme="light"), and again for data-theme="dark".
+   v3 (SPEC §10.1 laws 4 and 6): five type sizes × --text-scale, two weights, one spacing scale, three radii.
+   The v2 token names are kept as aliases of the v3 ones so older CSS keeps working (and lands on the five sizes). */
 :root {
   --paper: #F5F6F9;
   --surface: #FFFFFF;
   --sunk: #ECEEF3;
   --ink: #131A26;
   --ink-2: #3D4657;            /* 8.8:1 paper, 9.5 surface, 8.2 sunk */
-  --ink-3: #566072;            /* v2: ≥5.4:1 on every ground (5.9 paper, 6.3 surface, 5.5 sunk) */
+  --ink-3: #566072;            /* ≥5.4:1 on every ground — decoration only */
   --line: #E0E4EB;
   --line-2: #C9CFDA;
   --accent: #2440B8;           /* 7.8 paper, 8.4 surface; white on it 8.4 */
@@ -20,14 +22,16 @@
   --bad-soft: #FAE6E4;
 
   /* derived (still tokens: no literal colours outside this file) */
-  --hover: #EEF0F5;            /* row / ghost-button hover */
-  --accent-line: #B7C3F1;      /* border of accent-soft things */
+  --hover: #EEF0F5;            /* row / text-button hover */
+  --press: #E4E8F0;            /* row press */
+  --tint: #F1F3F8;             /* v3 callouts and the one summary panel: a surface tint, never brown/amber */
+  --accent-line: #B7C3F1;
   --accent-hover: #1C3399;
   --ok-line: #A8D4BB;
   --warn-line: #E6C78C;
   --bad-line: #EBB3AD;
-  --bad-ink: #FFFFFF;          /* text on solid --bad */
-  --faint: #D5DAE3;            /* empty strip dots, skeletons */
+  --bad-ink: #FFFFFF;
+  --faint: #D5DAE3;
   --scrim: rgba(19, 26, 38, .28);
   --toast-bg: #131A26;
   --toast-ink: #EEF1F6;
@@ -35,49 +39,70 @@
   --toast-hover: rgba(255, 255, 255, .12);
   --shadow-float: 0 1px 2px rgba(19, 26, 38, .06), 0 10px 28px rgba(19, 26, 38, .12);
   --shadow-modal: 0 2px 6px rgba(19, 26, 38, .08), 0 24px 60px rgba(19, 26, 38, .22);
-  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 5px var(--accent);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);   /* 2px accent ring + 2px offset */
   color-scheme: light;
 }
 
-/* Sizes. Declared on :root and on any .text-scope element so a subtree can use its own --text-scale (the kit shows
-   all three sizes side by side that way). */
+/* Sizes. Declared on :root and on any .text-scope element so a subtree can use its own --text-scale. */
 :root, .text-scope {
-  /* type: every size multiplies by --text-scale (Text size control: 1 / 1.12 / 1.25 on the root element, data-text="…").
-     Token names are historical; values were raised in v2 so nothing a person reads is under 14px. */
   --text-scale: 1;
   --f-display: "Newsreader", "Iowan Old Style", "Charter", Georgia, "Times New Roman", serif;
   --f-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
-  --t-12: calc(14px * var(--text-scale));     /* smallest readable: hints, captions, pills */
-  --t-13: calc(15px * var(--text-scale));     /* secondary lines */
-  --t-15: calc(17px * var(--text-scale));     /* emphasis, buttons */
-  --t-18: calc(20px * var(--text-scale));     /* section titles */
-  --t-24: calc(27px * var(--text-scale));     /* view titles */
-  --t-34: calc(38px * var(--text-scale));     /* large sums */
-  --t-body: calc(16px * var(--text-scale));
-  --t-micro: calc(14px * var(--text-scale));  /* uppercase labels (sparingly) */
-  --lh: 1.5;
 
-  /* space, radius, sizes (all scale with text) */
+  /* ---- v3 type: exactly five sizes (law 4) ---- */
+  --t-cap: calc(14px * var(--text-scale));       /* captions, row-sub, status markers, group heads, tab labels */
+  --t-body: calc(16px * var(--text-scale));      /* body, row titles, buttons, inputs (17 on phone) */
+  --t-lead: calc(18px * var(--text-scale));      /* lead sentences, section headings */
+  --t-title: calc(22px * var(--text-scale));     /* page / sheet titles */
+  --t-display: calc(32px * var(--text-scale));   /* the ONE key figure or name per screen (36 on desktop) */
+  /* ---- two weights ---- */
+  --w-regular: 400;
+  --w-strong: 600;                               /* row first line, button labels, sans headings — nothing else */
+  /* ---- line heights ---- */
+  --lh: 1.45; --lh-title: 1.25; --lh-display: 1.1;
+
+  /* v2 names → v3 sizes (aliases; do not use in new CSS) */
+  --t-12: var(--t-cap);
+  --t-13: var(--t-cap);
+  --t-micro: var(--t-cap);
+  --t-15: var(--t-body);
+  --t-18: var(--t-lead);
+  --t-24: var(--t-title);
+  --t-34: var(--t-display);
+
+  /* ---- spacing: 4 8 12 16 24 32 48 64 only (law 6) ---- */
   --s1: calc(4px * var(--text-scale)); --s2: calc(8px * var(--text-scale)); --s3: calc(12px * var(--text-scale));
-  --s4: calc(16px * var(--text-scale)); --s5: calc(24px * var(--text-scale)); --s6: calc(32px * var(--text-scale)); --s7: calc(48px * var(--text-scale));
-  --r-ctl: 8px;
-  --r-panel: 12px;
-  --r-plate: 3px;
+  --s4: calc(16px * var(--text-scale)); --s5: calc(24px * var(--text-scale)); --s6: calc(32px * var(--text-scale));
+  --s7: calc(48px * var(--text-scale)); --s8: calc(64px * var(--text-scale));
+
+  /* ---- radius: 6 controls · 10 panels · 16 sheets (and 999 for round marks) — nothing else ---- */
+  --r-ctl: 6px;
+  --r-panel: 10px;
+  --r-sheet: 16px;
+  --r-round: 999px;
+  --r-plate: 6px;                                /* alias: door plates are controls-sized */
+
   --rail-w: calc(236px * var(--text-scale));
   --top-h: calc(64px * var(--text-scale));
   --tab-h: calc(68px * var(--text-scale));
-  --ctl-h: calc(44px * var(--text-scale));     /* ≥40 desktop */
+  --ctl-h: calc(44px * var(--text-scale));
   --ctl-h-sm: calc(40px * var(--text-scale));
   --ctl-h-lg: calc(52px * var(--text-scale));
-  --ctl-h-xl: calc(64px * var(--text-scale));  /* task buttons on Today */
-  --row-h: calc(56px * var(--text-scale));     /* ≥52 */
+  --ctl-h-xl: calc(64px * var(--text-scale));
+  --row-h: calc(64px * var(--text-scale));       /* the canonical row's minimum height */
   --gutter: 32px;
   --icon: calc(18px * var(--text-scale));
   --sticky-top: calc(env(safe-area-inset-top, 0px) + var(--top-h));
+
+  /* ---- motion (SPEC §10.4): transform/opacity only ---- */
   --ease: cubic-bezier(.2, .7, .2, 1);
-  --dur: 160ms;
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur: 240ms;          /* sheets and the drawer */
+  --dur-menu: 150ms;     /* menus, popovers, toasts */
+  --dur-press: 100ms;    /* press feedback (scale .98) */
 }
+@media (min-width: 1100px) { :root, .text-scope { --t-display: calc(36px * var(--text-scale)); } }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -89,9 +114,9 @@
     --ink-3: #8E97A7;
     --line: #232933;
     --line-2: #343C49;
-    --accent: #8FA4FF;
-    --accent-ink: #0E1116;
-    --accent-soft: #1A2244;
+    --accent: #A3B4FF;
+    --accent-ink: #0B0E14;
+    --accent-soft: #1D2647;
     --ok: #5BC08C;
     --ok-soft: #11301F;
     --warn: #E2AA4C;
@@ -99,8 +124,10 @@
     --bad: #F0857D;
     --bad-soft: #3A1715;
     --hover: #1B2029;
-    --accent-line: #2E3C78;
-    --accent-hover: #A9B8FF;
+    --press: #222834;
+    --tint: #1B2029;
+    --accent-line: #3A4A8C;
+    --accent-hover: #BFCBFF;
     --ok-line: #1F5838;
     --warn-line: #5E461A;
     --bad-line: #6B2B26;
@@ -132,9 +159,9 @@
   --ink-3: #8E97A7;
   --line: #232933;
   --line-2: #343C49;
-  --accent: #8FA4FF;
-  --accent-ink: #0E1116;
-  --accent-soft: #1A2244;
+  --accent: #A3B4FF;
+  --accent-ink: #0B0E14;
+  --accent-soft: #1D2647;
   --ok: #5BC08C;
   --ok-soft: #11301F;
   --warn: #E2AA4C;
@@ -142,8 +169,10 @@
   --bad: #F0857D;
   --bad-soft: #3A1715;
   --hover: #1B2029;
-  --accent-line: #2E3C78;
-  --accent-hover: #A9B8FF;
+  --press: #222834;
+  --tint: #1B2029;
+  --accent-line: #3A4A8C;
+  --accent-hover: #BFCBFF;
   --ok-line: #1F5838;
   --warn-line: #5E461A;
   --bad-line: #6B2B26;
@@ -165,10 +194,9 @@
 @media (max-width: 759.98px) {
   :root, .text-scope {
     --t-body: calc(17px * var(--text-scale));
-    --ctl-h: calc(48px * var(--text-scale));     /* every tappable thing ≥48 on phone */
+    --ctl-h: calc(48px * var(--text-scale));
     --ctl-h-sm: calc(48px * var(--text-scale));
     --ctl-h-lg: calc(56px * var(--text-scale));
-    --row-h: calc(60px * var(--text-scale));
     --gutter: 16px;
     --rail-w: 0px;
     --top-h: calc(60px * var(--text-scale));

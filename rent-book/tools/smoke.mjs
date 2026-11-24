@@ -84,7 +84,11 @@ await page.waitForTimeout(150);
 const unnamed = await page.evaluate(() => Array.from(document.querySelectorAll('#rb-rail a, #rb-rail button, #rb-topbar a, #rb-topbar button, #rb-banner button, #rb-view button')).filter(e => e.offsetParent !== null && !(e.innerText || '').trim()).map(e => e.id || e.className));
 check('shell + Today: no button without visible words', !unnamed.length, unnamed.join(', '));
 check('nav labels', (await page.$$eval('.rail-link-label', els => els.map(e => e.textContent.trim()).join(' · '))) === 'Today · Rent · Tenants · Leases · Repairs · Reports · Settings');
-check('top bar says Add (and Find on phone)', (await page.textContent('#rb-add')).trim() === 'Add' && (await page.textContent('#rb-find')).trim() === 'Find');
+check('top bar: title + Find only (no "+ Add" menu)', await page.locator('#rb-add').count() === 0 && (await page.textContent('#rb-find')).trim() === 'Find' && await page.locator('#rb-topbar button:visible, #rb-topbar a:visible').count() <= 2);
+check('sidebar: badge only on Today', await page.locator('#rb-nav .rail-count').count() === 1 && await page.locator('#rb-nav-today .rail-count').count() === 1);
+check('sidebar: no sync note (it lives in Settings)', await page.locator('#rb-rail .sync-note').count() === 0 && /saved on this device only|Everything is saved/.test(String(await page.evaluate(() => String(RB.ui.syncNote())))));
+check('banner: one line, one link', (await page.evaluate(() => document.getElementById('rb-banner').innerText)).replace(/\s+/g, ' ').trim() === 'These are example tenants — Remove them' && await page.evaluate(() => document.getElementById('rb-banner').getBoundingClientRect().height <= 96) && await page.locator('#rb-banner button').count() === 1);
+check('"n" opens what-would-you-like-to-do as a sheet', await (async () => { await page.keyboard.press('n'); await page.waitForTimeout(150); const ok = ((await page.textContent('.sheet-title')) || '') === 'What would you like to do?'; await page.keyboard.press('Escape'); await page.waitForTimeout(250); return ok; })());
 await page.evaluate(() => { location.hash = 'upkeep'; }); await page.waitForTimeout(120);
 check('#upkeep shows Repairs', await page.evaluate(() => document.querySelector('#rb-nav-repairs').getAttribute('aria-current') === 'page'));
 await page.evaluate(() => { location.hash = 'rent'; }); await page.waitForTimeout(120);
@@ -98,13 +102,29 @@ await page.click('#rb-ts-xl');
 await page.waitForTimeout(100);
 const f1 = await fs();
 check('text size: Extra large makes body text 25% bigger', Math.abs(f1 - f0 * 1.25) < 0.05, f0 + ' → ' + f1);
-check('text size: control buttons have words', (await page.textContent('#rb-sync .textsize')).replace(/\s+/g, ' ').includes('Normal') && (await page.textContent('#rb-ts-xl')).trim() === 'Extra large');
+check('text size: three "A" buttons with accessible names, the choice written beneath', await page.$$eval('#rb-sync [data-textsize]', els => els.map(e => e.textContent.trim() + '/' + e.getAttribute('aria-label')).join('|')) === 'A/Normal text|A/Large text|A/Extra large text' && ((await page.textContent('#rb-sync .textsize-now')) || '').trim() === 'Text size: Extra large');
 await page.reload(); await page.waitForFunction(() => RB.store.state.ready); await page.waitForTimeout(100);
 check('text size: remembered after reload', Math.abs(await fs() - f1) < 0.05 && await page.evaluate(() => document.querySelector('#rb-ts-xl').getAttribute('aria-pressed') === 'true'));
 await page.click('#rb-ts-lg');
 await page.waitForTimeout(100);
 check('text size: Large = 112%', Math.abs(await fs() - f0 * 1.12) < 0.05);
 await page.click('#rb-ts-normal');
+
+// law 10: a toast is gone the moment a sheet opens; a toast raised under a sheet waits for it to close; sheets never stack
+await page.evaluate(() => { RB.ui.closeAll(); document.querySelectorAll('.toast').forEach(t => t.remove()); RB.ui.toast('Before the sheet', { undo: () => {} }); });
+await page.waitForTimeout(50);
+await page.evaluate(id => { RB.actions.addNote(id); }, tid);
+await page.waitForTimeout(20);
+check('toast: gone the moment a sheet opens', await page.evaluate(() => !Array.from(document.querySelectorAll('.toast')).some(t => !t.classList.contains('is-closing'))));
+await page.evaluate(() => RB.ui.toast('Raised under the sheet'));
+await page.waitForTimeout(250);
+check('toast: never shown over an open sheet', await page.evaluate(() => { const t = document.querySelector('.toast:not(.is-closing)'); const s = document.querySelector('.sheet-wrap:not(.is-closing) .sheet'); if (!t) return true; const a = t.getBoundingClientRect(), b = s.getBoundingClientRect(); return !(a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top); }));
+await page.evaluate(id => { RB.actions.addCharge(id); }, tid);
+await page.waitForTimeout(300);
+check('sheets never stack: opening one from another replaces it', await page.locator('.sheet-wrap:not(.is-closing)').count() === 1 && ((await page.textContent('.sheet-wrap:not(.is-closing) .sheet-title')) || '') === 'Add a charge');
+await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+check('toast: held toast shows once the sheet has closed', await page.evaluate(() => Array.from(document.querySelectorAll('.toast-msg')).some(t => t.textContent === 'Raised under the sheet')));
+await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
 
 // toast stays at least 9 seconds
 await page.evaluate(() => { document.querySelectorAll('.toast').forEach(t => t.remove()); RB.ui.toast('Test message', { undo: () => {} }); });
@@ -128,6 +148,7 @@ for (const id of helpIds) {
   const r = await page.evaluate(() => ({ hash: location.hash, sheet: (document.querySelector('.sheet-title') || {}).textContent || '' }));
   const ok = { owes: r.hash === '#rent', history: r.hash === '#repairs' }[id] ?? (r.sheet && r.sheet !== 'How do I…?');
   check('help: "' + id + '" starts its task', !!ok, JSON.stringify(r));
+  check('help: "' + id + '" — one sheet at a time', await page.locator('.sheet-wrap:not(.is-closing)').count() <= 1);
 }
 await page.evaluate(() => RB.ui.closeAll());
 

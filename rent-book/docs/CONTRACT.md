@@ -14,6 +14,102 @@ What view authors code against. SPEC.md is the product spec; this file is the AP
 - Component review page: open `dist/preview.html#kit` (not in the nav). Every class below is rendered there.
 - Screens at a text size: `node tools/shots.mjs --text xl` (or `lg`) → `shots/<name>-<size>-<theme>-xl.png`; overflow of any element past the screen edge fails the run.
 
+## What changed in v3 — the elegance pass (read this first; SPEC §10 is the authority)
+
+Everything below exists in `00-tokens.css`, `20-components.css`, `30-ui.js` and `10-model.js` now. Old names still work
+(aliases), so nothing breaks — but `node tools/audit.mjs --only <your screen>` is the acceptance test, and it fails on
+the old habits (extra sizes, weights, radii, red text outside a status marker, buttons on rows, two filled buttons).
+
+### a. Tokens (laws 4 and 6)
+```css
+/* five sizes, all × --text-scale */
+--t-cap 14 · --t-body 16 (17 phone) · --t-lead 18 · --t-title 22 · --t-display 32 (36 at ≥1100px)
+/* two weights — 600 only for: a row's first line, button labels, sans headings */
+--w-regular 400 · --w-strong 600
+--lh 1.45 · --lh-title 1.25 · --lh-display 1.1
+/* spacing 4 8 12 16 24 32 48 64 */
+--s1 … --s8            /* inside a group 8–12, between groups 24–32, between sections 48 */
+/* radius: nothing else is allowed */
+--r-ctl 6 · --r-panel 10 · --r-sheet 16 · --r-round 999      (--r-plate is now 6)
+/* new colour tokens */
+--tint (callouts / the one summary panel; never brown) · --press (row press)
+/* motion */
+--dur 240ms + --ease-sheet cubic-bezier(.32,.72,0,1) (sheets, drawer) · --dur-menu 150ms · --dur-press 100ms
+```
+Aliases (do not use in new CSS): `--t-12`, `--t-13`, `--t-micro` → `--t-cap`; `--t-15` → `--t-body`; `--t-18` → `--t-lead`;
+`--t-24` → `--t-title`; `--t-34` → `--t-display`. Literal sizes like `calc(19px * var(--text-scale))` or `.93em` are a 6th
+size — the audit will name the element. Utility classes: `.t-cap .t-body .t-lead .t-title .t-display`, `.lead` (18px sentence),
+`.callout` (tint panel). **Exactly one `.t-display` (Newsreader) element per screen** — the key figure or name.
+Note: the old flex utility `.row` is now **`.hstack`** (`.row` is the canonical list row).
+
+### b. The canonical row and the status marker (§10.2)
+```js
+ui.row({ lead: ui.plate('1B'), title: 'Tomasz Wolski', sub: 'Unit 1B at Alder Court',
+         amt: '$3,300', status: ui.status('late', 'Late — 23 days'), href: '#t-abc' })   // → <li><a class="row">…</a></li>
+ui.row({ …, act: 'open', attrs: {'data-id': id} })      // <button class="row" data-act="open"> (use with ui.bind)
+ui.row({ …, btn: { label: 'Record a payment', act: 'pay', id: 'rent-pay-' + id }, bar: ui.splitBar(80000, 147500) })
+  // the ONE soft button (Rent "still owes" and Today rent rows only): <div class="row row-act"> with the title as a
+  // stretched <button class="row-hit"> carrying act/href/attrs, and <button class="btn btn-soft row-btn">
+ui.row({ …, statusPos: 'main' })   // status under the sub line instead of at the end
+ui.row({ …, bare: true })          // the row element without its <li>
+ui.rows([rowOpts…], { inset: true, id, label })         // <ul class="rows [rows-inset]">
+ui.rowsHead('Still owes', 6)       // <h3 class="rows-head">Still owes <span class="rows-count">6</span></h3>
+ui.rowsMore(14, { id, act: 'more', expanded })          // quiet full-width "Show all 14" / "Show fewer"
+ui.status(kind, words, {icon, cls, title})              // <span class="status status-late">▲ Late — 23 days</span>
+```
+Status kinds: `late` `bad` `urgent` (red triangle) · `partial` (amber half) · `partial_late` · `warn` `notice` (amber clock) ·
+`due` (ink hollow circle) · `paid` `paid_late` (muted tick — Paid is quiet) · `ok` (green tick, sparingly) · `info` · `quiet` · `none`.
+A row is one tap target ending in a chevron; no other buttons or links inside it. A static row (no href/act) has no chevron.
+`ui.row` returns `<li>…</li>`; if you wrap it in your own `<li>` the parser leaves an empty `<li>`, which CSS hides — but
+prefer not to. Other helpers: `ui.place(t)` → "Unit 2B at Alder Court"; `ui.segment(items, value, {id, act, label})` → the
+one-row view switch (`items:[{key,label,count}]`, buttons `#<id>-<key>` with `data-k` and `aria-pressed`).
+
+### c. Buttons (law 1: one filled button per screen and per sheet)
+| class | use |
+|---|---|
+| `.btn.btn-primary` | filled — the one obvious thing to do |
+| `.btn.btn-soft` | tonal — the one allowed row action; quiet secondary actions |
+| `.btn` / `.btn.btn-outline` | bordered — secondary actions ("Log a repair", "Add a tenant") |
+| `.btn-link` (standalone, ≥48px on phone) · `.btn.btn-ghost` · `.linkbtn` (inline) | text links |
+| `.btn-danger`, `.btn-danger-soft`, `.btn-keep` | confirm sheets only |
+All button labels are 600 at body size; size modifiers (`btn-sm/lg/xl`) change height only. Press = scale .98, 100ms.
+
+### d. One choice control (law 8)
+`ui.field({type: 'choice', options})` = radio cards with a visible radio mark (2–4 options); **with 5 or more options it renders a
+`<select>` automatically** (same name/id, read back the same). Alias: `ui.choice(opts)`. Chips are only for filters; segments
+(`ui.segment`) only for switching views. Dates: `ui.field({type:'date'})` (or `ui.dateField`) now writes the date out beside the
+native field ("Tuesday, November 24", `#<id>-words`); `ui.dateWords(d)` gives the words.
+
+### e. One number, one name, one order (law 7)
+```js
+RB.model.owed(state, today, getLedger?) → { total, thisMonth, period, tenants: [{tenantId, name, balance, thisMonth, earlier}] }
+RB.model.attentionOrder(state, today, getLedger?) → [tenantId…]   // everyone who owes, most urgent first
+RB.model.attentionKey(tenant, ledger, today) → {tier, days, balance, name};  RB.model.attentionCompare(a, b)
+RB.model.owedSentence(owed, today)  // "6 tenants owe $8,545 in total — $6,495 of it is November’s rent."
+RB.ui.owed()                        // owed() for the store, memoised per store version
+RB.ui.owedSentence()                // the sentence for the store — use this string verbatim wherever the total is stated
+```
+Order: behind on rent (oldest debt first) → late (most days late first) → part paid → not paid yet → other money owed;
+then larger balance, then name. `RB.model.attention()` sorts its rent items by the same order. Use `attentionCompare` on
+`attentionKey`s for any list of tenants that need attention (Tenants "Needs attention", reports).
+
+### f. Shared flows and primitives
+- `ui.choices({title='What would you like to do?', sub, body, items:[{label, hint|sub, run, danger, write, id}]})` — rows in a
+  sheet; picking one closes the sheet **then** runs the item.
+- **Sheets never stack**: `ui.sheet()` closes any open sheet/Find/menu first. **Toasts are dismissed** whenever a sheet or drawer
+  opens; a toast raised while a sheet is open sits at the top of the screen (`.toasts.is-top`), never over its buttons.
+- `ui.pickTenant({purpose: 'pay'|'repair'|…})` — `pay` (default with `prefer:'owes'`) shows what they owe; anything else shows
+  only "Unit 2B at Alder Court". Rows are canonical rows `.pick-row#pick-<id>[data-pick]`.
+- `ui.steps` counts the check-and-save screen: three question steps + summary → "Step 4 of 4", titled "Check and save".
+- `ui.textSizeControl({id, letters:true})` — one row of three "A" buttons (accessible names "Normal text" / "Large text" /
+  "Extra large text"), "Text size: Large" written beneath. Without `letters` it keeps the worded buttons (Settings).
+- `RB.ui.syncNote()` → the "saved on this device only" / "Everything is saved" note (SafeHTML) for Settings → Who can see this.
+  It is no longer in the sidebar.
+- `ui.pill` and semantic `ui.tag` tones (`ok/warn/bad`) now render **status markers** (no tinted boxes). Door plates are neutral
+  (`ui.plate` ignores `status` except on the large grid plate, which keeps a small coloured glyph). `ui.money`/`ui.balance` are ink.
+- Top bar: title + Find only. The "+ Add" menu is gone (`RB.shell.quickAdd` still exists and opens the same items as a choices
+  sheet); every action is on its own screen and in Find.
+
 ## What changed in v2 for view authors (read first)
 
 v2 makes the whole app easy for a non-technical 50+ user (SPEC §8 — the eleven rules and the **glossary** are the

@@ -439,8 +439,80 @@ function attention(state, today, getLedger) {
       detail: unitLabel(k) + ' · ' + (k.status === 'scheduled' && k.scheduled ? 'scheduled ' + D.fmt(k.scheduled, today) : age + ' d open') + (k.priority === 'urgent' ? ' · urgent' : ''),
       date: k.reported, action: { type: 'openTicket', ticketId: k.id, label: 'Open' } });
   }
-  items.sort((a, b) => sevRank[a.severity] - sevRank[b.severity] || a.rank - b.rank || RB.natCmp(a.title, b.title));
+  // v3 law 7: rent items follow the one attention order (attentionOrder); everything else by severity, then urgency.
+  const pos = new Map(attentionOrder(state, today, L).map((id, i) => [id, i]));
+  const RENT = { delinquent: 1, late: 1, partial: 1 };
+  items.sort((a, b) => sevRank[a.severity] - sevRank[b.severity]
+    || (RENT[a.kind] && RENT[b.kind] ? pos.get(a.tenantId) - pos.get(b.tenantId) : RENT[a.kind] ? -1 : RENT[b.kind] ? 1 : 0)
+    || a.rank - b.rank || RB.natCmp(a.title, b.title));
   return items;
+}
+
+/**
+ * v3 law 7 — the ONE ordering of tenants who need attention for money, used on every screen.
+ * attentionKey(tenant, ledger, today) → {tier, days, balance, name}:
+ *   tier 0 behind on rent (an open charge older than 30 days) — oldest debt first
+ *   tier 1 late (any rent month past grace)                    — most days late first
+ *   tier 2 part paid this month, not late yet
+ *   tier 3 not paid yet (inside the grace period)
+ *   tier 4 owes something else (a charge) · tier 9 owes nothing
+ * then larger balance first, then name.
+ */
+function attentionKey(tenant, lg, today) {
+  const t = tenant || {};
+  const lateMonths = Object.values(lg.months).filter(m => m.status === 'late');
+  const owes = lg.balance > 0;
+  let tier = 9, days = 0;
+  if (owes && lg.delinquent) { tier = 0; days = lg.oldestOpenDate ? D.diffDays(lg.oldestOpenDate, today) : 0; }
+  else if (owes && lateMonths.length) { tier = 1; days = Math.max(...lateMonths.map(m => m.daysLate || 0)); }
+  else if (owes && lg.current.status === 'partial') tier = 2;
+  else if (owes && lg.current.status === 'due') tier = 3;
+  else if (owes) tier = 4;
+  return { tier, days, balance: lg.balance, name: t.name || '' };
+}
+/** Comparator over attentionKey results (or anything with {tier, days, balance, name}). */
+function attentionCompare(a, b) {
+  return a.tier - b.tier || b.days - a.days || b.balance - a.balance || RB.natCmp(a.name, b.name);
+}
+/** Ids of every tenant who owes money, in the one attention order. */
+function attentionOrder(state, today, getLedger) {
+  const L = ledgerGetter(state, today, getLedger);
+  return tenantsArr(state).map(t => ({ id: t.id, k: attentionKey(t, L(t.id), today) }))
+    .filter(x => x.k.tier < 9).sort((a, b) => attentionCompare(a.k, b.k)).map(x => x.id);
+}
+/**
+ * v3 law 7 — the amount owed, computed in one place.
+ * → {total (sum of every positive balance), thisMonth (the part of it that is this month's charges), period,
+ *    tenants:[{tenantId, name, balance, thisMonth, earlier}] in attentionOrder}
+ */
+function owed(state, today, getLedger) {
+  const L = ledgerGetter(state, today, getLedger);
+  const period = D.monthKey(today);
+  const byId = {};
+  for (const t of tenantsArr(state)) byId[t.id] = t;
+  const out = { total: 0, thisMonth: 0, period, tenants: [] };
+  for (const id of attentionOrder(state, today, L)) {
+    const lg = L(id);
+    const m = lg.months[period];
+    const cur = m && m.open > 0 ? Math.min(m.open, lg.balance) : 0;
+    out.total += lg.balance; out.thisMonth += cur;
+    out.tenants.push({ tenantId: id, name: (byId[id] && byId[id].name) || '', balance: lg.balance, thisMonth: cur, earlier: lg.balance - cur });
+  }
+  return out;
+}
+/**
+ * The one sentence for it (plain text), identical on every screen:
+ * "6 tenants owe $8,545 in total — $6,495 of it is November's rent." · "2 tenants owe $2,700, all of it November's rent."
+ * · "1 tenant owes $2,050, all from earlier months." · "Nobody owes you anything."
+ */
+function owedSentence(o, today) {
+  if (!o || !o.tenants.length || o.total <= 0) return 'Nobody owes you anything.';
+  const n = o.tenants.length;
+  const who = RB.plural(n, 'tenant') + (n === 1 ? ' owes ' : ' owe ');
+  const mon = D.monthName(o.period || D.monthKey(today));
+  if (o.thisMonth <= 0) return who + M.fmt(o.total) + ', all from earlier months.';
+  if (o.thisMonth >= o.total) return who + M.fmt(o.total) + ', all of it ' + mon + '’s rent.';
+  return who + M.fmt(o.total) + ' in total — ' + M.fmt(o.thisMonth) + ' of it is ' + mon + '’s rent.';
 }
 
 /**
@@ -741,6 +813,7 @@ function depositSettlement({ deposit, deductions, balance, applyToBalance }) {
   return { deposit: dep, deducted, available, applied, creditRefunded, refund, shortfall, balanceAfter: bal - applied + creditRefunded + shortfall, lines };
 }
 RB.model.moveOutPreview = moveOutPreview;
+Object.assign(RB.model, { owed, owedSentence, attentionOrder, attentionKey, attentionCompare });
 RB.model.depositSettlement = depositSettlement;
 
 // ================================================================= Repairs history (SPEC §9) — pure, tested in

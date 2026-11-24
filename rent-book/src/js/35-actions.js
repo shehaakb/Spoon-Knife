@@ -30,7 +30,7 @@ function monthOptions(today, back, fwd, sel) {
   if (sel && !out.some(o => o.value === sel)) out.push({ value: sel, label: D.fmtMonth(sel) });
   return out;
 }
-const tenantSub = t => [t.name, [t.unit ? who(t) : '', t.property].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+const tenantSub = t => [t.name, ui.place(t)].filter(Boolean).join(' — ');
 const METHOD_WORDS = { Check: 'Check', Cash: 'Cash', Zelle: 'Zelle', Venmo: 'Venmo', ACH: 'Bank transfer (ACH)', 'Money order': 'Money order' };
 const methodOptions = (methods, extra) => Array.from(new Set(methods.concat(extra ? [extra] : []))).map(m => ({ value: m, label: METHOD_WORDS[m] || m }));
 const AMOUNT_MSG = 'Type how much they paid, like 800';
@@ -104,8 +104,8 @@ function recordPayment(tenantId, opts) {
             ${ui.field({ name: 'amount', id: 'pay-amount', label: 'How much did they pay?', type: 'money', big: true, value: owes ? null : (o.amount != null ? o.amount : lg.rent || null), placeholder: '',
               hint: owes ? 'They owe ' + M.fmt(full) + '. Type the amount you got, like 800.' : 'They don’t owe anything right now. Anything you record counts as paid ahead.' })}
           </div>
-          ${ui.field({ name: 'date', id: 'pay-date', label: 'When did you get it?', type: 'date', value: o.date || today, required: true, hint: 'Today’s date is filled in. Change it if the money came earlier.' })}
-          ${ui.field({ name: 'method', id: 'pay-method', label: 'How did they pay?', type: 'choice', cols: 3, value: o.method || lastMethod(tenantId), options: methodOptions(methods, o.method || lastMethod(tenantId)) })}
+          ${ui.field({ name: 'date', id: 'pay-date', label: 'When did you get it?', type: 'date', value: o.date || today, required: true, hint: 'Change it if the money came earlier.' })}
+          ${ui.field({ name: 'method', id: 'pay-method', label: 'How did they pay?', type: 'choice', cols: 2, value: o.method || lastMethod(tenantId), options: methodOptions(methods, o.method || lastMethod(tenantId)), hint: 'Set to the way they paid last time.' })}
           ${ui.moreDetails(h`${ui.field({ name: 'ref', id: 'pay-ref', label: 'Check number or confirmation code', placeholder: 'For example 1043', optional: true })}
             ${ui.field({ name: 'memo', id: 'pay-memo', label: 'A note for yourself', type: 'textarea', rows: 2, optional: true, placeholder: 'For example: paid in two parts' })}`, { id: 'pay-more' })}
         </div>`);
@@ -113,7 +113,7 @@ function recordPayment(tenantId, opts) {
         const upd = () => {
           const c = amountOf(el);
           sh.setNote(c > 0 ? afterSentence(t, lg, c) : '');
-          sh.setAction('save', { label: c > 0 ? 'Record ' + M.fmt(c) : 'Record payment' });
+          sh.setAction('save', { label: c > 0 ? 'Record ' + M.fmt(c) : 'Record a payment' });
         };
         el.addEventListener('change', e => {
           if (e.target.name === 'how') {

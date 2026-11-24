@@ -1,6 +1,9 @@
-// views/repairs.js — Repairs (#repairs; #upkeep is kept as an alias). Two worded tabs:
-//   "To do"               — the Needs doing · Booked · Done board (one column at a time on phone);
-//   "History by property" — one large card per property, each opening that property's history (#p-<slug>, views/property.js).
+// views/repairs.js — Repairs (#repairs; #upkeep is kept as an alias). SPEC §10.3:
+//   view switch "To do · History" (one row);
+//   To do   — a sentence, the one filled "Log a repair", an optional property select, then "Needs doing", "Booked in",
+//             "Done lately" as headings with rows. Tapping a row opens "What would you like to do?" (Book a day · Mark it
+//             done · Change · Delete); each choice uses at most one short sheet — never a sheet on a sheet;
+//   History — one row per property, the year's cost as the amount, opening that property's history (#p-<slug>, property.js).
 // Owns the hooks RB.actions.addTicket / openTicket / addPastRepair / openProperty, and RB.repairs (shared with
 // views/property.js and the tenant page: RB.repairs.unitSection(tenant)). Words follow SPEC §8 (repair, not ticket/request).
 const RB = globalThis.RB;
@@ -11,23 +14,24 @@ const BUILDING = Mo.REPAIR_BUILDING;
 const OTHER_UNIT = '*other';
 
 let tab = RB.prefs.get('repairs:tab', 'todo');          // todo | history
-let phoneTab = RB.prefs.get('upkeep:tab', 'open');      // open | scheduled | done
 let propFilter = RB.prefs.get('upkeep:prop', '');
-let inline = null;                                      // {id, kind:'schedule'|'done', date, cost, charge}
-
-const STATUS = [['open', 'Needs doing'], ['scheduled', 'Booked'], ['done', 'Done']];
-const PRIO = [{ value: 'urgent', label: 'Urgent', icon: 'triangle' }, { value: 'normal', label: 'Normal' }, { value: 'low', label: 'Can wait' }];
+let doneAll = false;                                    // "Done lately" expanded in place
+const DONE_SHOWN = 3;
 
 function guard() {
-  if (!S().canWrite()) { ui.toast('View only — you can’t change this rent book.', { tone: 'bad' }); return false; }
+  if (!S().canWrite()) { ui.toast('This rent book is view only — you can look, but not change anything.', { tone: 'bad' }); return false; }
   return true;
 }
 const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 const isBuilding = k => k.scope === 'building' || !String(k.unit || '').trim();
 /** "Unit 2B" / "No. 4" / "Whole building" (capitalised, for labels). */
 const unitLabel = k => (isBuilding(k) ? 'Whole building' : Mo.unitWords(k.unit));
-/** "November 17" this year, "November 17, 2025" otherwise. */
-function longDay(d, today) {
+/** "Unit 2B at Alder Court" / "Whole building at Alder Court". */
+const placeWords = k => unitLabel(k) + (k.property ? ' at ' + k.property : '');
+/** "Tuesday, November 17" this year, "Tuesday, November 17, 2025" otherwise. */
+const longDay = (d, today) => ui.dateWords(d, today || S().today());
+/** "November 17" this year, "November 17, 2025" otherwise (for dense lines). */
+function shortDay(d, today) {
   if (!D.isDate(d)) return '';
   return D.fmtLong(d).replace(', ' + (today || S().today()).slice(0, 4), '');
 }
@@ -108,32 +112,28 @@ function del(id) {
 }
 
 // ------------------------------------------------------------------ shared form pieces
-/** Category choices: a row of large tappable buttons + hidden input name="category". */
+/** Kind of repair: a select (9 kinds), guessed from what was typed until the person picks one themselves. */
 function catField(id, value, label) {
-  return h`<div class="field rp-catfield" data-field="category">
-    <div class="field-label" id="${id}-label">${label || 'What kind of repair is it?'}</div>
-    <input type="hidden" name="category" id="${id}" value="${value}">
-    <div class="rp-cats" role="radiogroup" aria-labelledby="${id}-label" data-cats-for="${id}">${Mo.REPAIR_CATEGORIES.map(c => h`<button type="button" class="rp-cat" role="radio" data-cat="${c.key}" aria-checked="${String(c.key === value)}">${c.label}</button>`)}</div>
-    <div class="field-hint rp-cat-hint" id="${id}-hint" aria-live="polite"></div>
-  </div>`;
+  return ui.field({ name: 'category', id, label: label || 'What kind of repair is it?', type: 'select', value,
+    options: Mo.REPAIR_CATEGORIES.map(c => ({ value: c.key, label: c.label })) });
 }
-/** Wire catField: tapping picks; typing in titleInput suggests until the person picks one themselves. */
 function wireCats(root, id, titleInput, auto) {
   let picked = !auto;
-  const hidden = root.querySelector('#' + id), hint = root.querySelector('#' + id + '-hint'), box = root.querySelector('[data-cats-for="' + id + '"]');
+  const sel = root.querySelector('#' + id);
+  let hint = root.querySelector('#' + id + '-hint');
+  if (!hint) { hint = document.createElement('div'); hint.className = 'field-hint'; hint.id = id + '-hint'; hint.setAttribute('aria-live', 'polite'); sel.closest('.field').appendChild(hint); }
   const api = {
-    get: () => hidden.value || 'other',
+    get: () => sel.value || 'other',
     set(key, guessed) {
-      hidden.value = key;
-      box.querySelectorAll('.rp-cat').forEach(b => b.setAttribute('aria-checked', String(b.dataset.cat === key)));
-      hint.textContent = guessed ? 'Guessed from what you typed — tap another if it’s wrong.' : '';
+      sel.value = key;
+      hint.textContent = guessed ? 'Guessed from what you typed — choose another if it’s wrong.' : '';
       if (api.onChange) api.onChange(key, guessed);
     },
     reset() { picked = false; api.set('other', false); },
     guess() { if (picked) return; const s = Mo.suggestCategory(titleInput ? titleInput.value : ''); api.set(s || 'other', !!s); },
     onChange: null,
   };
-  box.addEventListener('click', e => { const b = e.target.closest('.rp-cat'); if (!b) return; picked = true; api.set(b.dataset.cat, false); });
+  sel.addEventListener('change', () => { picked = true; api.set(sel.value, false); });
   if (titleInput) titleInput.addEventListener('input', () => api.guess());
   if (auto && titleInput && titleInput.value) api.guess();
   return api;
@@ -174,12 +174,11 @@ function wirePlace(root, pfx, fixedProperty, onChange) {
   const otherWrap = root.querySelector('[data-field="unitOther"]');
   const propEl = root.querySelector('#' + pfx + '-property');
   const api = {
-    property: () => fixedProperty || (propEl ? propEl.value.trim() : ''),
     read(values) {
       const sel = values.unitSel;
       const building = sel === BUILDING;
-      const unit = building ? '' : sel === OTHER_UNIT ? String(values.unitOther || '').trim() : sel;
-      return { property: fixedProperty || values.property, unit, scope: building ? 'building' : 'unit' };
+      const u = building ? '' : sel === OTHER_UNIT ? String(values.unitOther || '').trim() : sel;
+      return { property: fixedProperty || values.property, unit: u, scope: building ? 'building' : 'unit' };
     },
     errors(values) { return values.unitSel === OTHER_UNIT && !String(values.unitOther || '').trim() ? { unitOther: 'Type the unit, like 4C' } : {}; },
     reset() { unit.value = ''; otherWrap.hidden = true; root.querySelector('#' + pfx + '-unit-other').value = ''; },
@@ -189,17 +188,15 @@ function wirePlace(root, pfx, fixedProperty, onChange) {
   return api;
 }
 const unitSelOf = p => (p.unitSel !== undefined ? p.unitSel : p.scope === 'building' ? BUILDING : String(p.unit || '').trim());
-function moreToggle(id, open) {
-  return h`<button type="button" class="btn btn-ghost rp-more-btn" id="${id}-btn" aria-expanded="${String(!!open)}" aria-controls="${id}">${ui.icon(open ? 'chevron-up' : 'chevron-down')}<span>${open ? 'Hide the extra details' : 'Add more details (optional)'}</span></button>`;
-}
+/** "Add more details (optional)" — the shared disclosure; returns {open(), close()}. */
 function wireMore(root, id) {
-  const btn = root.querySelector('#' + id + '-btn'), box = root.querySelector('#' + id);
-  const set = open => { box.hidden = !open; btn.outerHTML = String(moreToggle(id, open)); root.querySelector('#' + id + '-btn').addEventListener('click', () => set(box.hidden)); };
-  btn.addEventListener('click', () => set(box.hidden));
-  return { open: () => set(true), close: () => set(false) };
+  const d = root.querySelector('#' + id);
+  return { open: () => { d.open = true; }, close: () => { d.open = false; } };
 }
+/** A date field with the day written out beside it (SPEC §10.1 law 11). */
+const dateField = o => ui.dateField(o);
 
-// ------------------------------------------------------------------ "Log a repair" / change a repair (sheet)
+// ------------------------------------------------------------------ "Log a repair" / "Change this repair" (form)
 function ticketSheet(id, prefill) {
   if (!guard()) return Promise.resolve(null);
   const today = S().today();
@@ -211,45 +208,52 @@ function ticketSheet(id, prefill) {
   const fixedProperty = !k && prefill && prefill.fixedProperty ? p.property : '';
   if (!k && !p.property && properties().length === 1) p.property = properties()[0].name;
   p.unitSel = k ? (isBuilding(k) ? BUILDING : String(k.unit).trim()) : unitSelOf(p);
+  // Law 9: what is already known is shown once ("For Unit 2B at Alder Court — Change"), not asked again.
+  const known = !!(p.property && (p.unitSel || p.tenantId));
+  const knownWords = known ? (p.unitSel === BUILDING ? 'Whole building' : Mo.unitWords(p.unitSel)) + ' at ' + p.property : '';
   const cat = k ? Mo.repairCategory(k) : p.category || Mo.suggestCategory(p.title) || 'other';
   const tenants = S().tenantsList({ includePast: false });
   if (p.tenantId && !tenants.some(t => t.id === p.tenantId)) { const t = S().tenant(p.tenantId); if (t) tenants.push(t); }
-  const moreOpen = !!(k && (k.vendor || k.detail || k.notes || k.warrantyUntil || k.paidBy === 'tenant' || k.tenantId));
+  const moreOpen = !!(k && (k.status !== 'open' || k.vendor || k.detail || k.notes || k.warrantyUntil || k.paidBy === 'tenant' || k.cost != null));
   const vlist = vendors();
-  const title = k ? 'Change this repair' : 'Log a repair';
   return new Promise(resolve => {
     let saved = null;
     ui.sheet({
-      title, size: 'wide',
-      sub: k ? (k.property || '') + ' · ' + unitLabel(k) + ' · reported ' + longDay(k.reported, today) : fixedProperty ? fixedProperty + ' — something to fix now, or already booked' : 'Something that needs fixing, or is booked in',
+      title: k ? 'Change this repair' : 'Log a repair', size: 'wide',
+      sub: k ? 'Reported ' + longDay(k.reported, today) : '',
       body: (el, sh) => {
-        el.innerHTML = String(h`<div class="rp-form stack stack-5">
-          ${ui.field({ name: 'title', id: 'uk-title', label: 'What needs fixing?', value: p.title, required: true, requiredMsg: 'Say what needs fixing, like “Kitchen tap dripping”', placeholder: 'For example: Kitchen tap dripping' })}
-          ${catField('uk-category', cat)}
-          ${placeFields('uk', p, fixedProperty)}
-          ${ui.field({ name: 'priority', id: 'uk-priority', label: 'How urgent is it?', type: 'seg', value: p.priority, options: PRIO })}
-          ${ui.field({ name: 'status', id: 'uk-status', label: 'Where is it up to?', type: 'seg', value: p.status, options: STATUS.map(([value, label]) => ({ value, label: value === 'scheduled' ? 'Booked in' : label })) })}
-          ${ui.field({ name: 'scheduled', id: 'uk-scheduled', label: 'Booked for which day?', type: 'date', value: p.scheduled || '' })}
-          ${ui.field({ name: 'completed', id: 'uk-completed', label: 'When was it done?', type: 'date', value: p.completed || today, max: today })}
-          ${ui.field({ name: 'cost', id: 'uk-cost', label: 'What did it cost?', type: 'money', value: p.cost, optional: true, hint: 'Leave empty if you don’t know yet' })}
-          <div id="uk-charge-slot"></div>
-          ${moreToggle('uk-more', moreOpen)}
-          <div class="rp-more stack stack-5" id="uk-more"${moreOpen ? '' : RB.raw(' hidden')}>
+        el.innerHTML = String(h`<div class="rp-form form-col">
+          ${known ? h`<p class="rp-for" id="uk-for">For ${knownWords} — <button type="button" class="linkbtn" id="uk-place-change" aria-expanded="false" aria-controls="uk-place">Change</button></p>`
+            : fixedProperty ? h`<p class="rp-for" id="uk-for">At ${fixedProperty}</p>` : ''}
+          <div class="form-col" id="uk-place"${known ? RB.raw(' hidden') : ''}>
+            ${placeFields('uk', p, fixedProperty)}
             ${ui.field({ name: 'tenantId', id: 'uk-tenant', label: 'Which tenant is it for?', type: 'select', value: p.tenantId || '', hint: 'Filled in for you from the unit',
               options: [{ value: '', label: 'Nobody — empty unit or shared area' }].concat(tenants.map(t => ({ value: t.id, label: t.name + ' · ' + RB.model.unitLabel(t) }))) })}
+          </div>
+          ${ui.field({ name: 'title', id: 'uk-title', label: 'What needs fixing?', value: p.title, required: true, requiredMsg: 'Say what needs fixing, like “Kitchen tap dripping”', placeholder: 'For example: Kitchen tap dripping' })}
+          ${catField('uk-category', cat)}
+          ${ui.field({ name: 'urgent', id: 'uk-urgent', type: 'checkbox', value: p.priority === 'urgent', label: 'This is urgent' })}
+          ${ui.moreDetails(h`<div class="form-col">
+            ${ui.field({ name: 'status', id: 'uk-status', label: 'Where is it up to?', type: 'choice', value: p.status, options: [{ value: 'open', label: 'Needs doing' }, { value: 'scheduled', label: 'Booked in' }, { value: 'done', label: 'Done' }] })}
+            ${dateField({ name: 'scheduled', id: 'uk-scheduled', label: 'Booked for which day?', value: p.scheduled || '' })}
+            ${dateField({ name: 'completed', id: 'uk-completed', label: 'When was it done?', value: p.completed || today, max: today })}
+            ${ui.field({ name: 'cost', id: 'uk-cost', label: 'What did it cost?', type: 'money', value: p.cost, optional: true, hint: 'Leave empty if you don’t know yet' })}
+            <div id="uk-charge-slot"></div>
             ${ui.field({ name: 'vendor', id: 'uk-vendor', label: 'Who is fixing it?', value: p.vendor, optional: true, placeholder: 'For example: Rooter Bros. Plumbing', attrs: { list: 'uk-vendors' } })}
-            ${ui.field({ name: 'paidBy', id: 'uk-paidby', label: 'Who pays for it?', type: 'seg', value: p.paidBy, options: [{ value: 'owner', label: 'I do (the owner)' }, { value: 'tenant', label: 'The tenant' }] })}
-            ${ui.field({ name: 'reported', id: 'uk-reported', label: 'When was it reported?', type: 'date', value: p.reported, required: true, requiredMsg: 'Choose the day it was reported', max: today })}
+            ${ui.field({ name: 'paidBy', id: 'uk-paidby', label: 'Who pays for it?', type: 'choice', value: p.paidBy, options: [{ value: 'owner', label: 'I do (the owner)' }, { value: 'tenant', label: 'The tenant' }] })}
+            ${dateField({ name: 'reported', id: 'uk-reported', label: 'When was it reported?', value: p.reported, required: true, requiredMsg: 'Choose the day it was reported', max: today })}
             ${ui.field({ name: 'detail', id: 'uk-detail', label: 'What’s wrong?', type: 'textarea', value: p.detail, optional: true, rows: 2 })}
             ${ui.field({ name: 'notes', id: 'uk-notes', label: 'What was done?', type: 'textarea', value: p.notes, optional: true, rows: 2, placeholder: 'For example: replaced the washer and both supply lines' })}
-            ${ui.field({ name: 'warrantyUntil', id: 'uk-warranty', label: 'Under warranty until', type: 'date', value: p.warrantyUntil || '', optional: true })}
-          </div>
+            ${dateField({ name: 'warrantyUntil', id: 'uk-warranty', label: 'Under warranty until', value: p.warrantyUntil || '', optional: true })}
+          </div>`, { id: 'uk-more', open: moreOpen })}
           <datalist id="uk-vendors">${vlist.map(x => h`<option value="${x}"></option>`)}</datalist>
         </div>`);
         const cats = wireCats(el, 'uk-category', el.querySelector('#uk-title'), !k && !p.category);
         const tenantSel = el.querySelector('#uk-tenant');
         let tenantAuto = !p.tenantId;
         tenantSel.addEventListener('change', () => { tenantAuto = false; });
+        const chg = el.querySelector('#uk-place-change');
+        if (chg) chg.addEventListener('click', () => { const box = el.querySelector('#uk-place'); box.hidden = false; chg.setAttribute('aria-expanded', 'true'); el.querySelector('#uk-for').hidden = true; const f = box.querySelector('select, input'); if (f) f.focus(); });
         const place = wirePlace(el, 'uk', fixedProperty, () => {
           if (!tenantAuto) return;
           const v = ui.readForm(el).values; const pl = place.read(v);
@@ -257,22 +261,20 @@ function ticketSheet(id, prefill) {
           tenantSel.value = t ? t.id : '';
           sync();
         });
-        wireMore(el, 'uk-more');
         const slot = el.querySelector('#uk-charge-slot');
         let chargeChecked = true;
         const sync = () => {
           const v = ui.readForm(el).values;
           el.querySelector('[data-field="completed"]').hidden = v.status !== 'done';
           el.querySelector('[data-field="scheduled"]').hidden = v.status !== 'scheduled';
-          el.querySelector('[data-field="cost"]').hidden = v.status === 'open' && v.cost == null;
-          el.querySelector('#uk-cost-label').firstChild.textContent = v.status === 'done' ? 'What did it cost?' : 'What will it cost?';
+          const cl = el.querySelector('#uk-cost-label'); if (cl && cl.firstChild) cl.firstChild.textContent = v.status === 'done' ? 'What did it cost?' : 'What will it cost?';
           const t = v.tenantId && S().tenant(v.tenantId);
           const already = k && k.chargeId;
           const offer = v.status === 'done' && v.paidBy === 'tenant' && v.cost > 0 && t && !already;
           const cb = slot.querySelector('#uk-charge'); if (cb) chargeChecked = cb.checked;
           slot.innerHTML = offer ? String(ui.field({ name: 'charge', id: 'uk-charge', type: 'checkbox', value: chargeChecked, label: chargeWords(v.cost, t) }))
-            : already && v.paidBy === 'tenant' ? String(h`<div class="form-note">${ui.icon('check', { size: 14 })} Already added to the tenant’s payment history as a charge.</div>`)
-            : v.paidBy === 'tenant' && !t ? String(h`<div class="form-note">Choose the tenant under “Which tenant is it for?” to charge them for it.</div>`) : '';
+            : already && v.paidBy === 'tenant' ? String(h`<p class="rp-note">Already added to the tenant’s payment history as a charge.</p>`)
+            : v.paidBy === 'tenant' && !t ? String(h`<p class="rp-note">Choose the tenant under “Which tenant is it for?” to charge them for it.</p>`) : '';
           sh.setAction('save', { label: k ? 'Save changes' : v.status === 'done' ? 'Save this repair' : 'Log this repair' });
         };
         el.addEventListener('change', sync);
@@ -280,17 +282,19 @@ function ticketSheet(id, prefill) {
         sync();
         sh._cats = cats; sh._place = place;
       },
-      actions: [].concat(k ? [{ id: 'delete', label: 'Delete this repair', kind: 'danger-soft', onClick: () => { del(k.id); } }] : [], [{ id: 'save', label: k ? 'Save changes' : 'Log this repair', kind: 'primary', onClick: s => {
+      actions: [{ id: 'save', label: k ? 'Save changes' : 'Log this repair', kind: 'primary', onClick: s => {
         const place = s._place;
+        const placeBox = s.body.querySelector('#uk-place');
         const v = ui.form(s.body, { validate: v => Object.assign({
           cost: v.cost != null && v.cost < 0 ? 'A cost can’t be below zero' : '',
           scheduled: v.status === 'scheduled' && !v.scheduled ? 'Which day is it booked for?' : '',
           completed: v.status === 'done' && v.completed && v.completed > today ? 'That day hasn’t happened yet' : '',
         }, place.errors(v)) });
-        if (!v) return false;
+        if (!v) { if (placeBox.hidden && placeBox.querySelector('.is-invalid')) { placeBox.hidden = false; } return false; }
         const pl = place.read(v);
+        const priority = v.urgent ? 'urgent' : (p.priority === 'urgent' ? 'normal' : p.priority || 'normal');
         const data = { tenantId: v.tenantId || null, property: pl.property, unit: pl.unit, scope: pl.scope, title: v.title, detail: v.detail, notes: v.notes,
-          category: s._cats.get(), priority: v.priority || 'normal', status: v.status || 'open', reported: v.reported,
+          category: s._cats.get(), priority, status: v.status || 'open', reported: v.reported || today,
           scheduled: v.status === 'scheduled' || (v.status === 'done' && v.scheduled) ? v.scheduled || null : null,
           completed: v.status === 'done' ? (v.completed || today) : null, vendor: v.vendor, cost: v.cost, paidBy: v.paidBy || 'owner', warrantyUntil: v.warrantyUntil || null };
         let chargeId = null;
@@ -308,11 +312,86 @@ function ticketSheet(id, prefill) {
           saved = nid;
           ui.toast((data.status === 'done' ? 'Saved “' : 'Logged “') + data.title + '” for ' + (pl.scope === 'building' ? 'the whole building' : Mo.unitWords(pl.unit)) + extra + '.', { undo: () => { S().deleteTicket(nid); undoCharge(); } });
         }
-      } }]),
+      } }],
       initialFocus: '#uk-title',
       onClose: () => resolve(saved),
     });
   });
+}
+
+// ------------------------------------------------------------------ short sheets: book a day, mark it done
+function bookSheet(id) {
+  if (!guard()) return;
+  const k = S().ticket(id); if (!k) return;
+  const today = S().today();
+  ui.sheet({
+    title: k.status === 'scheduled' ? 'Change the day' : 'Book a day', sub: k.title + ' — ' + placeWords(k),
+    body: h`<div class="form-col">${dateField({ name: 'date', id: 'uk-in-date', label: 'Which day is it booked for?', value: k.scheduled || D.addDays(today, 2), required: true, requiredMsg: 'Choose the day it is booked for' })}</div>`,
+    actions: [{ id: 'save', label: 'Book it', kind: 'primary', onClick: s => {
+      const v = ui.form(s.body); if (!v) return false;
+      schedule(id, v.date);
+    } }],
+    initialFocus: '#uk-in-date',
+  });
+}
+function doneSheet(id) {
+  if (!guard()) return;
+  const k = S().ticket(id); if (!k) return;
+  const t = k.tenantId && S().tenant(k.tenantId);
+  const offer = k.paidBy === 'tenant' && t && !k.chargeId;
+  ui.sheet({
+    title: 'Mark it done', sub: k.title + ' — ' + placeWords(k),
+    body: (el, sh) => {
+      el.innerHTML = String(h`<div class="form-col">
+        ${ui.field({ name: 'cost', id: 'uk-in-cost', label: 'What did it cost?', type: 'money', value: k.cost, optional: true, hint: 'Leave empty if you don’t know yet' })}
+        ${offer ? h`<div class="field" data-field="charge"><label class="check"><input type="checkbox" id="uk-in-charge" name="charge" checked><span id="uk-in-charge-label">Charge the cost to ${t.name}</span></label></div>` : ''}
+      </div>`);
+      const upd = () => { const lab = el.querySelector('#uk-in-charge-label'); const c = ui.readForm(el).values.cost; if (lab) lab.textContent = c > 0 ? chargeWords(c, t) : 'Charge the cost to ' + t.name; };
+      el.addEventListener('input', upd); upd();
+    },
+    actions: [{ id: 'save', label: 'Mark it done', kind: 'primary', onClick: s => {
+      const v = ui.form(s.body, { validate: v => ({ cost: v.cost != null && v.cost < 0 ? 'A cost can’t be below zero' : '' }) });
+      if (!v) return false;
+      markDone(id, v.cost == null ? undefined : v.cost, !!v.charge);
+    } }],
+    initialFocus: '#uk-in-cost',
+  });
+}
+
+// ------------------------------------------------------------------ "What would you like to do?" for one repair
+/** The facts of a repair in one plain sentence (for the choices sheet). */
+function facts(k, today) {
+  const it = Mo.repairItem(k);
+  const bits = [];
+  if (k.status === 'done') bits.push('Done ' + longDay(k.completed || k.reported, today));
+  else if (k.status === 'scheduled') bits.push(k.scheduled ? 'Booked for ' + longDay(k.scheduled, today) : 'Booked — no day set');
+  else bits.push('Reported ' + longDay(k.reported, today) + (k.reported ? ' — waiting ' + D.days(Math.max(0, D.diffDays(k.reported, today))) : ''));
+  bits.push(placeWords(k));
+  bits.push(Mo.REPAIR_CATEGORY_LABEL[it.category]);
+  if (k.priority === 'urgent' && k.status !== 'done') bits.push('urgent');
+  if (k.vendor) bits.push('fixed by ' + k.vendor);
+  if (k.cost != null) {
+    const t = k.tenantId && S().tenant(k.tenantId);
+    bits.push(M.fmt(k.cost) + (k.cost ? (k.paidBy === 'tenant' ? ', paid by the tenant' + (t ? ' (' + t.name + ')' : '') + (k.chargeId ? ', charged to them' : '') : ', paid by you') : ''));
+  }
+  let s = bits.join(' · ') + '.';
+  if (k.notes) s += ' ' + k.notes;
+  if (k.warrantyUntil) s += ' ' + (k.warrantyUntil >= today ? 'Under warranty until ' : 'Warranty ended ') + longDay(k.warrantyUntil, today) + '.';
+  return s;
+}
+function openRepair(id) {
+  const k = S().ticket(id);
+  if (!k) { ui.toast('That repair no longer exists.'); return; }
+  const today = S().today();
+  const items = [];
+  if (k.status === 'open') items.push({ id: 'rp-c-book', label: 'Book a day', write: true, run: () => bookSheet(id) });
+  if (k.status !== 'done') items.push({ id: 'rp-c-done', label: 'Mark it done', write: true, run: () => doneSheet(id) });
+  if (k.status === 'scheduled') items.push({ id: 'rp-c-book', label: 'Change the day', write: true, run: () => bookSheet(id) });
+  if (k.status === 'done' && canCharge(k)) items.push({ id: 'rp-c-charge', label: 'Charge ' + M.fmt(k.cost) + ' to ' + S().tenant(k.tenantId).name, sub: 'Adds it to their payment history', write: true, run: () => chargeTenant(id) });
+  if (k.status === 'done' && (k.completed || '') >= D.addDays(today, -30)) items.push({ id: 'rp-c-reopen', label: 'Not done after all', write: true, run: () => reopen(id) });
+  items.push({ id: 'rp-c-change', label: 'Change', sub: 'What it is, where, the cost and the notes', write: true, run: () => ticketSheet(id) });
+  items.push({ id: 'rp-c-delete', label: 'Delete', sub: 'You can undo it straight after', write: true, run: () => del(id) });
+  ui.choices({ title: k.title || 'Repair', sub: facts(k, today), items });
 }
 
 // ------------------------------------------------------------------ "Add a past repair" — the fast form
@@ -327,22 +406,21 @@ function pastRepairSheet(prefill) {
   return new Promise(resolve => {
     ui.sheet({
       title: 'Add a past repair', size: 'wide', cancel: 'Close',
-      sub: (fixedProperty ? fixedProperty + ' · ' : '') + 'For old invoices and notes. After you save, the form stays open for the next one.',
+      sub: (fixedProperty ? fixedProperty + '. ' : '') + 'For old invoices. After you save, the form stays open for the next one.',
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="rp-saved" id="pr-saved" role="status" hidden></div>
-          <div class="rp-form stack stack-5">
+          <div class="rp-form form-col">
           ${ui.field({ name: 'title', id: 'pr-title', label: 'What was fixed?', required: true, requiredMsg: 'Say what was fixed, like “Boiler service”', placeholder: 'For example: Boiler service', hint: 'We’ll sort it into a kind of repair for you.' })}
-          ${ui.field({ name: 'date', id: 'pr-date', label: 'When was it done?', type: 'date', value: lastPastDate, max: today, required: true, requiredMsg: 'Choose the day it was done' })}
+          ${dateField({ name: 'date', id: 'pr-date', label: 'When was it done?', value: lastPastDate, max: today, required: true, requiredMsg: 'Choose the day it was done' })}
           ${placeFields('pr', { property: fixedProperty, unitSel: unitSelOf(pre) }, fixedProperty)}
           ${ui.field({ name: 'cost', id: 'pr-cost', label: 'What did it cost?', type: 'money', optional: true, hint: 'Leave empty if it cost nothing' })}
-          ${moreToggle('pr-more', false)}
-          <div class="rp-more stack stack-5" id="pr-more" hidden>
+          ${ui.moreDetails(h`<div class="form-col">
             ${ui.field({ name: 'vendor', id: 'pr-vendor', label: 'Who fixed it?', optional: true, placeholder: 'For example: Keller Heating & Air', attrs: { list: 'pr-vendors' } })}
             ${catField('pr-category', 'other')}
-            ${ui.field({ name: 'paidBy', id: 'pr-paidby', label: 'Who paid?', type: 'seg', value: 'owner', options: [{ value: 'owner', label: 'I did (the owner)' }, { value: 'tenant', label: 'The tenant' }] })}
+            ${ui.field({ name: 'paidBy', id: 'pr-paidby', label: 'Who paid?', type: 'choice', value: 'owner', options: [{ value: 'owner', label: 'I did (the owner)' }, { value: 'tenant', label: 'The tenant' }] })}
             ${ui.field({ name: 'notes', id: 'pr-notes', label: 'Notes — what was done', type: 'textarea', optional: true, rows: 2 })}
-            ${ui.field({ name: 'warrantyUntil', id: 'pr-warranty', label: 'Under warranty until', type: 'date', optional: true })}
-          </div>
+            ${dateField({ name: 'warrantyUntil', id: 'pr-warranty', label: 'Under warranty until', optional: true })}
+          </div>`, { id: 'pr-more' })}
           <datalist id="pr-vendors">${vendors().map(x => h`<option value="${x}"></option>`)}</datalist>
         </div>`);
         const titleEl = el.querySelector('#pr-title');
@@ -372,18 +450,18 @@ function pastRepairSheet(prefill) {
         S().addTicket(data).catch(() => {});
         count++;
         lastPastDate = v.date;
-        const what = '“' + v.title + '” — ' + (pl.scope === 'building' ? 'whole building' : Mo.unitWords(pl.unit)) + ', ' + longDay(v.date, today) + (v.cost ? ', ' + M.fmt(v.cost) : '');
+        const what = '“' + v.title + '” — ' + (pl.scope === 'building' ? 'whole building' : Mo.unitWords(pl.unit)) + ', ' + shortDay(v.date, today) + (v.cost ? ', ' + M.fmt(v.cost) : '');
         const box = s.body.querySelector('#pr-saved');
         const undo = () => {
           S().deleteTicket(nid);
           count = Math.max(0, count - 1);
           box.hidden = false;
-          box.innerHTML = String(h`<div class="rp-saved-text">${ui.icon('undo')}<span>Took back ${what}. Nothing else changed.</span></div>`);
+          box.innerHTML = String(h`<p class="rp-saved-text">Took back ${what}. Nothing else changed.</p>`);
         };
         ui.toast('Saved ' + what + '.', { undo });
         box.hidden = false;
-        box.innerHTML = String(h`<div class="rp-saved-text">${ui.icon('check')}<span><strong>Saved.</strong> ${what}. Add another?${count > 1 ? h` <span class="muted">(${count} saved so far)</span>` : ''}</span></div>
-          <button type="button" class="btn btn-sm" id="pr-undo">${ui.icon('undo')}<span>Undo</span></button>`);
+        box.innerHTML = String(h`<p class="rp-saved-text">${ui.status('ok', 'Saved.')} ${what}. Add another?${count > 1 ? h` (${count} saved so far)` : ''}</p>
+          <button type="button" class="linkbtn rp-saved-undo" id="pr-undo">Undo</button>`);
         box.querySelector('#pr-undo').addEventListener('click', undo);
         // keep the date (and property); clear the rest for the next invoice
         ['title', 'cost', 'vendor', 'notes', 'warrantyUntil'].forEach(n => ui.setValue(s.body, n, n === 'cost' ? null : ''));
@@ -410,172 +488,129 @@ function openProperty(name, opts) {
 function showHistory() { tab = 'history'; RB.prefs.set('repairs:tab', tab); RB.shell.go('repairs', 'history'); }
 function showTodo(property) { tab = 'todo'; RB.prefs.set('repairs:tab', tab); if (property !== undefined) { propFilter = property || ''; RB.prefs.set('upkeep:prop', propFilter); } RB.shell.go('repairs', 'todo'); }
 
-/** Short "Repairs in this unit" block for the tenant page (SafeHTML): last 3 repairs + "See all repairs for Unit 2B". */
+/** One repair as a canonical row (to-do list, tenant page). `act`/`attrs` say what a tap does. */
+function repairRow(k, today, o) {
+  const age = k.reported ? Math.max(0, D.diffDays(k.reported, today)) : 0;
+  const where = o.where === false ? '' : isBuilding(k) ? 'Whole building' + (k.property ? ' at ' + k.property : '') : (k.property || 'No property');
+  let when;
+  if (k.status === 'done') when = 'done ' + shortDay(k.completed || k.reported, today);
+  else if (k.status === 'scheduled') when = k.scheduled ? (k.scheduled < today ? 'was booked for ' : 'booked for ') + longDay(k.scheduled, today) : 'booked — no day set';
+  else when = age === 0 ? 'reported today' : 'waiting ' + D.days(age);
+  const sub = [where, when].filter(Boolean).join(' · ');
+  return ui.row({
+    lead: isBuilding(k) ? h`<span class="rp-whole" title="Whole building">${ui.icon('home')}</span>` : ui.plate(k.unit, { property: k.property }),
+    title: k.title || 'Repair', sub,
+    amt: k.status === 'done' && k.cost != null ? M.fmt(k.cost) : '',
+    status: k.priority === 'urgent' && k.status !== 'done' ? ui.status('urgent', 'Urgent') : '',
+    act: o.act, attrs: Object.assign({ 'data-ticket': k.id }, o.attrs || {}),
+  });
+}
+
+/** "Repairs in this unit" for the tenant page (SafeHTML): one heading, up to 3 rows, at most one text link beneath. */
 function unitSection(tenant) {
   if (!tenant || !tenant.property) return h``;
   const today = S().today();
   const unit = String(tenant.unit || '').trim();
   const list = S().ticketsList().filter(k => sameName(k.property, tenant.property) && !isBuilding(k) && sameName(k.unit, unit))
-    .map(Mo.repairItem).sort((a, b) => D.cmp(b.date, a.date)).slice(0, 3);
+    .sort((a, b) => D.cmp(Mo.repairItem(b).date, Mo.repairItem(a).date));
   const who = Mo.unitWords(unit);
-  const state = k => (k.done ? (k.cost ? ui.money(k.cost) : h`<span class="muted">No cost</span>`) : k.status === 'scheduled' ? ui.tag('Booked', 'accent') : ui.tag('Needs doing', 'warn'));
-  return h`<section class="rp-unit" aria-label="Repairs in this unit">
-    <h3 class="rp-unit-title">Repairs in this unit</h3>
-    ${list.length ? h`<ul class="rp-unit-list">${list.map(k => h`<li class="rp-unit-row"><span class="rp-unit-date">${longDay(k.date, today)}</span>
-      <span class="rp-unit-what">${k.title || 'Repair'} <span class="muted">· ${Mo.REPAIR_CATEGORY_LABEL[k.category]}</span></span><span class="rp-unit-cost">${state(k)}</span></li>`)}</ul>`
-      : h`<p class="muted rp-unit-none">No repairs written down for ${who} yet.</p>`}
-    <div class="rp-unit-actions">
-      ${list.length ? h`<button type="button" class="btn" data-rp-history data-property="${tenant.property}" data-unit="${unit}">${ui.icon('upkeep')}<span>See all repairs for ${who}</span></button>` : ''}
-      <button type="button" class="btn btn-ghost" data-rp-log data-property="${tenant.property}" data-unit="${unit}" data-tenant="${tenant.id || ''}" data-write>${ui.icon('plus')}<span>Log a repair</span></button>
-    </div>
+  return h`<section class="rp-unit" aria-labelledby="rp-unit-h">
+    <h3 class="rows-head" id="rp-unit-h">Repairs in this unit</h3>
+    ${list.length ? h`<ul class="rows rp-unit-rows">${list.slice(0, 3).map(k => repairRow(k, today, { where: false, act: 'rpOpen', attrs: { 'data-rp-open': k.id } }))}</ul>
+      <button type="button" class="btn-link rp-unit-link" data-rp-history data-property="${tenant.property}" data-unit="${unit}">See all ${RB.plural(list.length, 'repair')} for ${who}</button>`
+      : h`<p class="rp-unit-none">No repairs written down for ${who} yet.</p>
+      <button type="button" class="btn-link rp-unit-link" data-rp-log data-property="${tenant.property}" data-unit="${unit}" data-tenant="${tenant.id || ''}" data-write>Log a repair for ${who}</button>`}
   </section>`;
 }
 document.addEventListener('click', e => {
-  const b = e.target.closest && e.target.closest('[data-rp-history]');
+  if (!e.target.closest) return;
+  const o = e.target.closest('[data-rp-open]');
+  if (o) { e.preventDefault(); openRepair(o.getAttribute('data-rp-open')); return; }
+  const b = e.target.closest('[data-rp-history]');
   if (b) { e.preventDefault(); openProperty(b.getAttribute('data-property'), { unit: b.getAttribute('data-unit') || '' }); return; }
-  const l = e.target.closest && e.target.closest('[data-rp-log]');
+  const l = e.target.closest('[data-rp-log]');
   if (l) { e.preventDefault(); RB.actions.addTicket({ property: l.getAttribute('data-property'), unit: l.getAttribute('data-unit'), tenantId: l.getAttribute('data-tenant') || null }); }
 });
 
 RB.actions.addTicket = prefill => ticketSheet(null, prefill);
-RB.actions.openTicket = id => ticketSheet(id);
+RB.actions.openTicket = id => openRepair(id);
 RB.actions.addPastRepair = prefill => pastRepairSheet(prefill);
 RB.actions.openProperty = openProperty;
 RB.repairs = Object.assign(RB.repairs || {}, {
-  unitSection, openProperty, showHistory, showTodo, properties, longDay, unitLabel, canCharge, chargeTenant, remove: del,
-  logRepair: prefill => ticketSheet(null, prefill), addPastRepair: pastRepairSheet, openRepair: id => ticketSheet(id),
+  unitSection, openProperty, showHistory, showTodo, properties, longDay, shortDay, unitLabel, canCharge, chargeTenant, remove: del, facts,
+  logRepair: prefill => ticketSheet(null, prefill), addPastRepair: pastRepairSheet, openRepair, changeRepair: id => ticketSheet(id),
 });
 RB.commands.register({ id: 'repair:past', label: 'Add a past repair', group: 'Actions', icon: 'upkeep', write: true, keywords: 'old repair invoice history maintenance upkeep', run: () => pastRepairSheet() });
 RB.commands.register({ id: 'repairs:history', label: 'Repair history by property', group: 'Go to', icon: 'upkeep', keywords: 'repairs history property building maintenance upkeep', run: showHistory });
 
-// ------------------------------------------------------------------ To do board
+// ------------------------------------------------------------------ To do
 function sorted(list, status) {
   if (status === 'done') return list.slice().sort((a, b) => D.cmp(b.completed || '', a.completed || '') || D.cmp(b.reported, a.reported));
   if (status === 'scheduled') return list.slice().sort((a, b) => (a.priority === 'urgent' ? 0 : 1) - (b.priority === 'urgent' ? 0 : 1) || D.cmp(a.scheduled || '9', b.scheduled || '9') || D.cmp(a.reported, b.reported));
   return list.slice().sort((a, b) => (a.priority === 'urgent' ? 0 : 1) - (b.priority === 'urgent' ? 0 : 1) || D.cmp(a.reported, b.reported) || (a.priority === 'low') - (b.priority === 'low'));
 }
 
-function card(k, today) {
-  const age = k.reported ? Math.max(0, D.diffDays(k.reported, today)) : 0;
-  const t = k.tenantId && S().tenant(k.tenantId);
-  let when;
-  if (k.status === 'done') when = h`Done ${longDay(k.completed, today)}${k.reported && k.completed ? ' · took ' + D.days(Math.max(0, D.diffDays(k.reported, k.completed))) : ''}`;
-  else if (k.status === 'scheduled') when = h`<span class="${k.scheduled && k.scheduled < today ? 'tone-warn medium' : ''}">${k.scheduled ? (k.scheduled < today ? 'Was booked for ' : 'Booked for ') + longDay(k.scheduled, today) + ' (' + D.rel(k.scheduled, today) + ')' : 'Booked — no day set'}</span>`;
-  else when = h`<span class="${age >= 7 ? 'tone-warn medium' : ''}">${age === 0 ? 'Reported today' : 'Waiting ' + D.days(age)}</span>`;
-  const isInline = inline && inline.id === k.id;
-  const chargeOffer = k.status === 'done' && canCharge(k);
-  const cat = Mo.repairCategory(k);
-  return h`<article class="uk-card${k.priority === 'urgent' && k.status !== 'done' ? ' is-urgent' : ''}" data-ticket="${k.id}">
-    <div class="uk-card-top">
-      <span class="uk-plate">${isBuilding(k) ? h`<span class="rp-whole">Whole building</span>` : ui.plate(k.unit, { property: k.property })}</span>
-      ${k.priority === 'urgent' && k.status !== 'done' ? h`<span class="tag tag-bad uk-prio">${ui.icon('triangle', { size: 14 })}Urgent</span>` : k.priority === 'low' && k.status !== 'done' ? h`<span class="tag tag-quiet uk-prio">Can wait</span>` : ''}
-    </div>
-    <button type="button" class="uk-title" data-act="edit" data-id="${k.id}">${k.title || 'Repair'}</button>
-    <div class="uk-meta">${k.property || 'No property'}${t ? h` · ${t.name}` : ''} · ${Mo.REPAIR_CATEGORY_LABEL[cat]}</div>
-    <div class="uk-meta">${when}</div>
-    ${k.vendor || k.cost != null ? h`<div class="uk-meta uk-money">${k.vendor ? h`<span>${k.vendor}</span>` : ''}${k.cost != null ? h`<span>${ui.money(k.cost)}${k.paidBy === 'tenant' ? h` <span class="muted">· the tenant pays${k.chargeId ? ' (charged)' : ''}</span>` : ''}</span>` : ''}</div>` : ''}
-    ${isInline ? inlineForm(k, today) : h`<div class="uk-actions">
-      ${k.status === 'open' ? h`<button type="button" class="btn" data-act="sched" data-id="${k.id}" data-write>${ui.icon('calendar')}<span>Book a day</span></button><button type="button" class="btn" data-act="done" data-id="${k.id}" data-write>${ui.icon('check')}<span>Mark done</span></button>` : ''}
-      ${k.status === 'scheduled' ? h`<button type="button" class="btn" data-act="done" data-id="${k.id}" data-write>${ui.icon('check')}<span>Mark done</span></button><button type="button" class="btn btn-ghost" data-act="sched" data-id="${k.id}" data-write>${ui.icon('calendar')}<span>Change the day</span></button>` : ''}
-      ${k.status === 'done' ? h`${chargeOffer ? h`<button type="button" class="btn btn-soft" data-act="charge" data-id="${k.id}" data-write>Charge ${M.fmt(k.cost)} to ${S().tenant(k.tenantId).name}</button>` : ''}<button type="button" class="btn btn-ghost" data-act="reopen" data-id="${k.id}" data-write>${ui.icon('undo')}<span>Not done after all</span></button>` : ''}
-      <button type="button" class="btn btn-ghost" data-act="edit" data-id="${k.id}">${ui.icon('edit')}<span>Change</span></button>
-    </div>`}
-  </article>`;
-}
-
-function inlineForm(k, today) {
-  if (inline.kind === 'schedule') {
-    return h`<form class="uk-inline" data-submit="inlineSave" data-id="${k.id}">
-      <label class="field-label" for="uk-in-date">Booked for which day?</label>
-      <input class="input" type="date" id="uk-in-date" data-kind="date" value="${inline.date}" min="${k.reported || ''}" data-input="inlineDate" required>
-      <div class="uk-inline-btns"><button type="submit" class="btn btn-primary" data-write>${ui.icon('calendar')}<span>Book it</span></button>
-        <button type="button" class="btn btn-ghost" data-act="inlineCancel">Cancel</button></div>
-    </form>`;
-  }
-  const t = k.tenantId && S().tenant(k.tenantId);
-  const offer = k.paidBy === 'tenant' && t && !k.chargeId;
-  const c = M.parse(inline.cost);
-  return h`<form class="uk-inline" data-submit="inlineSave" data-id="${k.id}">
-    <label class="field-label" for="uk-in-cost">What did it cost? <span class="opt">optional</span></label>
-    <span class="money-input"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input" type="text" inputmode="decimal" data-kind="money" id="uk-in-cost" value="${inline.cost}" placeholder="0.00" data-input="inlineCost" autocomplete="off"></span>
-    ${offer ? h`<label class="check uk-inline-charge"><input type="checkbox" id="uk-in-charge" data-change="inlineCharge"${inline.charge ? RB.raw(' checked') : ''}><span id="uk-in-charge-label">${c > 0 ? chargeWords(c, t) : 'Charge the cost to ' + t.name}</span></label>` : ''}
-    <div class="uk-inline-btns"><button type="submit" class="btn btn-primary" data-write>${ui.icon('check')}<span>Mark done</span></button>
-      <button type="button" class="btn btn-ghost" data-act="inlineCancel">Cancel</button></div>
-  </form>`;
-}
-
-function column(status, label, items, today, extra) {
-  const empty = status === 'open' ? 'Nothing waiting. Well done.' : status === 'scheduled' ? 'Nothing booked in.' : 'Nothing finished in the last 30 days.';
-  return h`<section class="uk-col" aria-labelledby="uk-col-${status}">
-    <div class="uk-col-head"><h2 class="uk-col-title" id="uk-col-${status}">${label}</h2><span class="uk-col-count">${items.length}</span></div>
-    <div class="uk-col-body">${items.length ? items.map(k => card(k, today)) : h`<div class="uk-empty">${empty}</div>`}${extra || ''}</div>
-  </section>`;
-}
-
 function todoTab(today) {
   const all = S().ticketsList();
-  const props = Array.from(new Set(all.filter(k => k.status !== 'done').map(k => k.property).concat(propFilter ? [propFilter] : []).filter(Boolean))).sort(RB.natCmp);
+  const props = Array.from(new Set(all.map(k => k.property).concat(propFilter ? [propFilter] : []).filter(Boolean))).sort(RB.natCmp);
   if (propFilter && !all.some(k => sameName(k.property, propFilter))) propFilter = '';
   const list = all.filter(k => !propFilter || sameName(k.property, propFilter));
   const by = { open: [], scheduled: [], done: [] };
   list.forEach(k => (by[k.status] || by.open).push(k));
   const cutoff = D.addDays(today, -30);
-  const doneRecent = by.done.filter(k => (k.completed || k.reported) >= cutoff);
-  const older = by.done.length - doneRecent.length;
+  const doneRecent = sorted(by.done.filter(k => (k.completed || k.reported) >= cutoff), 'done');
   const notDone = by.open.concat(by.scheduled);
   const urgent = notDone.filter(k => k.priority === 'urgent').length;
   const oldest = notDone.reduce((m, k) => Math.max(m, k.reported ? D.diffDays(k.reported, today) : 0), 0);
-  const cols = { open: sorted(by.open, 'open'), scheduled: sorted(by.scheduled, 'scheduled'), done: sorted(doneRecent, 'done') };
-  const olderBtn = older ? h`<button type="button" class="btn btn-ghost uk-older" data-act="tabHistory">${ui.icon('arrow-right')}<span>See ${RB.plural(older, 'older repair')} in History by property</span></button>` : '';
-  const countLine = notDone.length
-    ? h`<strong>${RB.plural(notDone.length, 'repair')}</strong> to do${by.scheduled.length ? h` (${by.scheduled.length} booked in)` : ''}${urgent ? h` · <span class="tone-bad medium">${urgent} urgent</span>` : ''}${oldest ? h` · the oldest has waited ${D.days(oldest)}` : ''}`
+  const sentence = notDone.length
+    ? h`${RB.plural(notDone.length, 'repair')} to do${by.scheduled.length || urgent ? h` — ${[by.scheduled.length ? by.scheduled.length + ' booked in' : '', urgent ? urgent + ' urgent' : ''].filter(Boolean).join(', ')}` : ''}.${oldest ? h` The oldest has waited ${D.days(oldest)}.` : ''}`
     : h`Nothing to do — every repair is done.`;
-  const chipCount = p => all.filter(k => k.status !== 'done' && (!p || sameName(k.property, p))).length;
+  const sec = (key, title, items, empty, more) => h`<section class="rp-sec" aria-labelledby="uk-col-${key}">
+    <h2 class="rows-head" id="uk-col-${key}">${title} <span class="rows-count">${items.length}</span></h2>
+    ${items.length ? h`<ul class="rows rows-inset">${(more ? items.slice(0, more) : items).map(k => repairRow(k, today, { act: 'open', attrs: { 'data-id': k.id } }))}</ul>` : h`<p class="rp-empty">${empty}</p>`}
+  </section>`;
+  const doneShown = doneAll ? doneRecent.length : DONE_SHOWN;
   return h`
-    <div class="view-head uk-head">
-      <p class="view-summary uk-count" id="uk-count">${countLine}</p>
-      <span class="spacer"></span>
+    <p class="rp-sum" id="uk-count">${sentence}</p>
+    <div class="rp-bar">
       <button type="button" class="btn btn-primary" data-act="add" id="uk-add" data-write>${ui.icon('plus')}<span>Log a repair</span></button>
+      ${props.length > 1 ? h`<label class="vh" for="uk-prop">Which property?</label><span class="select rp-prop-sel"><select class="input" id="uk-prop" data-change="prop">
+        <option value="">All properties</option>${props.map(p => h`<option value="${p}"${sameName(propFilter, p) ? RB.raw(' selected') : ''}>${p}</option>`)}</select></span>` : ''}
     </div>
-    ${props.length > 1 ? h`<div class="chips uk-filter" role="group" aria-label="Show repairs at">
-      <button type="button" class="chip" data-act="prop" data-prop="" aria-pressed="${String(!propFilter)}">All properties<span class="chip-count">${chipCount('')}</span></button>
-      ${props.map(p => h`<button type="button" class="chip" data-act="prop" data-prop="${p}" aria-pressed="${String(sameName(propFilter, p))}">${p}<span class="chip-count">${chipCount(p)}</span></button>`)}
-    </div>` : ''}
     ${all.length ? h`
-      <div class="seg uk-tabs show-phone" role="group" aria-label="Show">${STATUS.map(([s, label]) => h`<button type="button" data-act="tab" data-tab="${s}" aria-pressed="${String(phoneTab === s)}">${label} <span class="uk-tab-n">${cols[s].length}</span></button>`)}</div>
-      <div class="uk-cols" data-tab="${phoneTab}">
-        ${column('open', 'Needs doing', cols.open, today)}
-        ${column('scheduled', 'Booked in', cols.scheduled, today)}
-        ${column('done', 'Done in the last 30 days', cols.done, today, olderBtn)}
-      </div>`
-      : ui.empty({ icon: 'wrench', title: 'No repairs yet', body: 'Write repairs down here so nothing slips: what needs fixing, who is doing it and what it cost.', actions: [{ label: 'Log a repair', kind: 'primary', act: 'add', icon: 'plus', write: true }, { label: 'Add a past repair', act: 'past', write: true }] })}`;
+      ${sec('open', 'Needs doing', sorted(by.open, 'open'), 'Nothing waiting.')}
+      ${sec('scheduled', 'Booked in', sorted(by.scheduled, 'scheduled'), 'Nothing booked in.')}
+      ${sec('done', 'Done lately', doneRecent, 'Nothing finished in the last 30 days.', doneShown)}
+      ${doneRecent.length > DONE_SHOWN ? h`<button type="button" class="rows-more" id="uk-done-more" data-act="doneMore" aria-expanded="${String(doneAll)}">${doneAll ? 'Show fewer' : 'Show all ' + doneRecent.length}</button>` : ''}
+      <button type="button" class="btn-link rp-older" data-act="tabHistory">See older repairs in History</button>`
+      : ui.empty({ title: 'No repairs yet', body: 'Write repairs down here so nothing slips: what needs fixing, who is doing it and what it cost.', actions: [{ label: 'Add a past repair', act: 'past', write: true }] })}`;
 }
 
-// ------------------------------------------------------------------ History by property (landing)
+// ------------------------------------------------------------------ History (landing)
 function historyTab(today) {
   const props = properties();
   if (!props.length) {
-    return ui.empty({ icon: 'wrench', title: 'No properties yet', body: 'Add a tenant or log a repair, and its property appears here with its repair history.',
-      actions: [{ label: 'Log a repair', kind: 'primary', act: 'add', icon: 'plus', write: true }] });
+    return ui.empty({ title: 'No properties yet', body: 'Add a tenant or log a repair, and its property appears here with its repair history.',
+      actions: [{ label: 'Log a repair', kind: 'primary', act: 'add', write: true }] });
   }
   const count = props.reduce((s, p) => s + p.count, 0), total = props.reduce((s, p) => s + p.total, 0);
   const first = props.map(p => p.firstDate).filter(Boolean).sort()[0];
   const year = today.slice(0, 4);
   return h`
-    <div class="view-head uk-head">
-      <p class="view-summary" id="rp-hist-sum">${count ? h`<strong>${RB.plural(count, 'repair')}</strong> written down at ${RB.plural(props.length, 'property', 'properties')} · <strong>${M.fmt(total)}</strong> spent${first ? ' since ' + first.slice(0, 4) : ''}` : h`No past repairs written down yet. Add old invoices to build each property’s history.`}</p>
-      <span class="spacer"></span>
-      <button type="button" class="btn btn-primary" data-act="past" id="rp-past" data-write>${ui.icon('plus')}<span>Add a past repair</span></button>
+    <p class="rp-sum" id="rp-hist-sum">${count ? h`${RB.plural(count, 'repair')} written down at ${RB.plural(props.length, 'property', 'properties')} — ${M.fmt(total)} spent${first ? ' since ' + first.slice(0, 4) : ''}. Choose a property to see its history.` : h`No past repairs written down yet. Add old invoices to build each property’s history.`}</p>
+    <div class="rp-bar">
+      <button type="button" class="btn btn-primary" data-act="add" id="uk-add" data-write>${ui.icon('plus')}<span>Log a repair</span></button>
+      <button type="button" class="btn btn-outline" data-act="past" id="rp-past" data-write>Add a past repair</button>
     </div>
-    <p class="rp-lede">Choose a property to see everything that was fixed there, what it cost, and anything that keeps going wrong.</p>
-    <div class="rp-props">${props.map(p => h`<a class="rp-prop" href="#p-${p.slug}" data-slug="${p.slug}">
-      <span class="rp-prop-name">${p.name}</span>
-      <span class="rp-prop-units">${p.unitCount ? RB.plural(p.unitCount, 'unit') : 'No units written down'}</span>
-      <span class="rp-prop-line">${p.thisYear.count ? h`This year: <strong>${RB.plural(p.thisYear.count, 'repair')}</strong>, costing <strong>${M.fmt(p.thisYear.total)}</strong>` : h`No repairs yet in ${year}`}</span>
-      <span class="rp-prop-line">${p.last ? h`Last: ${p.last.title || 'Repair'}, ${p.last.building ? 'whole building' : Mo.unitWords(p.last.unitKey)}, ${D.fmt(p.last.date, today)}` : 'No repairs written down yet'}</span>
-      ${p.open ? h`<span class="rp-prop-open">${ui.tag(RB.plural(p.open, 'repair') + ' still to do', p.urgent ? 'bad' : 'warn', p.urgent ? 'triangle' : 'clock')}</span>` : ''}
-      <span class="rp-prop-go"><span>See repair history</span>${ui.icon('arrow-right')}</span>
-    </a>`)}</div>`;
+    <h2 class="rows-head">Properties <span class="rows-count">${props.length}</span></h2>
+    <ul class="rows rows-inset rp-props">${props.map(p => ui.row({
+      title: p.name,
+      sub: [p.unitCount ? RB.plural(p.unitCount, 'unit') : 'No units written down', RB.plural(p.thisYear.count, 'repair') + ' in ' + year].join(' · '),
+      amt: M.fmt(p.thisYear.total),
+      status: p.open ? ui.status(p.urgent ? 'urgent' : 'warn', p.open + ' still to do') : '',
+      href: '#p-' + p.slug, attrs: { 'data-slug': p.slug },
+    }))}</ul>
+    <p class="rp-caption">The amount is what was spent on repairs there in ${year}.</p>`;
 }
 
 RB.views.register('repairs', {
@@ -585,51 +620,26 @@ RB.views.register('repairs', {
   render(el, ctx) {
     const today = ctx.today;
     el.classList.toggle('is-property', !!ctx.param);
-    if (ctx.param) { inline = null; return RB.repairs.renderProperty(el, ctx); }
+    if (ctx.param) return RB.repairs.renderProperty(el, ctx);
     if (RB.repairs.leaveProperty) { if (ctx.reason === 'route') window.scrollTo(0, 0); RB.repairs.leaveProperty(); }
     if (ctx.intent === 'history' || ctx.intent === 'todo') { tab = ctx.intent; RB.prefs.set('repairs:tab', tab); }
     if (tab !== 'history') tab = 'todo';
     el.innerHTML = String(h`
-      <div class="rp-tabs" role="tablist" aria-label="Repairs">
-        <button type="button" class="rp-tab" role="tab" id="rp-tab-todo" aria-selected="${String(tab === 'todo')}" aria-controls="rp-panel" data-act="mainTab" data-tab="todo">${ui.icon('upkeep')}<span>To do</span></button>
-        <button type="button" class="rp-tab" role="tab" id="rp-tab-history" aria-selected="${String(tab === 'history')}" aria-controls="rp-panel" data-act="mainTab" data-tab="history">${ui.icon('reports')}<span>History by property</span></button>
+      <div class="seg rp-switch" role="tablist" aria-label="Repairs">
+        <button type="button" role="tab" id="rp-tab-todo" aria-selected="${String(tab === 'todo')}" aria-pressed="${String(tab === 'todo')}" aria-controls="rp-panel" data-act="mainTab" data-tab="todo">To do</button>
+        <button type="button" role="tab" id="rp-tab-history" aria-selected="${String(tab === 'history')}" aria-pressed="${String(tab === 'history')}" aria-controls="rp-panel" data-act="mainTab" data-tab="history">History</button>
       </div>
       <div id="rp-panel" role="tabpanel" aria-labelledby="rp-tab-${tab}">${tab === 'history' ? historyTab(today) : todoTab(today)}</div>`);
     ui.bind(el, {
-      mainTab: b => { tab = b.dataset.tab; RB.prefs.set('repairs:tab', tab); inline = null; RB.shell.refresh(); },
+      mainTab: b => { tab = b.dataset.tab; RB.prefs.set('repairs:tab', tab); RB.shell.refresh(); },
       tabHistory: () => { tab = 'history'; RB.prefs.set('repairs:tab', tab); RB.shell.refresh(); window.scrollTo(0, 0); },
       add: () => ticketSheet(null, propFilter && tab === 'todo' ? { property: propFilter } : null),
       past: () => pastRepairSheet(),
-      edit: b => ticketSheet(b.dataset.id),
-      prop: b => { propFilter = b.dataset.prop; RB.prefs.set('upkeep:prop', propFilter); RB.shell.refresh(); },
-      tab: b => { phoneTab = b.dataset.tab; RB.prefs.set('upkeep:tab', phoneTab); RB.shell.refresh(); },
-      sched: b => { const k = S().ticket(b.dataset.id); inline = { id: b.dataset.id, kind: 'schedule', date: (k && k.scheduled) || D.addDays(today, 2) }; RB.shell.refresh(); focusInline(el, '#uk-in-date'); },
-      done: b => { const k = S().ticket(b.dataset.id); inline = { id: b.dataset.id, kind: 'done', cost: k && k.cost != null ? M.input(k.cost) : '', charge: true }; RB.shell.refresh(); focusInline(el, '#uk-in-cost'); },
-      inlineCancel: () => { inline = null; RB.shell.refresh(); },
-      inlineDate: b => { if (inline) inline.date = b.value; },
-      inlineCost: b => {
-        if (!inline) return; inline.cost = b.value;
-        const lab = el.querySelector('#uk-in-charge-label'); const k = S().ticket(inline.id); const t = k && S().tenant(k.tenantId); const c = M.parse(b.value);
-        if (lab && t) lab.textContent = c > 0 ? chargeWords(c, t) : 'Charge the cost to ' + t.name;
-      },
-      inlineCharge: b => { if (inline) inline.charge = b.checked; },
-      inlineSave: f => {
-        const id = f.dataset.id; const cur = inline; if (!cur) return;
-        if (cur.kind === 'schedule') {
-          if (!D.valid(cur.date || '')) { el.querySelector('#uk-in-date').focus(); return; }
-          inline = null; schedule(id, cur.date);
-        } else {
-          const raw = String(cur.cost || '').trim(); const c = raw ? M.parse(raw) : undefined;
-          if (raw && (c === null || c < 0)) { ui.toast('Type a cost like 185.50', { tone: 'bad' }); return; }
-          inline = null; markDone(id, c === undefined ? undefined : c, cur.charge);
-        }
-        RB.shell.refresh();
-      },
-      reopen: b => reopen(b.dataset.id),
-      charge: b => chargeTenant(b.dataset.id),
+      open: b => openRepair(b.dataset.id),
+      prop: s => { propFilter = s.value; RB.prefs.set('upkeep:prop', propFilter); RB.shell.refresh(); },
+      doneMore: () => { doneAll = !doneAll; RB.shell.refresh(); },
     });
   },
   onKey(e) { if (e.key === 'c') { ticketSheet(null); return true; } return false; },
-  destroy() { inline = null; if (RB.repairs.leaveProperty) RB.repairs.leaveProperty(); },
+  destroy() { doneAll = false; if (RB.repairs.leaveProperty) RB.repairs.leaveProperty(); },
 });
-function focusInline(el, sel) { const x = el.querySelector(sel); if (x) { x.focus(); if (x.select && x.type !== 'date') x.select(); } }

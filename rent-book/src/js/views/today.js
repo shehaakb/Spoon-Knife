@@ -1,10 +1,11 @@
-// views/today.js — Today: start from the task (three big buttons), then this month's rent as a sentence,
-// "What needs you" in plain sentences, the month at a glance, and recent activity in sentences. SPEC §4 + §8.
+// views/today.js — Today (SPEC §10.3): (1) this month's rent as one figure + one sentence + a bar (opens Rent),
+// (2) one filled action and two outline ones, (3) "Needs you": the five most important things as rows, then
+// "Show all N" expanding in place grouped by kind, (4) a quiet link to "See what you did recently" (a page-like sheet).
 const RB = globalThis.RB;
 const { html: h, ui, date: D, money: M } = RB;
 
-const SHOW = 5;                 // rows per group before "Show n more"
-const expanded = {};            // group key → true when the user asked to see every row
+const TOP = 5;                  // rows shown before "Show all N"
+let showAll = false;            // "Show all N" expanded in place
 
 const GROUPS = [
   { key: 'rent', label: 'Rent', kinds: ['delinquent', 'late', 'partial'] },
@@ -12,200 +13,157 @@ const GROUPS = [
   { key: 'leases', label: 'Leases and moving', kinds: ['lease', 'moveout', 'movein', 'deposit'] },
   { key: 'follow', label: 'Reminders', kinds: ['followup', 'insurance'] },
 ];
-const SEV = { high: { icon: 'triangle', label: 'Needs you now' }, medium: { icon: 'alert', label: 'Soon' }, low: { icon: 'circle', label: 'When you can' } };
+const RENT_KINDS = ['delinquent', 'late', 'partial'];
 const METHOD_WORD = { Check: 'check', Cash: 'cash', Zelle: 'Zelle', Venmo: 'Venmo', ACH: 'bank transfer', 'Money order': 'money order' };
-const KIND_WORD = { note: 'wrote a note about', call: 'phoned', text: 'texted', email: 'emailed', visit: 'visited', notice: 'gave notice to' };
-const byWord = m => (m ? ' by ' + (METHOD_WORD[m] || m) : '');
+const KIND_WORD = { note: 'Note', call: 'Phone call', text: 'Text message', email: 'Email', visit: 'Visit', notice: 'Notice' };
+const cap = s => String(s || '').replace(/^\w/, c => c.toUpperCase());
 
-// ------------------------------------------------------------------ (0) start from the task
-const TASKS = [
-  { id: 'pay', icon: 'cash', label: 'Record a rent payment', help: 'Someone paid you — write it down' },
-  { id: 'repair', icon: 'wrench', label: 'Log a repair', help: 'Something needs fixing — make a note of it' },
-  { id: 'tenant', icon: 'user', label: 'Add a tenant', help: 'Someone new is moving in' },
-];
-function tasks() {
-  return h`<section class="td-tasks" aria-label="What would you like to do?">
-    ${TASKS.map(t => h`<button type="button" class="td-task" id="td-task-${t.id}" data-act="task" data-task="${t.id}" data-write>
-      <span class="td-task-ico">${ui.icon(t.icon, { size: 22 })}</span>
-      <span class="td-task-text"><span class="td-task-label">${t.label}</span><span class="td-task-help">${t.help}</span></span>
-      ${ui.icon('chevron-right', { cls: 'td-task-chev' })}
-    </button>`)}
-  </section>`;
+// ------------------------------------------------------------------ (1) this month's rent
+function money(S, today) {
+  const p = S.portfolio();
+  const pct = p.charged ? Math.max(0, Math.min(100, (p.collected / p.charged) * 100)) : 0;
+  return h`<a class="td-money" href="#rent" id="td-money" aria-describedby="td-owed">
+    <span class="td-money-label">${D.monthName(p.period)} rent<span class="td-money-go">See who still owes${ui.icon('chevron-right')}</span></span>
+    <span class="td-fig"><span class="td-figure t-display" id="td-figure">${M.fmt(p.collected)}</span> <span class="td-of" id="td-say">of ${M.fmt(p.charged)} has come in.</span></span>
+    <span class="bar td-bar" role="img" aria-label="${Math.round(pct)}% of ${D.monthName(p.period)} rent has come in"><span class="bar-seg" style="width:${pct.toFixed(2)}%"></span></span>
+    <span class="td-owed" id="td-owed">${ui.owedSentence()}</span>
+  </a>`;
+}
+
+// ------------------------------------------------------------------ (2) actions: one filled, two outline
+function actions() {
+  return h`<div class="td-actions" role="group" aria-label="What would you like to do?">
+    <button type="button" class="btn btn-primary btn-lg td-act-pay" id="td-task-pay" data-act="task" data-task="pay" data-write>${ui.icon('cash')}Record a rent payment</button>
+    <div class="td-actions-2">
+      <button type="button" class="btn btn-outline btn-lg" id="td-task-repair" data-act="task" data-task="repair" data-write>Log a repair</button>
+      <button type="button" class="btn btn-outline btn-lg" id="td-task-tenant" data-act="task" data-task="tenant" data-write>Add a tenant</button>
+    </div>
+  </div>`;
 }
 async function runTask(id) {
   const A = RB.actions;
   if (id === 'pay') {
-    const tid = await ui.pickTenant({ title: 'Who paid you?', prefer: 'owes' });
+    const tid = await ui.pickTenant({ title: 'Who paid you?', prefer: 'owes', purpose: 'pay' });
     if (tid) A.recordPayment(tid);
   } else if (id === 'repair') {
-    const tid = await ui.pickTenant({ title: 'Where is the repair?', sub: 'Choose the tenant whose home it is in.', skip: 'It’s for a whole building, or I’m not sure' });
+    const tid = await ui.pickTenant({ title: 'Where is the repair?', sub: 'Choose the tenant whose home it is in.', purpose: 'repair', skip: 'It’s for a whole building, or I’m not sure' });
     if (tid === null) return;
     A.addTicket(tid ? { tenantId: tid } : undefined);
   } else if (id === 'tenant') A.addTenant();
 }
 
-// ------------------------------------------------------------------ (1) this month's rent, as a sentence
-function monthParts(S, period) {
-  const sums = { partial: 0, late: 0, due: 0, owe: 0 };
-  for (const t of S.tenantsList()) {
-    const m = (S.ledger(t.id) || { months: {} }).months[period];
-    if (!m || !m.scheduled || !m.open) continue;
-    sums.owe++;
-    if (m.rentPaid > 0) sums.partial += m.open;
-    else if (m.status === 'late') sums.late += m.open;
-    else sums.due += m.open;
-  }
-  return sums;
-}
-function collection(S, today) {
-  const p = S.portfolio();
-  const parts = monthParts(S, p.period);
-  const mon = D.monthName(p.period);
-  const pct = v => (p.charged ? Math.max(0, Math.min(100, (v / p.charged) * 100)) : 0);
-  const owe = parts.owe;
-  const sentence = h`<strong>${M.fmt(p.collected)}</strong> of ${M.fmt(p.charged)} collected for ${mon}. ${owe ? h`<strong>${RB.plural(owe, 'tenant')}</strong> still ${owe === 1 ? 'owes' : 'owe'}.` : 'Everyone has paid.'}`;
-  const grace = today <= p.graceEnd
-    ? h`Rent was due ${D.fmt(p.dueDate, today)}. Anyone who hasn’t paid by ${D.fmt(p.graceEnd, today)} will be late — that’s ${D.rel(p.graceEnd, today)}.`
-    : h`Rent was due ${D.fmt(p.dueDate, today)}. Since ${D.fmt(D.addDays(p.graceEnd, 1), today)}, anything unpaid counts as late.`;
-  const key = (cls, label, cents) => (cents ? h`<span class="bar-key bar-key-${cls}">${label}: ${M.fmt(cents)}</span>` : '');
-  return h`<section class="td-collect" aria-labelledby="td-collect-t">
-    <h2 class="sec-title" id="td-collect-t">${D.fmtMonth(p.period)} rent</h2>
-    <p class="td-say" id="td-say">${sentence}</p>
-    <div class="bar bar-lg td-bar" aria-hidden="true">
-      <span class="bar-seg bar-seg-ok" style="width:${pct(p.collected)}%"></span>
-      <span class="bar-seg bar-seg-warn" style="width:${pct(parts.partial)}%"></span>
-      <span class="bar-seg bar-seg-bad" style="width:${pct(parts.late)}%"></span>
-    </div>
-    <div class="bar-legend td-legend">${key('ok', 'Collected', p.collected)}${key('warn', 'Part paid — still owed', parts.partial)}${key('bad', 'Late', parts.late)}${key('soft', 'Not paid yet', parts.due)}</div>
-    <p class="caption td-grace">${grace}</p>
-    <a class="btn btn-lg td-collect-go" href="#rent" id="td-go-rent">${owe ? 'See who still owes' : 'Open the Rent page'}${ui.icon('arrow-right')}</a>
-  </section>`;
-}
-
-// ------------------------------------------------------------------ (2) what needs you
-/** One plain sentence per item, built from the data (not the model's terse detail line). */
-function sentence(S, a, today) {
+// ------------------------------------------------------------------ (3) needs you
+/** Row content for one attention item: {title, sub, status, lead}. Short, plain, one fact per line. */
+function itemRow(S, a, today) {
   const t = a.tenantId ? S.tenant(a.tenantId) : null;
-  const name = t ? t.name : a.title;
   const lg = t ? S.ledger(t.id) : null;
+  const lead = a.ticketId
+    ? (() => { const k = S.ticket(a.ticketId); return k && k.unit ? ui.plate(k.unit, { property: k.property }) : h`<span class="td-lead-ico">${ui.icon('wrench')}</span>`; })()
+    : t ? ui.plate(t.unit, { property: t.property }) : '';
+  const name = t ? t.name : a.title;
   switch (a.kind) {
     case 'delinquent': {
       const n = Object.values(lg.months).filter(m => m.open > 0).length;
-      return h`${name} is behind on rent: owes <strong>${M.fmt(lg.balance)}</strong> from ${RB.plural(n, 'month')}. The oldest is from ${D.fmt(lg.oldestOpenDate, today)}.`;
+      return { lead, title: name, sub: 'Owes ' + M.fmt(lg.balance) + ' from ' + RB.plural(n, 'month'), status: ui.status('late', 'Behind on rent') };
     }
     case 'late': {
       const m = lg.current.status === 'late' ? lg.months[lg.current.period] : Object.values(lg.months).filter(x => x.status === 'late').pop();
-      if (m.rentPaid > 0) return h`${name} has paid ${M.fmt(m.rentPaid)} of ${M.fmt(m.rentCharged)} for ${D.monthName(m.period)}. Still owes <strong>${M.fmt(m.open)}</strong>, ${D.days(m.daysLate)} late.`;
-      return h`${name} hasn’t paid ${D.monthName(m.period)} rent (<strong>${M.fmt(m.open)}</strong>). It is ${D.days(m.daysLate)} late.`;
+      return { lead, title: name, sub: m.rentPaid > 0 ? 'Owes ' + M.fmt(m.open) + ' of ' + D.monthName(m.period) + '’s ' + M.fmt(m.rentCharged) : 'Owes ' + M.fmt(m.open) + ' for ' + D.monthName(m.period),
+        status: m.rentPaid > 0 ? ui.status('partial_late', 'Part paid — rest is ' + D.days(m.daysLate) + ' late') : ui.status('late', 'Late — ' + D.days(m.daysLate)) };
     }
     case 'partial': {
       const m = lg.months[lg.current.period];
-      return h`${name} has paid ${M.fmt(m.rentPaid)} of ${M.fmt(m.rentCharged)} for ${D.monthName(m.period)}. Still owes <strong>${M.fmt(m.open)}</strong> — it becomes late after ${D.fmt(m.graceEnd, today)}.`;
+      return { lead, title: name, sub: 'Owes ' + M.fmt(m.open) + ' for ' + D.monthName(m.period), status: ui.status('partial', 'Part paid — ' + M.fmt(m.rentPaid) + ' of ' + M.fmt(m.rentCharged)) };
     }
     case 'ticket': {
       const k = S.ticket(a.ticketId) || {};
-      const where = k.unit ? (k.property ? k.property + ', ' : '') + RB.actions.who({ unit: k.unit }) : k.property || 'the building';
+      const where = k.unit ? ui.place(k) : k.property || 'The whole building';
       const age = k.reported ? D.diffDays(k.reported, today) : 0;
-      const when = k.status === 'scheduled' && k.scheduled ? 'Booked for ' + D.fmt(k.scheduled, today) + '.' : age > 0 ? 'Reported ' + D.days(age) + ' ago.' : 'Reported today.';
-      return h`${k.priority === 'urgent' ? 'Urgent repair: ' : 'Repair: '}${(k.title || 'repair').replace(/^\w/, c => c.toLowerCase())} at ${where}. ${when}`;
+      const when = k.status === 'scheduled' && k.scheduled ? 'booked for ' + D.fmt(k.scheduled, today) : age > 0 ? 'waiting ' + D.days(age) : 'reported today';
+      return { lead, title: cap(k.title || 'Repair'), sub: where + ' · ' + when, status: k.priority === 'urgent' ? ui.status('urgent', 'Urgent') : '' };
     }
     case 'lease': {
       const ls = RB.model.leaseState(t, S.settings(), today);
-      return h`${name}’s lease ends ${D.fmt(ls.end, today)} (${D.rel(ls.end, today)}). You haven’t decided yet whether to renew.`;
+      return { lead, title: name, sub: 'Lease ends ' + D.fmt(ls.end, today) + ' — renew or not?', status: ui.status('warn', cap(D.rel(ls.end, today))) };
     }
     case 'moveout': {
       const mo = t.lease && t.lease.moveOut;
-      return mo <= today ? h`${name} was due to move out ${mo === today ? 'today' : 'on ' + D.fmt(mo, today)}. Finish the move-out when they have gone.` : h`${name} moves out ${D.fmt(mo, today)} (${D.rel(mo, today)}).`;
+      return mo <= today
+        ? { lead, title: name, sub: 'Was due to move out ' + (mo === today ? 'today' : D.fmt(mo, today)), status: ui.status('warn', 'Finish the move-out') }
+        : { lead, title: name, sub: 'Moves out ' + D.fmt(mo, today), status: ui.status('warn', cap(D.rel(mo, today))) };
     }
-    case 'movein': return h`${name} moves in ${D.fmt(t.lease.moveIn, today)} (${D.rel(t.lease.moveIn, today)}).`;
+    case 'movein': return { lead, title: name, sub: 'Moves in ' + D.fmt(t.lease.moveIn, today), status: ui.status('info', cap(D.rel(t.lease.moveIn, today))) };
     case 'deposit': {
       const dd = RB.model.depositDue(t, S.settings(), today);
-      if (!dd) return a.detail;
-      return dd.overdue ? h`${name}’s deposit of <strong>${M.fmt(dd.amount)}</strong> should have gone back by ${D.fmt(dd.dueDate, today)} — ${D.days(-dd.daysLeft)} ago.` : h`Give back ${name}’s deposit of <strong>${M.fmt(dd.amount)}</strong> by ${D.fmt(dd.dueDate, today)} (${D.rel(dd.dueDate, today)}).`;
+      if (!dd) return { lead, title: name, sub: a.detail };
+      return { lead, title: name, sub: 'Give back the ' + M.fmt(dd.amount) + ' deposit by ' + D.fmt(dd.dueDate, today),
+        status: dd.overdue ? ui.status('late', 'Overdue — ' + D.days(-dd.daysLeft)) : ui.status(dd.daysLeft <= 7 ? 'late' : 'warn', cap(D.rel(dd.dueDate, today))) };
     }
     case 'followup': {
       const e = t && t.log && t.log[a.logId];
-      return h`Reminder about ${name}: “${String((e && e.text) || '').slice(0, 140)}”${e && e.followUp < today ? h` — due since ${D.fmt(e.followUp, today)}` : ''}.`;
+      const text = String((e && e.text) || '');
+      return { lead, title: name, sub: 'Reminder: “' + (text.length > 90 ? text.slice(0, 88) + '…' : text) + '”',
+        status: ui.status('warn', e && e.followUp < today ? 'Due since ' + D.fmt(e.followUp, today) : 'Due today') };
     }
     case 'insurance': {
       const ex = t.insurance && t.insurance.expires;
-      return ex < today ? h`${name}’s renter’s insurance ran out on ${D.fmt(ex, today)}. Ask them for the new policy.` : h`${name}’s renter’s insurance runs out ${D.fmt(ex, today)} (${D.rel(ex, today)}).`;
+      return { lead, title: name, sub: 'Renter’s insurance ' + (ex < today ? 'ran out ' : 'runs out ') + D.fmt(ex, today), status: ui.status(ex < today ? 'warn' : 'quiet', ex < today ? 'Ask for the new policy' : cap(D.rel(ex, today))) };
     }
-    default: return h`${a.title}: ${a.detail}`;
+    default: return { lead, title: a.title, sub: a.detail };
   }
 }
-const BUTTON_WORDS = { recordPayment: 'Record a payment', addLateFee: null, openTenant: 'See their page', openTicket: 'Open the repair', followupDone: 'Mark it done', settleDeposit: 'Give back the deposit', renewLease: 'Renew or end the lease', moveOut: 'Finish the move-out' };
-const PLAN = { moveout: 'Plan the move-out', movein: 'See their page', insurance: 'See their page' };
-function buttonLabel(a) {
-  if (a.action.type === 'addLateFee') return a.action.label;
-  return (a.action.type === 'openTenant' && PLAN[a.kind]) || BUTTON_WORDS[a.action.type] || a.action.label;
-}
-function plateFor(S, a) {
-  if (a.ticketId) { const k = S.ticket(a.ticketId); return k && k.unit ? ui.plate(k.unit, { property: k.property }) : h`<span class="td-lead-ico">${ui.icon('wrench')}</span>`; }
-  const t = a.tenantId && S.tenant(a.tenantId);
-  return t ? ui.plate(t.unit, { property: t.property }) : h`<span class="td-lead-ico">${ui.icon('dot')}</span>`;
-}
-const writeAct = t => !['openTenant', 'openTicket', 'renewLease', 'settleDeposit'].includes(t);
 function attRow(S, a, today) {
-  const sev = SEV[a.severity] || SEV.low;
-  const isPay = a.action.type === 'recordPayment';
-  const t = a.tenantId ? S.tenant(a.tenantId) : null;
-  const lg = t ? S.ledger(t.id) : null;
-  const partLate = isPay && lg && Object.values(lg.months).some(m => m.status === 'late' && m.rentPaid > 0);
-  return h`<li class="td-row" data-item="${a.id}">
-    <span class="td-lead">${plateFor(S, a)}</span>
-    <div class="td-main">
-      <p class="td-sentence"><span class="td-sev td-sev-${a.severity}">${ui.icon(sev.icon, { size: 14 })}<span class="vh">${sev.label}: </span></span>${sentence(S, a, today)}</p>
-      <div class="td-actions">
-        <button type="button" class="btn ${isPay ? 'btn-primary' : 'btn-soft'}" id="td-1-${a.id}" data-act="run" data-which="action" data-id="${a.id}"${writeAct(a.action.type) ? RB.raw(' data-write') : ''}>${buttonLabel(a)}</button>
-        ${isPay && !partLate ? h`<button type="button" class="btn-link" id="td-part-${a.id}" data-act="part" data-id="${a.id}" data-write>They paid part of it</button>` : ''}
-        ${a.secondary ? h`<button type="button" class="btn-link" id="td-2-${a.id}" data-act="run" data-which="secondary" data-id="${a.id}"${writeAct(a.secondary.type) ? RB.raw(' data-write') : ''}>${a.secondary.type === 'openTenant' ? 'See their page' : a.secondary.label}</button>` : ''}
-      </div>
-    </div>
-  </li>`;
+  const r = itemRow(S, a, today);
+  const pay = RENT_KINDS.includes(a.kind) && a.tenantId;
+  const lg = pay ? S.ledger(a.tenantId) : null;
+  const cur = pay ? lg.months[lg.current.period] : null;
+  const partPaid = pay && a.kind !== 'delinquent' && cur && cur.open > 0 && cur.rentPaid > 0;
+  if (pay) { r.amt = M.fmt(lg.balance); r.sub = ''; }
+  return ui.row(Object.assign(r, {
+    act: 'item', attrs: { id: 'td-row-' + a.id, 'data-id': a.id, 'aria-haspopup': pay || a.kind === 'followup' ? 'dialog' : null },
+    statusPos: 'main',
+    btn: pay ? { label: partPaid ? 'Record the rest' : 'Record a payment', act: 'pay', id: 'td-pay-' + a.id, attrs: { 'data-id': a.id } } : null,
+    liAttrs: { 'data-item': a.id },
+  }));
 }
-function attention(S, att, today) {
-  if (!att.length) return h`<div class="sec"><h2 class="sec-title">What needs you</h2></div>${ui.empty({ quiet: true, title: 'Nothing needs you today. Enjoy your day.' })}`;
-  const known = new Set(GROUPS.flatMap(g => g.kinds));
-  const groups = GROUPS.map(g => ({ g, items: att.filter(a => g.kinds.includes(a.kind) || (g.key === 'follow' && !known.has(a.kind))) })).filter(x => x.items.length);
-  return h`<div class="sec"><h2 class="sec-title" id="td-att-t">What needs you</h2><span class="sec-meta">${RB.plural(att.length, 'thing')}, most important first</span></div>
-    ${groups.map(({ g, items }) => {
-      const open = expanded[g.key] || items.length <= SHOW;
-      const shown = open ? items : items.slice(0, SHOW);
-      return h`<section class="td-group" aria-labelledby="td-g-${g.key}">
-        <h3 class="td-group-label" id="td-g-${g.key}">${g.label} <span class="td-group-n">(${items.length})</span></h3>
-        <ul class="td-rows">${shown.map(a => attRow(S, a, today))}</ul>
-        ${items.length > SHOW ? h`<button type="button" class="btn td-more" id="td-more-${g.key}" data-act="more" data-g="${g.key}" aria-expanded="${open ? 'true' : 'false'}">${open ? 'Show fewer' : 'Show ' + (items.length - SHOW) + ' more'}</button>` : ''}
-      </section>`;
-    })}`;
-}
-
-// ------------------------------------------------------------------ (3) the month at a glance
-function glance(S, today) {
-  const period = D.monthKey(today);
-  const byProp = new Map();
-  for (const t of S.tenantsList({ includePast: false })) {
-    const m = (S.ledger(t.id) || { months: {} }).months[period];
-    const st = m && m.scheduled ? (m.status === 'late' && m.rentPaid > 0 ? 'partial' : m.status) : 'none';
-    if (!byProp.has(t.property)) byProp.set(t.property, []);
-    byProp.get(t.property).push({ t, st, m });
-  }
-  const keys = [['paid', 'Green with a tick = paid'], ['partial', 'Amber = paid part of it'], ['late', 'Red = late'], ['due', 'White = not paid yet']];
-  return h`<section class="td-glance" aria-labelledby="td-glance-t">
-    <div class="sec"><h2 class="sec-title" id="td-glance-t">${D.monthName(period)} at a glance</h2></div>
-    <p class="caption td-glance-cap">Each box is one home, labelled with its unit. Tap a box to see that tenant.</p>
-    ${Array.from(byProp.entries()).map(([prop, list]) => h`<div class="td-prop">
-      <h3 class="td-prop-label">${prop || 'No property'}</h3>
-      <div class="plates td-plates">${list.map(({ t, st, m }) => {
-        const label = (t.unit || '—') + ', ' + t.name + ': ' + ui.statusWords(m, today);
-        return ui.plate(t.unit, { size: 'lg', status: st, button: true, title: label, attrs: { 'data-act': 'open', 'data-id': t.id, id: 'td-p-' + t.id, 'aria-label': label } });
-      })}</div>
-    </div>`)}
-    <ul class="td-keys" aria-label="What the colours mean">${keys.map(([k, words]) => h`<li class="td-keyitem"><span class="td-keyplate" aria-hidden="true">${ui.plate('', { size: 'lg', status: k })}</span><span>${words}</span></li>`)}</ul>
+function needsYou(S, att, today) {
+  if (!att.length) return h`<section class="td-needs" aria-labelledby="td-needs-t"><h2 class="sec-title" id="td-needs-t">Needs you</h2>${ui.empty({ quiet: true, title: 'Nothing needs you today.' })}</section>`;
+  const more = att.length > TOP;
+  let body;
+  if (showAll && more) {
+    const known = new Set(GROUPS.flatMap(g => g.kinds));
+    body = GROUPS.map(g => ({ g, items: att.filter(a => g.kinds.includes(a.kind) || (g.key === 'follow' && !known.has(a.kind))) })).filter(x => x.items.length)
+      .map(({ g, items }) => h`${ui.rowsHead(g.label, items.length, { id: 'td-g-' + g.key })}<ul class="rows rows-inset td-rows" aria-labelledby="td-g-${g.key}">${items.map(a => attRow(S, a, today))}</ul>`);
+  } else body = h`<ul class="rows rows-inset td-rows" aria-labelledby="td-needs-t">${att.slice(0, TOP).map(a => attRow(S, a, today))}</ul>`;
+  return h`<section class="td-needs" aria-labelledby="td-needs-t">
+    <h2 class="sec-title td-needs-t" id="td-needs-t">Needs you <span class="rows-count">${att.length}</span></h2>
+    ${body}
+    ${more ? ui.rowsMore(att.length, { id: 'td-more', act: 'more', expanded: showAll }) : ''}
   </section>`;
 }
+/** Tapping a row opens the thing, or a short "What would you like to do?" sheet. */
+function openItem(S, a) {
+  const A = RB.actions;
+  const t = a.tenantId ? S.tenant(a.tenantId) : null;
+  if (RENT_KINDS.includes(a.kind) && t) {
+    const lg = S.ledger(t.id);
+    const fee = lg.suggestedLateFee;
+    return ui.choices({ title: t.name, sub: ui.place(t) + ' · ' + ui.balanceWords(lg.balance), items: [
+      { label: 'They paid part of it', hint: 'Type the amount you got', run: () => A.recordPayment(t.id, { part: true }), write: true, id: 'td-c-part' },
+      fee ? { label: 'Add a ' + M.fmt(fee.amount) + ' late fee', hint: 'For ' + D.monthName(fee.period), run: () => A.addLateFee(t.id, fee.period), write: true, id: 'td-c-fee' } : null,
+      { label: 'See their page', hint: 'Payment history, notes and lease', run: () => A.openTenant(t.id), id: 'td-c-open' },
+    ] });
+  }
+  if (a.kind === 'followup' && t) {
+    return ui.choices({ title: 'Reminder about ' + t.name, items: [
+      { label: 'Mark it done', run: () => A.run(a.action), write: true, id: 'td-c-done' },
+      { label: 'See their page', run: () => A.openTenant(t.id), id: 'td-c-open' },
+    ] });
+  }
+  return A.run(a.action);
+}
 
-// ------------------------------------------------------------------ (4) recent activity, in sentences
+// ------------------------------------------------------------------ (4) what you did recently (page-like sheet)
 function events(S, today) {
   const out = [];
   for (const t of S.tenantsList()) {
@@ -213,33 +171,36 @@ function events(S, today) {
     for (const id of Object.keys(ents)) {
       const e = ents[id];
       if (!e || e.undone) continue;
-      const on = ' on ' + D.fmt(e.date, today);
-      let text;
-      if (e.type === 'payment') text = h`${t.name} paid <strong>${M.fmt(e.amount)}</strong>${byWord(e.method)}${on}`;
-      else if (e.type === 'credit') text = h`You took ${M.fmt(e.amount)} off what ${t.name} owes${e.memo ? h` (${e.memo})` : ''}${on}`;
-      else text = e.category === 'late_fee' ? h`You added a ${M.fmt(e.amount)} late fee for ${t.name}${on}` : h`You added a ${M.fmt(e.amount)} charge for ${t.name}${e.memo ? h` (${e.memo})` : ''}${on}`;
-      if (e.void) text = h`${text} — removed as a mistake`;
-      out.push({ id: 'e-' + id, at: e.createdAt || e.date, t, text, void: !!e.void });
+      let sub;
+      if (e.type === 'payment') sub = 'Paid ' + M.fmt(e.amount) + (e.method ? ' by ' + (METHOD_WORD[e.method] || e.method) : '');
+      else if (e.type === 'credit') sub = 'You took ' + M.fmt(e.amount) + ' off' + (e.memo ? ' (' + e.memo + ')' : '');
+      else sub = e.category === 'late_fee' ? 'You added a ' + M.fmt(e.amount) + ' late fee' : 'You added a ' + M.fmt(e.amount) + ' charge' + (e.memo ? ' (' + e.memo + ')' : '');
+      out.push({ id: 'e-' + id, at: e.createdAt || e.date, date: e.date, t, sub: sub + (e.void ? ' — removed as a mistake' : '') });
     }
     const log = t.log || {};
     for (const id of Object.keys(log)) {
       const l = log[id];
       if (!l || !l.at) continue;
-      const d = String(l.at).slice(0, 10);
-      out.push({ id: 'l-' + id, at: l.at, t, quote: true, text: h`You ${KIND_WORD[l.kind] || 'wrote a note about'} ${t.name} on ${D.fmt(d, today)}: “${String(l.text || '').slice(0, 90)}${String(l.text || '').length > 90 ? '…' : ''}”` });
+      const text = String(l.text || '');
+      out.push({ id: 'l-' + id, at: l.at, date: String(l.at).slice(0, 10), t, sub: (KIND_WORD[l.kind] || 'Note') + ': “' + (text.length > 80 ? text.slice(0, 78) + '…' : text) + '”' });
     }
   }
   out.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
-  return out.slice(0, 8);
+  return out.slice(0, 20);
 }
-function activity(S, today) {
+function recentSheet(S, today) {
   const list = events(S, today);
-  return h`<section class="td-activity" aria-labelledby="td-act-t">
-    <div class="sec"><h2 class="sec-title" id="td-act-t">What happened lately</h2></div>
-    ${list.length ? h`<ul class="td-events">${list.map(ev => h`<li><button type="button" class="td-ev${ev.void ? ' is-void' : ''}" id="td-ev-${ev.id}" data-act="open" data-id="${ev.t.id}">
-      ${ui.plate(ev.t.unit)}<span class="td-ev-text">${ev.text}${ev.quote ? '' : '.'}</span>${ui.icon('chevron-right', { cls: 'td-ev-chev' })}
-    </button></li>`)}</ul>` : ui.empty({ quiet: true, title: 'Nothing yet. Payments and notes you record will show here.' })}
-  </section>`;
+  const days = [];
+  for (const ev of list) { const last = days[days.length - 1]; if (last && last.date === ev.date) last.items.push(ev); else days.push({ date: ev.date, items: [ev] }); }
+  ui.sheet({
+    title: 'What you did recently', page: true, cancel: false, actions: [{ id: 'close', label: 'Close', kind: '' }],
+    body: (el, sh) => {
+      el.innerHTML = String(list.length ? h`${days.map(d => h`<div class="recent-day">${ui.rowsHead(ui.dateWords(d.date, today))}<ul class="rows rows-inset">${d.items.map(ev => ui.row({
+        lead: ui.plate(ev.t.unit, { property: ev.t.property }), title: ev.t.name, sub: ev.sub, act: 'open', attrs: { id: 'td-ev-' + ev.id, 'data-id': ev.t.id } }))}</ul></div>`)}`
+        : ui.empty({ quiet: true, title: 'Nothing yet. Payments and notes you record will show here.' }));
+      el.addEventListener('click', e => { const b = e.target.closest('[data-act="open"]'); if (!b) return; sh.close(); RB.actions.openTenant(b.dataset.id); });
+    },
+  });
 }
 
 RB.views.register('today', {
@@ -249,18 +210,18 @@ RB.views.register('today', {
     const att = S.attention();
     const byId = new Map(att.map(a => [a.id, a]));
     el.innerHTML = String(h`<div class="td">
-      ${tasks()}
-      ${collection(S, ctx.today)}
-      <div class="td-attention">${attention(S, att, ctx.today)}</div>
-      ${glance(S, ctx.today)}
-      ${activity(S, ctx.today)}
+      <div class="td-main">${money(S, ctx.today)}${actions()}</div>
+      <div class="td-side">${needsYou(S, att, ctx.today)}
+        <p class="td-recent"><button type="button" class="btn-link" id="td-recent" data-act="recent" aria-haspopup="dialog">See what you did recently${ui.icon('chevron-right')}</button></p>
+      </div>
     </div>`);
     ui.bind(el, {
       task: b => runTask(b.dataset.task),
-      run: b => { const a = byId.get(b.dataset.id); if (a) RB.actions.run(a[b.dataset.which]); },
-      part: b => { const a = byId.get(b.dataset.id); if (a && a.tenantId) RB.actions.recordPayment(a.tenantId, { part: true }); },
-      more: b => { expanded[b.dataset.g] = !expanded[b.dataset.g]; RB.shell.refresh(); },
-      open: b => RB.actions.openTenant(b.dataset.id),
+      item: b => { const a = byId.get(b.dataset.id); if (a) openItem(S, a); },
+      pay: b => { const a = byId.get(b.dataset.id); if (a && a.tenantId) RB.actions.recordPayment(a.tenantId); },
+      more: () => { showAll = !showAll; RB.shell.refresh(); const m = document.getElementById('td-more'); if (m) m.focus({ preventScroll: true }); },
+      recent: () => recentSheet(S, ctx.today),
     });
   },
+  destroy() { showAll = false; },
 });

@@ -104,9 +104,9 @@ ui.pill = function pill(status, opts) {
     else if (st === 'none') label = null;
     else label = STATUS_WORD[st];
   }
-  if (label === null) return h`<span class="pill pill-none${o.size === 'sm' ? ' pill-sm' : ''}" title="${o.title || 'No rent charged this month'}">${ui.icon('dash', { size: 12 })}<span>No rent this month</span></span>`;
-  const ico = st === 'partial_late' ? 'triangle' : STATUS_ICON[st];
-  return h`<span class="pill pill-${st}${o.size === 'sm' ? ' pill-sm' : ''}"${o.title ? h` title="${o.title}"` : ''}>${ui.icon(ico, { size: 12 })}<span>${label}</span></span>`;
+  // v3: a pill IS a status marker (icon + words, colour on the marker only); the pill-* classes stay for old selectors.
+  if (label === null) return ui.status('none', 'No rent this month', { cls: 'pill pill-none' + (o.size === 'sm' ? ' pill-sm' : ''), title: o.title || 'No rent charged this month' });
+  return ui.status(st, label, { cls: 'pill pill-' + st + (o.size === 'sm' ? ' pill-sm' : ''), title: o.title });
 };
 /** Pill for a RB.model Month ({status, daysLate, rentPaid}). */
 ui.monthPill = (m, opts) => (m && m.scheduled !== false ? ui.pill(m.status, Object.assign({ daysLate: m.daysLate, paid: m.rentPaid }, opts)) : ui.pill('none', opts));
@@ -138,14 +138,135 @@ ui.splitBar = function splitBar(paid, total, opts) {
   return h`<span class="splitbar" role="img" aria-label="${label}"><span class="splitbar-paid" style="width:${pct.toFixed(2)}%"></span></span>`;
 };
 
-/** Generic tag. tone: ''|'accent'|'ok'|'warn'|'bad'|'quiet' */
-ui.tag = (text, tone, icon) => h`<span class="tag${tone ? ' tag-' + tone : ''}">${icon ? ui.icon(icon, { size: 12 }) : ''}${text}</span>`;
+/**
+ * Generic tag. tone: ''|'accent'|'quiet' → a small neutral label; 'ok'|'warn'|'bad' → rendered as a status marker
+ * (v3 law 5: semantic colour only on status markers), keeping the tag-<tone> class for old selectors.
+ */
+ui.tag = (text, tone, icon) => (tone === 'ok' || tone === 'warn' || tone === 'bad'
+  ? ui.status(tone, text, { icon: icon || (tone === 'ok' ? 'check' : tone === 'bad' ? 'triangle' : 'clock'), cls: 'tag tag-' + tone })
+  : h`<span class="tag${tone ? ' tag-' + tone : ''}">${icon ? ui.icon(icon, { size: 14 }) : ''}${text}</span>`);
+
+// ================================================================= v3 shared pieces (SPEC §10.2)
+const MARK_ICON = { late: 'triangle', bad: 'triangle', urgent: 'triangle', partial_late: 'triangle', partial: 'half', warn: 'clock', notice: 'clock',
+  due: 'circle', paid: 'check', paid_late: 'check-late', ok: 'check', info: 'dot', quiet: 'dot', none: 'dash' };
+const MARK_TONE = { late: 'late', bad: 'late', urgent: 'late', partial_late: 'partial_late', partial: 'partial', warn: 'warn', notice: 'warn',
+  due: 'due', paid: 'paid', paid_late: 'paid_late', ok: 'ok', info: 'info', quiet: 'quiet', none: 'none' };
+ui.STATUS_KINDS = Object.keys(MARK_ICON);
+/**
+ * Status marker (SafeHTML): icon shape + words; the ONLY element allowed to carry semantic colour (law 5).
+ * kind: late|bad|urgent (red triangle) · partial (amber half) · partial_late (amber words, red triangle) · warn|notice (amber clock)
+ *       · due (ink hollow circle) · paid (muted tick — quiet) · paid_late · ok (green tick, use sparingly) · info (accent dot)
+ *       · quiet (muted dot) · none (dash).
+ * opts: {icon (override), cls (extra classes), title, id}
+ */
+ui.status = function status(kind, words, opts) {
+  const o = opts || {};
+  const k = MARK_TONE[kind] ? kind : 'quiet';
+  const cls = 'status status-' + MARK_TONE[k] + (o.cls ? ' ' + o.cls : '');
+  return h`<span class="${cls}"${o.title ? h` title="${o.title}"` : ''}${o.id ? h` id="${o.id}"` : ''}>${ui.icon(o.icon || MARK_ICON[k], { size: 14 })}<span class="status-words">${words}</span></span>`;
+};
+
+/**
+ * The canonical row (SPEC §10.2). Returns `<li>…row…</li>` (pass {bare:true} for the row element alone).
+ * opts: {lead (SafeHTML, e.g. ui.plate), title, sub, amt (string|SafeHTML; tabular, ink), status (ui.status(...)) — at the
+ *        row's end under the amount, or under the sub line with statusPos:'main', end (extra SafeHTML at the end),
+ *        href | act (data-act name) — the whole row is the one tap target and ends in a chevron; neither → a static row,
+ *        btn: {label, act, id, attrs, write} — the ONE soft button allowed on Rent "still owes" rows and Today rent rows,
+ *        bar (SafeHTML under the sub line, e.g. ui.splitBar), id, cls, attrs (on the tap target), liCls, liAttrs, chev:false, bare}
+ * With `btn`, the row is <div class="row row-act">: the title is a <button class="row-hit"> stretched over the whole row
+ * (carrying act/href/attrs/id), the button sits beside it (under the text, right-aligned, on phone).
+ */
+ui.row = function row(opts) {
+  const o = opts || {};
+  const lead = o.lead ? h`<span class="row-lead">${o.lead}</span>` : '';
+  // status sits under the amount at the row's end (default), or under the sub line with statusPos:'main'
+  const statusInMain = !!o.status && o.statusPos === 'main';
+  const end = o.amt || (o.status && !statusInMain) || o.end
+    ? h`<span class="row-end">${o.amt ? h`<span class="row-amt">${o.amt}</span>` : ''}${o.status && !statusInMain ? h`<span class="row-status">${o.status}</span>` : ''}${o.end || ''}</span>` : '';
+  const tappable = !!(o.href || o.act || (o.attrs && o.attrs['data-act']));
+  const chev = tappable && o.chev !== false ? h`<span class="row-chev" aria-hidden="true">${ui.icon('chevron-right')}</span>` : '';
+  const sub = o.sub ? h`<span class="row-sub">${o.sub}</span>` : '';
+  const bar = o.bar ? h`<span class="row-bar">${o.bar}</span>` : '';
+  const st = statusInMain ? h`<span class="row-status">${o.status}</span>` : '';
+  const cls = 'row' + (o.lead ? '' : ' row-nolead') + (o.cls ? ' ' + o.cls : '');
+  const tapAttrs = Object.assign({ id: o.id, 'data-act': o.act }, o.attrs || {});
+  let el;
+  if (o.btn) {
+    const b = o.btn;
+    const hitTag = o.href ? 'a' : 'button';
+    const hit = h`<${raw(hitTag)} class="row-hit"${o.href ? h` href="${o.href}"` : raw(' type="button"')}${ui.attrs(tapAttrs)}>${o.title}</${raw(hitTag)}>`;
+    const btn = h`<button${ui.attrs(Object.assign({ type: 'button', class: 'btn btn-soft row-btn', id: b.id, 'data-act': b.act, 'data-write': b.write === false ? null : '' }, b.attrs || {}))}>${b.label}</button>`;
+    // the status marker gets its own cell so it can share a line with the button on phone
+    const st2 = o.status ? h`<span class="row-status row-act-status">${o.status}</span>` : '';
+    const amt = o.amt ? h`<span class="row-end"><span class="row-amt">${o.amt}</span></span>` : '';
+    // status + button: their own line on phone (wrapping only when they cannot share it); separate columns on desktop
+    el = h`<div class="${cls} row-act">${lead}<span class="row-main">${hit}${sub}${bar}</span>${amt}<span class="row-act-foot">${st2}${btn}</span>${chev}</div>`;
+  } else {
+    const inner = h`${lead}<span class="row-main"><span class="row-title">${o.title}</span>${sub}${bar}${st}</span>${end}${chev}`;
+    if (o.href) el = h`<a class="${cls}" href="${o.href}"${ui.attrs(tapAttrs)}>${inner}</a>`;
+    else if (tappable) el = h`<button type="button" class="${cls}"${ui.attrs(tapAttrs)}>${inner}</button>`;
+    else el = h`<div class="${cls} row-static"${ui.attrs(tapAttrs)}>${inner}</div>`;
+  }
+  if (o.bare) return el;
+  return h`<li${o.liCls ? h` class="${o.liCls}"` : ''}${ui.attrs(o.liAttrs)}>${el}</li>`;
+};
+/** A hairline list of rows: ui.rows(arrayOfUiRowOpts | SafeHTML[], {inset, id, label, cls}). */
+ui.rows = function rows(items, opts) {
+  const o = opts || {};
+  const list = (items || []).filter(Boolean).map(x => (RB.isSafe(x) ? x : ui.row(x)));
+  return h`<ul class="rows${o.inset ? ' rows-inset' : ''}${o.cls ? ' ' + o.cls : ''}"${o.id ? h` id="${o.id}"` : ''}${o.label ? h` aria-label="${o.label}"` : ''}>${list}</ul>`;
+};
+/** Group heading for a list of rows: "Still owes 6" (14px 600, ink-2). opts {id} */
+ui.rowsHead = (text, count, opts) => h`<h3 class="rows-head"${opts && opts.id ? h` id="${opts.id}"` : ''}>${text}${count !== undefined && count !== null && count !== '' ? h` <span class="rows-count">${count}</span>` : ''}</h3>`;
+/** Quiet full-width "Show all 14" control. opts {id, act, expanded, label (override)} */
+ui.rowsMore = function rowsMore(n, opts) {
+  const o = opts || {};
+  return h`<button type="button" class="rows-more"${ui.attrs({ id: o.id, 'data-act': o.act || 'more', 'aria-expanded': o.expanded ? 'true' : 'false' })}>${o.label || (o.expanded ? 'Show fewer' : 'Show all ' + n)}${ui.icon(o.expanded ? 'chevron-up' : 'chevron-down')}</button>`;
+};
+
+/**
+ * View switch (law 8): one row, never wraps, fits 390px. items [{key, label, count?}], value = selected key.
+ * opts {id (prefix → buttons #<id>-<key>), act (data-act, default 'seg'), label (aria-label)}
+ * Buttons carry data-k="<key>" and aria-pressed. "Still owes 6 · Paid 20 · All 26".
+ */
+ui.segment = function segment(items, value, opts) {
+  const o = opts || {};
+  return h`<div class="seg segment" role="group"${o.label ? h` aria-label="${o.label}"` : ''}${o.id ? h` id="${o.id}"` : ''}>${(items || []).map(x => h`<button type="button"${ui.attrs({ id: o.id ? o.id + '-' + x.key : null, 'data-act': o.act || 'seg', 'data-k': x.key, 'aria-pressed': x.key === value ? 'true' : 'false' })}>${x.label}${x.count !== undefined && x.count !== null ? h` <span class="seg-n">${x.count}</span>` : ''}</button>`)}</div>`;
+};
+
+/** Radio cards (2–4 options) — a select at 5+ (law 8). Same opts as ui.field. */
+ui.choice = o => ui.field(Object.assign({}, o, { type: 'choice' }));
+
+/** Plain words for a date, written out: "Tuesday, November 24" (adds the year when it is not this year). */
+ui.dateWords = function dateWords(d, today) {
+  if (!d || !D.valid(d)) return '';
+  const t = today || (RB.store ? RB.store.today() : D.today());
+  const [y, m, dd] = d.split('-').map(Number);
+  const wd = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(Date.UTC(y, m - 1, dd)).getUTCDay()];
+  return wd + ', ' + D.MONTHS[m - 1] + ' ' + dd + (String(y) !== t.slice(0, 4) ? ', ' + y : '');
+};
+/** A date field with the date written out beside it (law 11). Same opts as ui.field; type is forced to 'date'. */
+ui.dateField = o => ui.field(Object.assign({}, o, { type: 'date' }));
+
+/**
+ * One number, one name (law 7): "6 tenants owe $8,545 in total — $6,495 of it is November's rent."
+ * owed = RB.model.owed(...) (default: computed from the store). Plain text.
+ */
+let owedCache = null;
+ui.owed = function owed() {
+  const S = RB.store;
+  if (owedCache && owedCache.v === S.version && owedCache.t === S.today()) return owedCache.o;
+  const o = RB.model.owed(S.state, S.today(), id => S.ledger(id));
+  owedCache = { v: S.version, t: S.today(), o };
+  return o;
+};
+ui.owedSentence = (owed, today) => RB.model.owedSentence(owed || ui.owed(), today || RB.store.today());
 
 /** Tenant status tag: active (no tag unless opts.all), notice, past. */
 ui.tenantTag = function tenantTag(status) {
   if (status === 'notice') return ui.tag('Moving out', 'warn', 'door');
   if (status === 'past') return ui.tag('Moved out', 'quiet');
-  return ui.tag('Active', 'ok');
+  return ui.tag('Active', 'quiet');
 };
 
 /**
@@ -155,12 +276,13 @@ ui.tenantTag = function tenantTag(status) {
 ui.plate = function plate(unit, opts) {
   const o = opts || {};
   const lg = o.size === 'lg';
-  const st = o.status && STATUS_ICON[o.status] ? o.status : '';
-  const cls = 'plate ' + (lg ? 'plate-lg' : 'plate-sm') + (st ? ' plate-' + st : '');
+  const st = o.status && (STATUS_ICON[o.status] || o.status === 'partial_late') ? o.status : '';
+  // v3: door plates are neutral; only the large grid plate keeps a small status glyph (colour on the glyph).
+  const cls = 'plate ' + (lg ? 'plate-lg' : 'plate-sm') + (st && lg ? ' plate-' + st : st === 'none' ? ' plate-none' : '');
   const tag = o.button ? 'button' : 'span';
   const title = o.title || (o.property ? o.property + ' ' + unit : '');
   const inner = lg
-    ? h`<span class="plate-unit">${unit || '—'}</span>${st && st !== 'none' ? h`<span class="plate-glyph">${ui.icon(STATUS_ICON[st], { size: 10 })}</span>` : ''}`
+    ? h`<span class="plate-unit">${unit || '—'}</span>${st && st !== 'none' ? h`<span class="plate-glyph">${ui.icon(st === 'partial_late' ? 'triangle' : STATUS_ICON[st], { size: 12 })}</span>` : ''}`
     : h`${unit || '—'}`;
   return h`<${raw(tag)} class="${cls}"${o.button ? raw(' type="button"') : ''}${title ? h` title="${title}"` : ''}${ui.attrs(o.attrs)}>${inner}</${raw(tag)}>`;
 };
@@ -197,7 +319,7 @@ ui.money = function money(cents, opts) {
 };
 
 /**
- * Balance in words (v2 default): owed → "Owes $1,225" (danger colour) · zero → "All paid up" · credit → "$250 paid ahead".
+ * Balance in words (v2 default; v3: always ink — money never carries colour): owed → "Owes $1,225" · zero → "All paid up" · credit → "$250 paid ahead".
  * opts: {zero: text for zero (''→ renders nothing visible)}, {plain:true}: figures only — owed "$1,225", credit "$250 ahead", zero "—".
  */
 ui.balance = function balance(cents, opts) {
@@ -327,13 +449,29 @@ document.addEventListener('keydown', e => {
 
 // ================================================================= toast
 let toastBox = null;
+/** Law 10: feedback never blocks. Called whenever a sheet or drawer opens. */
+ui.dismissToasts = function dismissToasts() {
+  if (!toastBox) return;
+  Array.from(toastBox.children).forEach(t => { if (t._rbClose) t._rbClose(); else t.remove(); });
+};
+const sheetOpen = () => layers.some(l => l.kind === 'sheet' || l.kind === 'palette');
+function placeToasts() { if (toastBox) toastBox.classList.toggle('is-top', sheetOpen()); }
 /**
  * Toast. opts: {undo: fn (adds a big "Undo"), action:{label, run}, tone:'bad', duration (ms, default 10000; 0 = sticky), icon}
  * Returns {close}.
  */
 ui.TOAST_MS = 10000;
+const heldToasts = [];
+/** Show toasts that were held while a sheet was open (called when the last sheet closes). */
+function flushToasts() { if (sheetOpen()) return; heldToasts.splice(0).forEach(t => { if (!t.cancelled) t.show(); }); }
 ui.toast = function toast(message, opts) {
   const o = opts || {};
+  // Law 10: a toast never sits over a sheet. One raised while a sheet is open is held and shown when it closes.
+  if (sheetOpen()) {
+    const held = { cancelled: false, real: null, show() { held.real = ui.toast(message, opts); } };
+    heldToasts.push(held);
+    return { el: null, close() { held.cancelled = true; if (held.real) held.real.close(); } };
+  }
   if (!toastBox || !toastBox.isConnected) {
     toastBox = document.createElement('div');
     toastBox.className = 'toasts';
@@ -342,13 +480,15 @@ ui.toast = function toast(message, opts) {
     layerRoot().appendChild(toastBox);
   }
   while (toastBox.children.length >= 3) toastBox.firstChild.remove();
+  placeToasts();
   const el = document.createElement('div');
   el.className = 'toast' + (o.tone === 'bad' ? ' toast-bad' : '');
   const act = o.undo ? { label: 'Undo', run: o.undo, undo: true } : o.action;
   el.innerHTML = String(h`${o.tone === 'bad' ? h`<span class="toast-ico">${ui.icon('alert')}</span>` : o.icon ? h`<span class="toast-ico">${ui.icon(o.icon)}</span>` : ''}<span class="toast-msg">${message}</span>${act ? h`<button type="button" class="toast-action">${act.undo ? ui.icon('undo') : ''}${act.label}</button>` : ''}<button type="button" class="toast-x">Close</button>`);
   toastBox.appendChild(el);
   let timer = null;
-  const close = () => { clearTimeout(timer); if (!el.isConnected) return; animateOut(el, () => el.remove()); };
+  const close = () => { clearTimeout(timer); if (!el.isConnected) return; el.style.pointerEvents = 'none'; animateOut(el, () => el.remove()); };
+  el._rbClose = () => { clearTimeout(timer); el.remove(); };
   const arm = () => { clearTimeout(timer); const d = o.duration === undefined ? ui.TOAST_MS : o.duration; if (d) timer = setTimeout(close, d); };
   if (act) el.querySelector('.toast-action').addEventListener('click', () => { close(); try { act.run(); } catch (e) { console.error(e); } });
   el.querySelector('.toast-x').addEventListener('click', close);
@@ -372,6 +512,9 @@ let sheetSeq = 0;
 ui.sheet = function sheet(opts) {
   const o = opts || {};
   const n = ++sheetSeq;
+  // Law 10: sheets never open from sheets. Any open sheet (or Find) is closed first, so there is only ever one.
+  layers.filter(l => l.kind === 'sheet' || l.kind === 'palette' || l.kind === 'menu').reverse().forEach(l => { l.restoreFocus = false; l.close(); });
+  ui.dismissToasts();
   const wrap = document.createElement('div');
   wrap.className = 'sheet-wrap';
   const actions = (o.actions || [{ id: 'ok', label: 'Done', kind: 'primary' }]).map((a, i) => Object.assign({ id: a.id || 'a' + i }, a));
@@ -401,7 +544,10 @@ ui.sheet = function sheet(opts) {
     close(result) {
       if (closed) return; closed = true;
       popLayer(layer);
-      animateOut(sheetEl, () => wrap.remove());
+      wrap.classList.add('is-closing');
+      wrap.style.pointerEvents = 'none';
+      animateOut(sheetEl, () => { wrap.remove(); placeToasts(); });
+      setTimeout(flushToasts, 0);
       wrap.querySelector('.scrim').style.opacity = '0';
       if (o.onClose) try { o.onClose(result); } catch (e) { console.error(e); }
     },
@@ -413,6 +559,7 @@ ui.sheet = function sheet(opts) {
     get closed() { return closed; },
   };
   const layer = pushLayer({ el: wrap, kind: 'sheet', close: () => handle.close() });
+  if (o.page) sheetEl.classList.add('sheet-page');
   if (typeof o.body === 'function') { const r = o.body(body, handle); if (r !== undefined && r !== null) body.innerHTML = String(RB.isSafe(r) ? r : RB.esc(r)); }
   else if (o.body !== undefined && o.body !== null) body.innerHTML = String(RB.isSafe(o.body) ? o.body : RB.esc(o.body));
   const run = async a => {
@@ -433,7 +580,7 @@ ui.sheet = function sheet(opts) {
   form.addEventListener('submit', e => { e.preventDefault(); if (submitIdx >= 0 && !handle.action(actions[submitIdx].id).disabled) run(actions[submitIdx]); });
   // initial focus
   requestAnimationFrame(() => {
-    const target = (o.initialFocus && sheetEl.querySelector(o.initialFocus)) || body.querySelector('input:not([type=hidden]):not([type=checkbox]), select, textarea') || (submitIdx >= 0 ? handle.action(actions[submitIdx].id) : null) || sheetEl.querySelector('.sheet-close');
+    const target = (o.initialFocus && sheetEl.querySelector(o.initialFocus)) || body.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea') || (submitIdx >= 0 ? handle.action(actions[submitIdx].id) : null) || sheetEl.querySelector('.sheet-close');
     if (target) { try { target.focus({ preventScroll: true }); if (target.select && target.type !== 'date' && target.tagName === 'INPUT') target.select(); } catch (e) { /* ignore */ } }
   });
   return handle;
@@ -535,6 +682,7 @@ ui.drawer = function drawer(opts) {
     drawerHandle.replace(o);
     return drawerHandle;
   }
+  ui.dismissToasts();
   const scrim = document.createElement('div');
   scrim.className = 'scrim drawer-scrim';
   const el = document.createElement('aside');
@@ -660,6 +808,42 @@ ui.palette = function palette(opts) {
   return { el: wrap, close, setQuery(q) { input.value = q; sel = 0; render(); } };
 };
 
+/** "Unit 2B at Alder Court" / "No. 4 at Fenwick Row" (plain text). */
+ui.place = function place(t) {
+  if (!t) return '';
+  const u = String(t.unit || '').trim();
+  const unit = u ? (/^[A-Za-z]?\d+[A-Za-z]?$/.test(u) || /^\d?[A-Za-z]$/.test(u) ? 'Unit ' + u : u) : '';
+  return [unit, t.property].filter(Boolean).join(' at ');
+};
+
+/**
+ * "What would you like to do?" — a short sheet of choices as rows (SPEC §10.3). Picking one closes the sheet FIRST, then
+ * runs the item (law 10: a sheet never opens on top of a sheet).
+ * opts: {title='What would you like to do?', sub, body (SafeHTML above the list), items:[{label, hint|sub, run, danger, write, id}]}
+ * Falsy items are skipped. Returns the sheet handle. Row ids: item.id || 'choice-<i>'.
+ */
+ui.choices = function choices(opts) {
+  const o = opts || {};
+  const items = (o.items || []).filter(Boolean);
+  return ui.sheet({
+    title: o.title || 'What would you like to do?', sub: o.sub, cancel: false, actions: [{ id: 'close', label: 'Close', kind: '' }],
+    body: (el, sh) => {
+      el.innerHTML = String(h`${o.body || ''}<ul class="rows choices-list">${items.map((x, i) => ui.row({
+        title: x.label, sub: x.hint || x.sub, act: 'choice',
+        cls: x.danger ? 'is-danger' : '',
+        attrs: { id: x.id && /^[A-Za-z][\w-]*$/.test(x.id) ? x.id : 'choice-' + i, 'data-i': i, 'data-choice': x.id || null, 'data-write': x.write ? '' : null },
+      }))}</ul>`);
+      el.addEventListener('click', e => {
+        const b = e.target.closest('[data-i]'); if (!b) return;
+        const x = items[+b.dataset.i];
+        sh.close('choice');
+        if (x && x.run) setTimeout(() => { try { x.run(); } catch (err) { console.error(err); } }, 0);
+      });
+    },
+    initialFocus: '.choices-list .row',
+  });
+};
+
 /**
  * "Which tenant?" chooser (v2): a sheet with a big find box and large rows — door plate, name, property, what they owe.
  * opts: {title='Which tenant?', sub, filter(tenant) → bool, includePast:false, prefer:'owes'|null (owing tenants first,
@@ -668,6 +852,9 @@ ui.palette = function palette(opts) {
  */
 ui.pickTenant = function pickTenant(opts) {
   const o = opts || {};
+  // law 9: pickers show only what is relevant. purpose 'pay' (default when prefer:'owes') shows what they owe;
+  // 'repair' and anything else show where they live.
+  const purpose = o.purpose || (o.prefer === 'owes' ? 'pay' : 'place');
   return new Promise(resolve => {
     let picked = null;
     const today = RB.store.today();
@@ -681,19 +868,20 @@ ui.pickTenant = function pickTenant(opts) {
       const lg = RB.store.ledger(x.t.id);
       const m = lg && lg.months[D.monthKey(today)];
       const late = m && m.status === 'late';
-      return h`<li><button type="button" class="pick-row" data-pick="${x.t.id}" id="pick-${x.t.id}">
-        ${ui.plate(x.t.unit, { property: x.t.property })}
-        <span class="pick-main"><span class="pick-name">${x.t.name}</span><span class="pick-sub">${x.t.property}${x.t.status === 'past' ? ' · moved out' : x.t.status === 'notice' ? ' · moving out' : ''}</span></span>
-        <span class="pick-owes${x.b > 0 ? ' is-owed' : ''}">${ui.balanceWords(x.b)}${late ? h`<span class="pick-late">${D.days(m.daysLate)} late</span>` : ''}</span>
-      </button></li>`;
+      const sub = ui.place(x.t) + (x.t.status === 'past' ? ' · moved out' : x.t.status === 'notice' ? ' · moving out' : '');
+      const pay = purpose === 'pay';
+      return ui.row({ lead: ui.plate(x.t.unit, { property: x.t.property }), title: x.t.name, sub,
+        amt: pay ? (x.b > 0 ? M.fmt(x.b) : '') : '',
+        status: pay ? (late ? ui.status('late', 'Late — ' + D.days(m.daysLate)) : x.b > 0 ? '' : x.b < 0 ? ui.status('quiet', M.fmt(-x.b) + ' paid ahead') : ui.status('paid', 'All paid up')) : '',
+        act: 'pick', cls: 'pick-row', attrs: { id: 'pick-' + x.t.id, 'data-pick': x.t.id } });
     };
     ui.sheet({
-      title: o.title || 'Which tenant?', sub: o.sub || (o.prefer === 'owes' ? 'People who still owe are at the top.' : ''), size: 'wide',
+      title: o.title || 'Which tenant?', sub: o.sub || (o.prefer === 'owes' ? 'People who still owe are at the top.' : ''),
       cancel: 'Cancel', actions: [],
       body: (el, sh) => {
         el.innerHTML = String(h`<label class="search pick-find" for="pick-q"><span class="search-icon">${ui.icon('search')}</span><input class="input" id="pick-q" type="search" placeholder="A name or a unit, like 2B" autocomplete="off" spellcheck="false" aria-label="Find a tenant"></label>
           ${o.skip ? h`<button type="button" class="btn btn-block pick-skip" id="pick-skip" data-pick="">${o.skip}</button>` : ''}
-          <ul class="pick-list" id="pick-list" aria-label="Tenants"></ul>`);
+          <ul class="rows pick-list" id="pick-list" aria-label="Tenants"></ul>`);
         const list = el.querySelector('#pick-list'), q = el.querySelector('#pick-q');
         const draw = () => {
           const r = rows(q.value);
@@ -733,7 +921,8 @@ ui.field = function field(opts) {
   if (t === 'money') {
     control = h`<span class="money-input${o.big ? ' money-input-lg' : ''}"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input"${ui.attrs(Object.assign({ type: 'text', inputmode: 'decimal', 'data-kind': 'money', autocomplete: 'off', value: val === '' ? '' : M.input(val), placeholder: o.placeholder || '0.00' }, common))}></span>`;
   } else if (t === 'date') {
-    control = h`<input class="input"${ui.attrs(Object.assign({ type: 'date', 'data-kind': 'date', value: val, min: o.min, max: o.max }, common))}>`;
+    // law 11: the date is written out in words beside the native field ("Tuesday, November 24"); kept live by a global listener.
+    control = h`<span class="datefield"><input class="input"${ui.attrs(Object.assign({ type: 'date', 'data-kind': 'date', value: val, min: o.min, max: o.max }, common))}><span class="datefield-words" id="${id}-words" aria-hidden="true">${ui.dateWords(val)}</span></span>`;
   } else if (t === 'select') {
     const opt = (o.options || []).map(x => (typeof x === 'object' ? x : { value: x, label: x }));
     control = h`<span class="select"><select class="input"${ui.attrs(common)}>${opt.map(x => h`<option value="${x.value}"${String(x.value) === String(val) ? raw(' selected') : ''}${x.disabled ? raw(' disabled') : ''}>${x.label}</option>`)}</select></span>`;
@@ -741,6 +930,9 @@ ui.field = function field(opts) {
     control = h`<textarea class="input textarea"${ui.attrs(Object.assign({ rows: o.rows || 3, placeholder: o.placeholder }, common))}>${val}</textarea>`;
   } else if (t === 'checkbox') {
     return h`<div class="field${o.span === 2 ? ' span-2' : ''}" data-field="${name}"><label class="check"><input${ui.attrs(Object.assign({ type: 'checkbox', checked: !!o.value }, common))}><span>${o.label}</span></label>${o.hint ? h`<div class="field-hint" id="${id}-hint">${o.hint}</div>` : ''}<div class="field-error" id="${id}-err"></div></div>`;
+  } else if (t === 'choice' && (o.options || []).length >= 5) {
+    // law 8: five or more options → a select (radio cards are for 2–4)
+    return ui.field(Object.assign({}, o, { type: 'select' }));
   } else if (t === 'choice') {
     // large tappable choices (radio cards). Options [{value, label, sub?, icon?}] or strings. Read back like any field.
     const opt = (o.options || []).map(x => (typeof x === 'object' ? x : { value: x, label: x }));
@@ -846,13 +1038,22 @@ ui.textSizeControl = function textSizeControl(opts) {
   const o = opts || {};
   const id = o.id || 'ts';
   const cur = RB.textSize.get();
-  return h`<div class="textsize" role="group" aria-labelledby="${id}-l"><span class="textsize-label${o.compact ? ' vh' : ''}" id="${id}-l">Text size</span><div class="seg textsize-seg">${RB.textSize.OPTIONS.map(x => h`<button type="button" id="${id}-${x.value}" data-textsize="${x.value}" aria-pressed="${x.value === cur ? 'true' : 'false'}" class="textsize-${x.value}">${x.label}</button>`)}</div></div>`;
+  const label = v => (RB.textSize.OPTIONS.find(x => x.value === v) || {}).label || 'Normal';
+  if (o.letters) {
+    // v3 sidebar: one row of three "A"s of increasing size (accessible names say the size), the choice written beneath
+    return h`<div class="textsize textsize-letters" role="group" aria-label="Text size"><div class="seg textsize-seg">${RB.textSize.OPTIONS.map(x => h`<button type="button" id="${id}-${x.value}" data-textsize="${x.value}" aria-pressed="${x.value === cur ? 'true' : 'false'}" aria-label="${x.label} text" class="textsize-${x.value}">A</button>`)}</div><span class="textsize-now" data-textsize-now>Text size: ${label(cur)}</span></div>`;
+  }
+  return h`<div class="textsize" role="group" aria-labelledby="${id}-l"><span class="textsize-label${o.compact ? ' vh' : ''}" id="${id}-l">Text size</span><div class="seg textsize-seg textsize-words">${RB.textSize.OPTIONS.map(x => h`<button type="button" id="${id}-${x.value}" data-textsize="${x.value}" aria-pressed="${x.value === cur ? 'true' : 'false'}" class="textsize-${x.value}">${x.label}</button>`)}</div></div>`;
 };
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-textsize]');
   if (b) RB.textSize.set(b.dataset.textsize);
 });
-RB.on('textsize', v => document.querySelectorAll('[data-textsize]').forEach(b => b.setAttribute('aria-pressed', b.dataset.textsize === v ? 'true' : 'false')));
+RB.on('textsize', v => {
+  document.querySelectorAll('[data-textsize]').forEach(b => b.setAttribute('aria-pressed', b.dataset.textsize === v ? 'true' : 'false'));
+  const l = (RB.textSize.OPTIONS.find(x => x.value === v) || {}).label || 'Normal';
+  document.querySelectorAll('[data-textsize-now]').forEach(n => { n.textContent = 'Text size: ' + l; });
+});
 
 /**
  * Step-by-step guide in a sheet ("Step 2 of 3", Back / Next, then a summary sentence before saving).
@@ -869,16 +1070,18 @@ ui.steps = function steps(opts) {
   const n = list.length;
   let i = 0;
   const atSummary = () => i >= n;
+  // law 9: the check-and-save screen is a step too ("Step 4 of 4")
+  const total = n + (o.summary ? 1 : 0);
   let sh = null;
   const draw = () => {
     const body = sh.body;
     if (atSummary()) {
       const sum = o.summary ? o.summary(data) : '';
-      body.innerHTML = String(h`<div class="steps-head"><div class="steps-count">Last check</div><h3 class="steps-title">Is this right?</h3></div><div class="steps-summary say">${RB.isSafe(sum) ? sum : h`${sum}`}</div><p class="caption mt-4">Press Back to change anything.</p>`);
+      body.innerHTML = String(h`<div class="steps-head"><div class="steps-count">Step ${total} of ${total}</div><h3 class="steps-title">Check and save</h3></div><div class="steps-summary">${RB.isSafe(sum) ? sum : h`${sum}`}</div><p class="caption mt-4">Is this right? Press Back to change anything.</p>`);
       sh.setAction('next', { label: o.doneLabel || 'Save' });
     } else {
       const st = list[i];
-      body.innerHTML = String(h`<div class="steps-head"><div class="steps-count">Step ${i + 1} of ${n}</div><h3 class="steps-title">${st.title || ''}</h3></div><div class="steps-body form-col"></div>`);
+      body.innerHTML = String(h`<div class="steps-head"><div class="steps-count">Step ${i + 1} of ${total}</div><h3 class="steps-title">${st.title || ''}</h3></div><div class="steps-body form-col"></div>`);
       const el = body.querySelector('.steps-body');
       const r = st.body ? st.body(el, data) : null;
       if (r !== undefined && r !== null) el.innerHTML = String(RB.isSafe(r) ? r : RB.esc(r));
@@ -921,6 +1124,7 @@ ui.setValue = function setValue(root, name, value) {
   if (el.type === 'checkbox') el.checked = !!value;
   else if (el.dataset.kind === 'money') el.value = value == null ? '' : M.input(value);
   else el.value = value == null ? '' : value;
+  if (el.dataset.kind === 'date') { const w = document.getElementById(el.id + '-words'); if (w) w.textContent = ui.dateWords(el.value); }
   if (el.dataset.kind === 'seg') { const seg = root.querySelector('[data-seg-for="' + CSS.escape(el.id) + '"]'); if (seg) seg.querySelectorAll('button').forEach(b => { const on = b.dataset.value === String(value); b.setAttribute('aria-pressed', on); b.setAttribute('aria-checked', on); }); }
 };
 
@@ -937,6 +1141,14 @@ document.addEventListener('click', e => {
   const cp = e.target.closest('[data-copy]');
   if (cp) { e.preventDefault(); ui.copy(cp.getAttribute('data-copy'), cp.getAttribute('data-copy-what') || 'text'); }
 });
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el && el.dataset && el.dataset.kind === 'date' && el.id) { const w = document.getElementById(el.id + '-words'); if (w) w.textContent = ui.dateWords(el.value); }
+}, true);
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el && el.dataset && el.dataset.kind === 'date' && el.id) { const w = document.getElementById(el.id + '-words'); if (w) w.textContent = ui.dateWords(el.value); }
+}, true);
 document.addEventListener('focusout', e => {
   const el = e.target;
   if (el && el.dataset && el.dataset.kind === 'money' && el.value.trim()) { const c = M.parse(el.value); if (c !== null) el.value = M.input(c); }

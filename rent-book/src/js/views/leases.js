@@ -1,16 +1,21 @@
-// views/leases.js — Leases: a plain list first ("Leases ending soon" with worded choices, then Moving out,
-// Month-to-month, Later). The 12-month calendar is behind a worded switch on desktop. Owns RB.actions.renewLease.
-// Plain-language rules: docs/SPEC.md §8. Wording helpers come from tenant-detail.js (RB._tn.W) at render time.
+// views/leases.js — Leases (SPEC §10.3): one sentence, then "Ending soon" and "Moving out" as rows whose tap opens
+// "What would you like to do?" (Renew the lease · They are moving out · Leave it month-to-month), "Month-to-month" as
+// plain rows, and "Later" folded into one control that expands in place. No buttons on rows. The 12-month calendar is
+// behind a switch on desktop. Owns RB.actions.renewLease. Words: SPEC §8.
 const RB = globalThis.RB;
 const { html: h, ui, date: D, money: M } = RB;
 const S = () => RB.store;
-const T = (RB._tn = RB._tn || {});
-const W = () => T.W;
 
 let cal = !!RB.prefs.get('leases:cal', false);
+let laterOpen = false;
+
+/** "Thursday, December 3" this year, "Thursday, December 3, 2027" otherwise. */
+const longDay = (d, today) => ui.dateWords(d, today || S().today());
+const place = t => ui.place(t);
 
 // ------------------------------------------------------------------ data
-function leaseRows(today, settings) {
+function leaseRows(today) {
+  const settings = S().settings();
   return S().tenantsList({ includePast: false }).map(t => {
     const ls = RB.model.leaseState(t, settings, today);
     const l = t.lease || {};
@@ -26,6 +31,11 @@ function leaseRows(today, settings) {
   });
 }
 const soon = (r, nd) => r.group === 'fixed' && r.days != null && r.days <= nd;
+function groups(rows, nd) {
+  const g = { soon: [], moving: [], mtm: [], later: [] };
+  rows.forEach(r => { g[r.group === 'moving' ? 'moving' : r.group === 'mtm' ? 'mtm' : soon(r, nd) ? 'soon' : 'later'].push(r); });
+  return g;
+}
 
 // ------------------------------------------------------------------ actions
 function goMonthToMonth(id) {
@@ -33,7 +43,7 @@ function goMonthToMonth(id) {
   const t = S().tenant(id); if (!t) return;
   const prev = (t.lease || {}).end || null;
   S().updateTenant(id, { lease: { end: null } }).catch(() => {});
-  ui.toast(t.name + ' is now month-to-month.', { undo: () => S().updateTenant(id, { lease: { end: prev } }), duration: 10000 });
+  ui.toast(t.name + ' is now month-to-month.', { undo: () => S().updateTenant(id, { lease: { end: prev } }) });
 }
 
 /** Renew the lease: plain questions, one summary sentence. Resolves true if saved. */
@@ -50,23 +60,23 @@ function renewLease(tenantId) {
   return new Promise(resolve => {
     let ok = false;
     const summary = v => {
-      const bits = [h`${t.name}’s lease will end on <strong>${v.end && D.valid(v.end) ? D.fmtLong(v.end) : '…'}</strong>${curEnd ? h` instead of ${D.fmtLong(curEnd)}` : ''}.`];
-      bits.push(changing(v) ? h` The rent goes from ${M.fmt(curRent)} to <strong>${M.fmt(v.rent)}</strong> a month on ${v.from && D.valid(v.from) ? D.fmtLong(v.from) : '…'}.` : h` The rent stays ${M.fmt(curRent)} a month.`);
+      const bits = [h`${t.name}’s lease will end on ${v.end && D.valid(v.end) ? longDay(v.end, today) : '…'}${curEnd ? h` instead of ${longDay(curEnd, today)}` : ''}.`];
+      bits.push(changing(v) ? h` The rent goes from ${M.fmt(curRent)} to ${M.fmt(v.rent)} a month on ${v.from && D.valid(v.from) ? longDay(v.from, today) : '…'}.` : h` The rent stays ${M.fmt(curRent)} a month.`);
       if (l.noticeDate || t.status === 'notice') bits.push(' They are no longer moving out.');
       return h`${bits}`;
     };
     ui.sheet({
-      title: 'Renew the lease', sub: t.name + ' — ' + T.place(t),
+      title: 'Renew the lease', sub: t.name + ' — ' + place(t),
       body: (el, sh) => {
-        el.innerHTML = String(h`<div class="tn-form">
-          <p class="tn-lead">${curEnd ? h`The lease ends ${D.fmtLong(curEnd)} — ${W().rel(curEnd, today)}.` : 'They are month-to-month now.'}</p>
-          ${ui.field({ name: 'end', id: 'lz-renew-end', label: 'New end date?', type: 'date', value: defEnd, required: true, requiredMsg: 'Choose the new end date', hint: 'Usually a year later.' })}
-          ${T.pick({ name: 'change', id: 'lz-renew-change', label: 'Is the rent changing?', value: 'no', options: [{ value: 'no', label: 'No — it stays ' + M.fmt(curRent) }, { value: 'yes', label: 'Yes' }] })}
-          <div id="lz-renew-rentwrap" class="tn-form">
+        el.innerHTML = String(h`<div class="form-col">
+          <p class="lz-lead">${curEnd ? h`The lease ends ${longDay(curEnd, today)} — ${D.rel(curEnd, today)}.` : 'They are month-to-month now.'}</p>
+          ${ui.dateField({ name: 'end', id: 'lz-renew-end', label: 'New end date?', value: defEnd, required: true, requiredMsg: 'Choose the new end date', hint: 'Usually a year later.' })}
+          ${ui.field({ name: 'change', id: 'lz-renew-change', label: 'Is the rent changing?', type: 'choice', value: 'no', options: [{ value: 'no', label: 'No — it stays ' + M.fmt(curRent) }, { value: 'yes', label: 'Yes' }] })}
+          <div id="lz-renew-rentwrap" class="form-col">
             ${ui.field({ name: 'rent', id: 'lz-renew-rent', label: 'What will the new rent be?', type: 'money', placeholder: M.input(curRent) })}
-            ${ui.field({ name: 'from', id: 'lz-renew-from', label: 'From when?', type: 'date', value: defFrom, hint: 'Months before this keep the old rent.' })}
+            ${ui.dateField({ name: 'from', id: 'lz-renew-from', label: 'From when?', value: defFrom, hint: 'Months before this keep the old rent.' })}
           </div>
-          <p class="tn-summary-text" id="lz-renew-sum" aria-live="polite"></p>
+          <p class="lz-sum" id="lz-renew-sum" aria-live="polite"></p>
         </div>`);
         const upd = () => {
           const r = ui.readForm(el).values;
@@ -95,7 +105,7 @@ function renewLease(tenantId) {
         if (l.noticeDate || t.status === 'notice') { patch.lease.noticeDate = null; patch.lease.moveOut = null; patch.status = 'active'; }
         S().updateTenant(tenantId, patch).catch(() => {});
         ok = true;
-        ui.toast('Renewed ' + t.name + '’s lease to ' + D.fmt(v.end, today) + (patch.rent ? ' at ' + M.fmt(v.rent) + ' a month' : '') + '.', { undo: () => S().updateTenant(tenantId, before), duration: 10000 });
+        ui.toast('Renewed ' + t.name + '’s lease to ' + longDay(v.end, today) + (patch.rent ? ' at ' + M.fmt(v.rent) + ' a month' : '') + '.', { undo: () => S().updateTenant(tenantId, before) });
       } }],
       onClose: () => resolve(ok),
     });
@@ -103,59 +113,72 @@ function renewLease(tenantId) {
 }
 RB.actions.renewLease = renewLease;
 
-// ------------------------------------------------------------------ the plain list
-function who(r) { return h`<button type="button" class="lz-name" data-act="open" data-id="${r.t.id}">${r.t.name}</button>`; }
-function item(r, today, kind) {
-  const t = r.t, l = t.lease || {};
-  let line;
-  if (kind === 'moving') line = l.moveOut && l.moveOut < today ? h`was moving out ${W().date(l.moveOut, today)} — finish the move-out` : h`moving out ${W().date(r.endDate, today)}, ${W().rel(r.endDate, today)}`;
-  else if (kind === 'mtm') line = r.ls.holdover && l.end ? h`month-to-month since the lease ended ${W().date(l.end, today)}` : 'month-to-month';
-  else line = h`lease ends ${W().date(r.endDate, today)}, ${r.days === 0 ? 'today' : W().rel(r.endDate, today)}`;
-  let acts;
-  if (kind === 'soon') acts = h`<button type="button" class="btn btn-primary" data-act="renew" data-id="${t.id}" data-write>Renew the lease</button>
-      <button type="button" class="btn" data-act="moveout" data-id="${t.id}" data-write>They are moving out</button>
-      <button type="button" class="btn btn-ghost lz-quiet" data-act="mtm" data-id="${t.id}" data-write>Leave it month-to-month</button>`;
-  else if (kind === 'moving') acts = h`<button type="button" class="btn" data-act="moveout" data-id="${t.id}" data-write>${l.moveOut && l.moveOut <= today ? 'Finish the move-out' : 'Change the moving-out day'}</button>
-      <button type="button" class="btn btn-ghost" data-act="renew" data-id="${t.id}" data-write>They are staying — renew</button>`;
-  else acts = h`<button type="button" class="btn" data-act="renew" data-id="${t.id}" data-write>Renew the lease</button>
-      <button type="button" class="btn btn-ghost" data-act="moveout" data-id="${t.id}" data-write>They are moving out</button>`;
-  return h`<li class="lz-item${kind === 'soon' ? ' is-soon' : ''}" data-tenant="${t.id}">
-    ${ui.plate(t.unit, { property: t.property })}
-    <div class="lz-item-main">
-      <p class="lz-item-text">${who(r)}, ${T.unitWord(t.unit)} — <span class="${kind === 'soon' || kind === 'moving' ? 'tone-warn' : ''}">${line}</span></p>
-      <p class="lz-item-sub">${t.property} · ${M.fmt(r.rent)} a month</p>
-      <div class="lz-item-acts">${acts}</div>
-    </div>
-  </li>`;
+// ------------------------------------------------------------------ "What would you like to do?"
+function choose(r) {
+  const t = r.t, l = t.lease || {}, today = S().today();
+  const id = t.id;
+  let sub;
+  if (r.group === 'moving') sub = l.moveOut && l.moveOut < today ? 'Was moving out ' + longDay(l.moveOut, today) + '.' : 'Moving out ' + longDay(r.endDate, today) + ' — ' + D.rel(r.endDate, today) + '.';
+  else if (r.group === 'mtm') sub = 'Month-to-month — no end date. ' + M.fmt(r.rent) + ' a month.';
+  else sub = 'Lease ends ' + longDay(r.endDate, today) + ' — ' + (r.days === 0 ? 'today' : D.rel(r.endDate, today)) + '.';
+  const items = [];
+  if (r.group === 'moving') {
+    items.push({ id: 'lz-c-moveout', label: l.moveOut && l.moveOut <= today ? 'Finish the move-out' : 'Change the moving-out day', write: true, run: () => RB.actions.moveOut(id) });
+    items.push({ id: 'lz-c-renew', label: 'They are staying — renew the lease', write: true, run: () => renewLease(id) });
+  } else {
+    items.push({ id: 'lz-c-renew', label: 'Renew the lease', sub: 'Choose a new end date, and the rent if it changes', write: true, run: () => renewLease(id) });
+    items.push({ id: 'lz-c-moveout', label: 'They are moving out', sub: 'Write down the day they leave', write: true, run: () => RB.actions.moveOut(id) });
+    if (r.group === 'fixed') items.push({ id: 'lz-c-mtm', label: 'Leave it month-to-month', sub: 'No end date — they pay month by month', write: true, run: () => goMonthToMonth(id) });
+  }
+  items.push({ id: 'lz-c-open', label: 'See their page', run: () => RB.actions.openTenant(id) });
+  ui.choices({ title: t.name, sub: place(t) + '. ' + sub, items });
 }
-function list(rows, today, settings) {
-  const nd = settings.leaseNoticeDays;
-  const g = { soon: [], moving: [], mtm: [], later: [] };
-  rows.forEach(r => { g[r.group === 'moving' ? 'moving' : r.group === 'mtm' ? 'mtm' : soon(r, nd) ? 'soon' : 'later'].push(r); });
-  const sec = (k, title, note, empty) => h`<section class="lz-sec" aria-labelledby="lz-h-${k}"><h2 class="lz-sec-title" id="lz-h-${k}">${title} <span class="lz-sec-n">(${g[k].length})</span></h2>
-    ${note ? h`<p class="tn-caption">${note}</p>` : ''}
-    ${g[k].length ? h`<ul class="lz-items">${g[k].map(r => item(r, today, k))}</ul>` : h`<p class="lz-empty">${empty}</p>`}</section>`;
-  return h`${sec('soon', 'Leases ending soon', 'Ending in the next ' + nd + ' days. Choose what happens next for each one.', 'No lease ends in the next ' + nd + ' days. Nothing to decide.')}
-    ${g.moving.length ? sec('moving', 'Moving out', null, '') : ''}
-    ${sec('mtm', 'Month-to-month', 'No end date. They pay month by month until someone gives notice.', 'Nobody is month-to-month.')}
-    ${g.later.length ? sec('later', 'Later', null, '') : ''}`;
+
+// ------------------------------------------------------------------ the list
+function row(r, today, kind) {
+  const t = r.t, l = t.lease || {};
+  let sub = place(t), status = '';
+  if (kind === 'moving') {
+    const past = l.moveOut && l.moveOut < today;
+    sub += past ? ' · was moving out ' + longDay(l.moveOut, today) : ' · moving out ' + longDay(r.endDate, today);
+    status = ui.status(past ? 'late' : 'warn', past ? 'Finish the move-out' : (r.days === 0 ? 'Today' : D.rel(r.endDate, today).replace(/^in /, 'In ')));
+  } else if (kind === 'mtm') {
+    sub += r.ls.holdover && l.end ? ' · since ' + longDay(l.end, today) : '';
+  } else {
+    sub += ' · ends ' + longDay(r.endDate, today);
+    if (kind === 'soon') status = ui.status('warn', r.days === 0 ? 'Ends today' : 'In ' + D.days(r.days));
+  }
+  return ui.row({ lead: ui.plate(t.unit, { property: t.property }), title: t.name, sub, amt: kind === 'mtm' ? M.fmt(r.rent) : '', status,
+    act: 'choose', attrs: { 'data-id': t.id, 'data-tenant': t.id, id: 'lz-row-' + t.id } });
+}
+function list(g, today, nd) {
+  const sec = (k, title, body) => h`<section class="lz-sec" id="lz-sec-${k}" aria-labelledby="lz-h-${k}">
+    <h2 class="rows-head" id="lz-h-${k}">${title} <span class="rows-count">${g[k].length}</span></h2>${body}</section>`;
+  const rows = k => h`<ul class="rows rows-inset">${g[k].map(r => row(r, today, k))}</ul>`;
+  return h`
+    ${sec('soon', 'Ending soon', g.soon.length ? rows('soon') : h`<p class="lz-empty">No lease ends in the next ${nd} days. Nothing to decide.</p>`)}
+    ${g.moving.length ? sec('moving', 'Moving out', rows('moving')) : ''}
+    ${g.mtm.length ? sec('mtm', 'Month-to-month', rows('mtm')) : ''}
+    ${g.later.length ? h`<section class="lz-sec" id="lz-sec-later" aria-label="Leases that end later">
+      ${laterOpen ? h`<h2 class="rows-head" id="lz-h-later">Later <span class="rows-count">${g.later.length}</span></h2>${rows('later')}` : ''}
+      <button type="button" class="rows-more" id="lz-later" data-act="later" aria-expanded="${String(laterOpen)}">${laterOpen ? 'Hide the later leases' : RB.plural(g.later.length, 'lease ends', 'leases end') + ' later — Show them'}</button>
+    </section>` : ''}`;
 }
 
 // ------------------------------------------------------------------ calendar (desktop only)
-function timeline(rows, today, settings) {
+function timeline(rows, today, nd) {
   const curKey = D.monthKey(today);
   const w0 = D.monthStart(curKey);
   const w1 = D.monthStart(D.addMonthKey(curKey, 12));
   const span = D.diffDays(w0, w1);
   const pct = d => Math.max(0, Math.min(100, (D.diffDays(w0, d) / span) * 100));
   const fx = n => n.toFixed(3) + '%';
-  const nd = settings.leaseNoticeDays;
   const todayX = pct(today);
   const nwEnd = D.addDays(today, nd);
   const months = Array.from({ length: 12 }, (_, i) => {
     const k = D.addMonthKey(curKey, i);
     const mon = D.MON[+k.slice(5, 7) - 1];
-    const label = i === 0 || k.slice(5) === '01' ? h`${mon}<span class="lz-yr">${' ' + k.slice(0, 4)}</span>` : mon;
+    const label = i === 0 || k.slice(5) === '01' ? h`${mon}<span class="lz-yr">${' ' + k.slice(0, 4)}</span>` : mon;
     return { k, x: pct(D.monthStart(k)), w: (D.daysInMonth(k) / span) * 100, label };
   });
   const bar = r => {
@@ -172,73 +195,54 @@ function timeline(rows, today, settings) {
     const label = r.group === 'mtm' ? 'Month-to-month' : r.group === 'moving' ? 'Moving out ' + D.fmt(r.endDate, today) : 'Ends ' + D.fmt(r.endDate, today);
     const inside = open || off || right > 72;
     return h`<div class="${cls}${inside ? ' lz-bar-in' : ''}" style="left:${fx(left)};width:${fx(width)}" data-start="${startD}" data-end="${r.group === 'mtm' ? '' : r.endDate}">
-        ${r.group === 'moving' ? h`<span class="lz-cap" aria-hidden="true"></span>` : ''}${off ? h`<span class="lz-arrow" aria-hidden="true">${ui.icon('arrow-right', { size: 12 })}</span>` : ''}
         ${inside ? h`<span class="lz-label">${label}</span>` : ''}</div>
       ${inside ? '' : h`<span class="lz-label lz-label-out" style="left:calc(${fx(right)} + 8px)">${label}</span>`}`;
   };
-  return h`<p class="tn-caption lz-cal-cap">Each bar is one lease, from when it started to when it ends. The blue line is today. The shaded band is the next ${nd} days — leases ending inside it need a decision. Dashed bars are month-to-month; a bar running off the right edge ends after ${D.fmtMonth(D.addMonthKey(curKey, 11))}.</p>
+  return h`<p class="lz-cap lz-cal-cap">Each bar is one lease, from when it started to when it ends. The line is today; the shaded band is the next ${nd} days. Choose a name to decide what happens next.</p>
   <div class="lz-tl" role="table" aria-label="Lease calendar, ${D.fmtMonth(curKey)} to ${D.fmtMonth(D.addMonthKey(curKey, 11))}">
     <div class="lz-head" role="row">
       <div class="lz-cname lz-head-name" role="columnheader">${RB.plural(rows.length, 'lease')}</div>
       <div class="lz-track lz-months" role="columnheader">${months.map(m => h`<span class="lz-month${m.k.slice(5) === '01' ? ' is-year' : ''}" style="left:${fx(m.x)};width:${fx(m.w)}">${m.label}</span>`)}</div>
-      <div class="lz-act"></div>
     </div>
     <div class="lz-body">
       <div class="lz-grid" aria-hidden="true">
-        ${months.slice(1).map(m => h`<i class="lz-gl${m.k.slice(5) === '01' ? ' is-year' : ''}" style="left:${fx(m.x)}"></i>`)}
+        ${months.slice(1).map(m => h`<i class="lz-gl" style="left:${fx(m.x)}"></i>`)}
         <i class="lz-window" style="left:${fx(todayX)};width:${fx(pct(nwEnd) - todayX)}"></i>
         <i class="lz-today" style="left:${fx(todayX)}"></i>
       </div>
       ${rows.map(r => h`<div class="lz-row" role="row" data-tenant="${r.t.id}">
-        <div class="lz-cname" role="cell"><button type="button" class="lz-who" data-act="open" data-id="${r.t.id}">${ui.plate(r.t.unit, { property: r.t.property })}<span class="lz-who-name truncate">${r.t.name}</span></button></div>
+        <div class="lz-cname" role="cell"><button type="button" class="lz-who" data-act="choose" data-id="${r.t.id}">${ui.plate(r.t.unit, { property: r.t.property })}<span class="lz-who-name">${r.t.name}</span></button></div>
         <div class="lz-track" role="cell">${bar(r)}</div>
-        <div class="lz-act" role="cell"><button type="button" class="btn" data-act="decide" data-id="${r.t.id}" aria-haspopup="menu" data-write>Choices</button></div>
       </div>`)}
     </div>
     <div class="lz-foot" aria-hidden="true">
       <div class="lz-cname"></div>
-      <div class="lz-track">
-        <span class="lz-today-label" style="left:${fx(todayX)}">Today, ${D.fmt(today, today)}</span>
-      </div>
-      <div class="lz-act"></div>
+      <div class="lz-track"><span class="lz-today-label" style="left:${fx(todayX)}">Today, ${D.fmt(today, today)}</span></div>
     </div>
   </div>`;
-}
-function decideMenu(anchor, r) {
-  const id = r.t.id;
-  const items = [{ label: 'Renew the lease', icon: 'calendar', write: true, onSelect: () => renewLease(id) }];
-  if (r.group === 'fixed') items.push({ label: 'Leave it month-to-month', icon: 'sync', write: true, onSelect: () => goMonthToMonth(id) });
-  items.push({ label: r.group === 'moving' ? 'Change the moving-out day' : 'They are moving out', icon: 'door', write: true, onSelect: () => RB.actions.moveOut(id) });
-  items.push({ sep: true }, { label: 'Open their page', icon: 'arrow-right', onSelect: () => RB.actions.openTenant(id) });
-  ui.menu(anchor, items, { align: 'end' });
 }
 
 // ------------------------------------------------------------------ view
 RB.views.register('leases', {
   title: 'Leases',
   render(el, ctx) {
-    const settings = ctx.state.settings;
-    const rows = leaseRows(ctx.today, settings);
-    const nd = settings.leaseNoticeDays;
-    const ending = rows.filter(r => soon(r, nd)).length;
-    const mtm = rows.filter(r => r.group === 'mtm').length;
-    const moving = rows.filter(r => r.group === 'moving').length;
+    const nd = ctx.state.settings.leaseNoticeDays;
+    const rows = leaseRows(ctx.today);
+    const g = groups(rows, nd);
     const showCal = cal && !ui.isPhone();
+    const n = (c, one, many) => (c === 1 ? '1 ' + one : c + ' ' + many);
     el.innerHTML = String(h`
       <div class="lz-top">
-        <p class="lz-summary" id="lz-summary">${ending ? h`<strong>${ending === 1 ? '1 lease ends' : ending + ' leases end'}</strong> in the next ${nd} days.` : h`No lease ends in the next ${nd} days.`} ${mtm === 1 ? '1 tenant is' : mtm + ' tenants are'} month-to-month. ${moving === 1 ? '1 tenant is' : moving + ' tenants are'} moving out.</p>
+        <p class="lz-summary" id="lz-summary">${g.soon.length ? n(g.soon.length, 'lease ends', 'leases end') : 'No lease ends'} in the next ${nd} days. ${n(g.mtm.length, 'tenant is', 'tenants are')} month-to-month. ${n(g.moving.length, 'tenant is', 'tenants are')} moving out.</p>
         <label class="check lz-calswitch hide-phone"><input type="checkbox" id="lz-cal" data-change="cal"${cal ? RB.raw(' checked') : ''}><span>Show as a calendar</span></label>
       </div>
-      ${rows.length ? (showCal ? h`<div class="hide-phone">${timeline(rows, ctx.today, settings)}</div>` : list(rows, ctx.today, settings))
+      ${rows.length ? (showCal ? h`<div class="hide-phone">${timeline(rows, ctx.today, nd)}</div>` : list(g, ctx.today, nd))
         : ui.empty({ icon: 'leases', title: 'No leases yet', body: 'Add a tenant and their lease shows up here.' })}`);
-    const byId = id => rows.find(r => r.t.id === id);
     ui.bind(el, {
       cal: c => { cal = !!c.checked; RB.prefs.set('leases:cal', cal); RB.shell.refresh(); },
-      open: b => RB.actions.openTenant(b.dataset.id),
-      renew: b => renewLease(b.dataset.id),
-      moveout: b => RB.actions.moveOut(b.dataset.id),
-      mtm: b => goMonthToMonth(b.dataset.id),
-      decide: b => { const r = byId(b.dataset.id); if (r) decideMenu(b, r); },
+      later: () => { laterOpen = !laterOpen; RB.shell.refresh(); if (!laterOpen) { const b = el.querySelector('#lz-later'); if (b) b.focus(); } },
+      choose: b => { const r = leaseRows(S().today()).find(x => x.t.id === b.dataset.id); if (r) choose(r); },
     });
   },
+  destroy() { laterOpen = false; },
 });

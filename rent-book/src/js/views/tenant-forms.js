@@ -1,5 +1,5 @@
-// views/tenant-forms.js — tenant sheets in plain words: Add a tenant (3-step guide), Edit their details, Raise or
-// change the rent, They are moving out (one guided flow: when → what they owe → the deposit), Give back the
+// views/tenant-forms.js — tenant sheets in plain words: Add a tenant (3 questions + check and save), Change their details,
+// Change the rent, They are moving out (when → what they owe and the deposit → check and save), Give back the
 // deposit, Remove this tenant. Assigns the shared hooks RB.actions.addTenant / editTenant / changeRent /
 // giveNotice / moveOut / settleDeposit (renewLease belongs to the Leases view).
 const RB = globalThis.RB;
@@ -16,67 +16,56 @@ const firstName = t => String(t.name || 'The tenant').trim().split(/\s+/)[0];
 
 // ------------------------------------------------------------------ step-by-step guide
 /**
- * Guided steps on RB.ui.steps ("Step 2 of 3", Back / Next, summary). Our steps: {title, body(el, data),
- * validate(data) → {field: message} | null}; bodies render from `data` and keep it up to date themselves, so Back
- * never loses what was typed. opts.doneLabel(data) → button text on the summary. Resolves data when saved, null
- * when closed. A small local stand-in is used only if the shared helper is missing.
+ * Guided steps on RB.ui.steps ("Step 2 of 4", Back / Next, the check-and-save screen counted as the last step).
+ * Our steps: {title, body(el, data), validate(data) → {field: message} | null}; bodies render from `data` and keep it
+ * up to date themselves, so Back never loses what was typed. Every step also checks a field when it is left (not per
+ * keystroke) and again on Next. opts.doneLabel(data) → button text on the check screen. Resolves data when saved,
+ * null when closed.
  */
 T.steps = function steps(o) {
   let lastData = o.data || {};
   let finished = false, resolveP;
   const done = new Promise(r => { resolveP = r; });
-  const conf = {
+  const hd = ui.steps({
     title: o.title, size: 'wide', data: o.data,
     steps: o.steps.map(st => ({
       title: st.title,
-      body: (el, d) => { lastData = d; el.classList.add('tn-form'); st.body(el, d); },
+      body: (el, d) => { lastData = d; el.classList.add('tn-form'); st.body(el, d); if (st.validate && st.checkOnLeave !== false) checkOnLeave(el, () => st.validate(Object.assign(d, ui.readForm(el).values)) || {}); },
       validate: (vals, d) => { d = d || lastData; Object.assign(d, vals); const e = st.validate ? st.validate(d) : null; return e || {}; },
     })),
     summary: d => { lastData = d; return h`<div class="tn-summary-box">${o.summary(d)}</div>`; },
     get doneLabel() { return o.doneLabel ? o.doneLabel(lastData) : 'Save'; },
     onDone: async d => { const r = await o.onDone(d); if (r === false) return false; finished = true; resolveP(d); return undefined; },
-  };
-  if (typeof ui.steps === 'function') {
-    const hd = ui.steps(conf);
-    if (hd && hd.el) hd.el.classList.add('tn-steps-sheet');
-    if (hd && typeof hd.close === 'function') { const c = hd.close; hd.close = r => { c.call(hd, r); if (!finished) resolveP(null); }; }
-    return done;
-  }
-  // stand-in
-  const data = Object.assign({}, o.data || {});
-  const total = conf.steps.length;
-  let i = 0, sh = null, box = null;
-  const paint = () => {
-    const body = sh.body;
-    if (i < total) {
-      body.innerHTML = String(h`<div class="tn-stephead"><div class="tn-stepcount">Step ${i + 1} of ${total}</div><h3 class="tn-steptitle">${conf.steps[i].title}</h3></div><div class="tn-stepbody"></div>`);
-      box = body.querySelector('.tn-stepbody');
-      conf.steps[i].body(box, data);
-    } else {
-      body.innerHTML = String(h`<div class="tn-stephead"><h3 class="tn-steptitle">Is this right?</h3></div><div class="tn-stepbody">${conf.summary(data)}</div>`);
-      box = body.querySelector('.tn-stepbody');
-    }
-    const back = sh.action('back'); if (back) back.hidden = i === 0;
-    sh.setAction('next', { label: i < total ? 'Next' : conf.doneLabel });
-  };
-  ui.sheet({
-    title: o.title, size: 'wide', cancel: 'Cancel',
-    body: (el, handle) => { sh = handle; handle.el.classList.add('tn-steps-sheet'); paint(); },
-    actions: [
-      { id: 'next', label: 'Next', kind: 'primary', onClick: async () => {
-        if (i < total) {
-          const v = ui.form(box, { validate: vals => conf.steps[i].validate(vals, data) });
-          if (!v) return false;
-          i++; paint(); return false;
-        }
-        return conf.onDone(data);
-      } },
-      { id: 'back', label: 'Back', kind: '', onClick: () => { if (i > 0) i--; paint(); return false; } },
-    ],
-    onClose: () => { if (!finished) resolveP(null); },
   });
+  if (hd && hd.el) hd.el.classList.add('tn-steps-sheet');
+  if (hd && typeof hd.close === 'function') { const c = hd.close; hd.close = r => { c.call(hd, r); if (!finished) resolveP(null); }; }
+  // a sheet closed by Esc / Cancel never calls our close wrapper: watch for it leaving the page
+  if (hd && hd.el) { const mo = new MutationObserver(() => { if (!hd.el.isConnected) { mo.disconnect(); if (!finished) resolveP(null); } }); mo.observe(document.body, { childList: true, subtree: true }); }
   return done;
 };
+/**
+ * Check one field when the person leaves it (focusout), never per keystroke. Shows or clears that field's message only,
+ * and only once something was typed or chosen there. errorsOf() → {name: message}.
+ */
+function checkOnLeave(el, errorsOf) {
+  const touched = new Set();
+  const nameOf = t => t && (t.name || (t.closest('[data-field]') || {}).dataset && t.closest('[data-field]').dataset.field);
+  el.addEventListener('input', e => { const n = nameOf(e.target); if (n) touched.add(n); });
+  el.addEventListener('change', e => { const n = nameOf(e.target); if (n) touched.add(n); });
+  el.addEventListener('focusout', e => {
+    const n = nameOf(e.target);
+    if (!n || !touched.has(n)) return;
+    const f = el.querySelector('[data-field="' + CSS.escape(n) + '"]');
+    if (!f || f.contains(e.relatedTarget)) return;
+    // leaving for Back / Next / Cancel: Next checks everything anyway, and moving the layout under the pointer would eat the click
+    if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('[data-action], .sheet-close, .sheet-foot')) return;
+    const msg = (errorsOf() || {})[n] || '';
+    f.classList.toggle('is-invalid', !!msg);
+    const err = f.querySelector('.field-error'); if (err) err.textContent = msg;
+    f.querySelectorAll('[name]').forEach(c => { if (msg) c.setAttribute('aria-invalid', 'true'); else c.removeAttribute('aria-invalid'); });
+  });
+}
+T.checkOnLeave = checkOnLeave;
 /** Keep `data` in step with a step's controls. */
 const syncData = (el, data, after) => { const f = () => { Object.assign(data, ui.readForm(el).values); if (after) after(); }; el.addEventListener('input', f); el.addEventListener('change', f); return f; };
 
@@ -183,13 +172,17 @@ function addTenant(preset) {
       { title: 'Where do they live?',
         body: (el, d) => {
           const opts = props.map(x => ({ value: x, label: x })).concat([{ value: OTHER, label: props.length ? 'A different property' : 'A new property' }]);
+          // law 8: 2–4 options → radio cards with a visible mark; 5 or more → a select
+          const pick = opts.length <= 4
+            ? ui.field({ name: 'propPick', id: 'tf-proppick', label: 'Which property?', type: 'choice', value: d.propPick, options: opts })
+            : ui.field({ name: 'propPick', id: 'tf-proppick', label: 'Which property?', type: 'select', value: d.propPick, options: [{ value: '', label: 'Choose a property' }].concat(opts) });
           el.innerHTML = String(h`
-            ${T.pick({ name: 'propPick', id: 'tf-proppick', label: 'Which property?', value: d.propPick, options: opts, stack: true })}
+            ${pick}
             <div id="tf-propnew-wrap">${ui.field({ name: 'propNew', id: 'tf-property', label: 'What is the property called?', value: d.propNew, placeholder: 'For example: 12 Elm Street' })}</div>
             ${ui.field({ name: 'unit', id: 'tf-unit', label: 'Which unit?', value: d.unit, hint: 'For example: 2B, 101 or No. 4' })}`);
           const upd = () => show(el.querySelector('#tf-propnew-wrap'), d.propPick === OTHER);
           syncData(el, d, upd); upd();
-          el.querySelector('#tf-proppick').addEventListener('change', () => { if (d.propPick === OTHER) { const f = el.querySelector('#tf-property'); if (f) f.focus(); } });
+          el.addEventListener('change', e => { if (e.target.name === 'propPick' && d.propPick === OTHER) { const f = el.querySelector('#tf-property'); if (f) f.focus(); } });
         },
         validate: d => {
           const prop = propOf(d);
@@ -204,18 +197,18 @@ function addTenant(preset) {
         body: (el, d) => {
           if (!d.end && d.moveIn) d.end = D.addDays(D.addMonths(d.moveIn, 12), -1);
           el.innerHTML = String(h`
-            ${ui.field({ name: 'rent', id: 'tf-rent', label: 'How much is the rent each month?', type: 'money', value: d.rent, placeholder: 'For example: 1,325' })}
-            ${T.pick({ name: 'hasEnd', id: 'tf-hasend', label: 'Is there a lease end date?', value: d.hasEnd, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No — month-to-month' }] })}
-            <div id="tf-end-wrap">${ui.field({ name: 'end', id: 'tf-end', label: 'When does the lease end?', type: 'date', value: d.end })}</div>
-            ${ui.field({ name: 'moveIn', id: 'tf-movein', label: 'When did they move in?', type: 'date', value: d.moveIn, hint: 'Or when they will move in.' })}
-            ${ui.field({ name: 'deposit', id: 'tf-deposit', label: 'How much deposit did they pay?', type: 'money', value: d.deposit, optional: true, hint: 'Leave it empty if there was no deposit.' })}`);
+            ${ui.field({ name: 'rent', id: 'tf-rent', label: 'How much is the rent each month?', type: 'money', value: d.rent, placeholder: '1,325', hint: 'For example: 1,325' })}
+            ${T.dateField({ name: 'moveIn', id: 'tf-movein', label: 'When did they move in?', value: d.moveIn, hint: 'Or when they will move in.' })}
+            ${ui.field({ name: 'hasEnd', id: 'tf-hasend', label: 'Is there a lease end date?', type: 'choice', cols: 2, value: d.hasEnd, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No — month-to-month' }] })}
+            <div id="tf-end-wrap">${T.dateField({ name: 'end', id: 'tf-end', label: 'When does the lease end?', value: d.end })}</div>
+            ${ui.field({ name: 'deposit', id: 'tf-deposit', label: 'How much deposit did they pay?', type: 'money', value: d.deposit, optional: true, placeholder: '0', hint: 'Leave it empty if there was no deposit.' })}`);
           const upd = () => show(el.querySelector('#tf-end-wrap'), d.hasEnd === 'yes');
           syncData(el, d, upd); upd();
         },
         validate: d => ({
           rent: !(d.rent > 0) ? 'Write the monthly rent, for example 1,325' : '',
           hasEnd: !d.hasEnd ? 'Choose Yes or No' : '',
-          end: d.hasEnd === 'yes' && !d.end ? 'Choose the date the lease ends' : d.hasEnd === 'yes' && d.moveIn && d.end <= d.moveIn ? 'The lease has to end after they move in (' + D.fmt(d.moveIn, today) + ')' : '',
+          end: d.hasEnd === 'yes' && !d.end ? 'Choose the date the lease ends' : d.hasEnd === 'yes' && d.moveIn && d.end <= d.moveIn ? 'The lease has to end after they move in (' + T.day(d.moveIn, today) + ')' : '',
           moveIn: !d.moveIn ? 'Choose the day they moved in' : '',
           deposit: d.deposit !== null && d.deposit < 0 ? 'A deposit can’t be less than zero' : '',
         }) },
@@ -223,9 +216,9 @@ function addTenant(preset) {
     summary: d => {
       const prop = propOf(d);
       const track = defaultTrackFrom(d.moveIn, today);
-      return h`<p class="tn-summary-text" id="tf-summary">${d.name}, ${T.unitWord(String(d.unit).trim())} at ${prop}, ${$(d.rent)} a month from ${W().date(d.moveIn, today)}.</p>
+      return h`<p class="tn-summary-text" id="tf-summary">${d.name}, ${T.unitWord(String(d.unit).trim())} at ${prop}, ${$(d.rent)} a month from ${T.day(d.moveIn, today)}.</p>
         <p class="tn-summary-more">${d.hasEnd === 'yes' ? h`The lease ends ${D.fmtLong(d.end)}.` : 'Month-to-month — no end date.'}${d.deposit ? h` They paid a ${$(d.deposit)} deposit.` : ''}</p>
-        ${track !== d.moveIn ? h`<p class="tn-summary-more">Rent is counted from ${W().date(track, today)}. If they already owed you money before that, add it later under “Edit their details”.</p>` : ''}`;
+        ${track !== d.moveIn ? h`<p class="tn-summary-more">Rent is counted from ${T.day(track, today)}. If they already owed you money before that, add it later under “Change their details”.</p>` : ''}`;
     },
     doneLabel: d => 'Add ' + (String(d.name || '').trim() || 'this tenant'),
     onDone: d => {
@@ -270,7 +263,7 @@ function editTenant(id, section) {
   return new Promise(resolve => {
     let saved = null;
     ui.sheet({
-      title: 'Edit their details', sub: sub(t), size: 'wide',
+      title: 'Change their details', sub: sub(t), size: 'wide',
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="tn-form">
           ${ui.field({ name: 'name', id: 'tf-name', label: 'Their full name', value: t.name, required: true, requiredMsg: 'Write their name' })}
@@ -281,17 +274,17 @@ function editTenant(id, section) {
           ${ui.field({ name: 'unit', id: 'tf-unit', label: 'Which unit?', value: t.unit, required: true, requiredMsg: 'Write the unit' })}
           ${rentEditable
             ? ui.field({ name: 'rent', id: 'tf-rent', label: 'Rent each month', type: 'money', value: sched.length ? sched[0].amount : null, required: true, requiredMsg: 'Write the monthly rent' })
-            : h`<div class="field"><span class="field-label">Rent each month</span><div class="tn-static">${$(RB.model.rentOn(t, today))}</div><div class="field-hint">The rent has changed before, so earlier amounts are kept. <button type="button" class="btn" data-tf="changerent">Raise or change the rent</button></div></div>`}
-          ${T.pick({ name: 'hasEnd', id: 'tf-hasend', label: 'Is there a lease end date?', value: l.end ? 'yes' : 'no', options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No — month-to-month' }] })}
-          <div id="tf-end-wrap">${ui.field({ name: 'end', id: 'tf-end', label: 'When does the lease end?', type: 'date', value: l.end || D.addDays(D.addMonths(moveIn0, 12), -1) })}</div>
-          ${ui.field({ name: 'moveIn', id: 'tf-movein', label: 'When did they move in?', type: 'date', value: moveIn0, required: true, requiredMsg: 'Choose the day they moved in' })}
+            : h`<div class="field"><span class="field-label">Rent each month</span><div class="tn-static">${$(RB.model.rentOn(t, today))}</div><div class="field-hint">The rent has changed before, so earlier amounts are kept. <button type="button" class="btn-link" data-tf="changerent">Change the rent</button></div></div>`}
+          ${T.dateField({ name: 'moveIn', id: 'tf-movein', label: 'When did they move in?', value: moveIn0, required: true, requiredMsg: 'Choose the day they moved in' })}
+          ${ui.field({ name: 'hasEnd', id: 'tf-hasend', label: 'Is there a lease end date?', type: 'choice', cols: 2, value: l.end ? 'yes' : 'no', options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No — month-to-month' }] })}
+          <div id="tf-end-wrap">${T.dateField({ name: 'end', id: 'tf-end', label: 'When does the lease end?', value: l.end || D.addDays(D.addMonths(moveIn0, 12), -1) })}</div>
           ${ui.field({ name: 'deposit', id: 'tf-deposit', label: 'Deposit they paid', type: 'money', value: dep.amount || null, optional: true })}
 
-          <button type="button" class="tn-more-toggle" id="tf-more" aria-expanded="${String(moreOpen)}" aria-controls="tf-more-body">${ui.icon('chevron-down')}<span>Add more details (optional)</span></button>
+          <button type="button" class="tn-more-toggle" id="tf-more" aria-expanded="${String(moreOpen)}" aria-controls="tf-more-body">${ui.icon('chevron-right')}<span>Add more details (optional)</span></button>
           <div class="tn-more-body tn-form" id="tf-more-body"${moreOpen ? '' : RB.raw(' hidden')}>
             <p class="tn-caption">Most people never need these. Each one is explained underneath.</p>
-            ${ui.field({ name: 'start', id: 'tf-start', label: 'When the lease started', type: 'date', value: l.start || moveIn0, hint: 'Usually the day they moved in.' })}
-            ${ui.field({ name: 'trackFrom', id: 'tf-track', label: 'Start counting rent from', type: 'date', value: t.trackFrom || moveIn0, required: true, requiredMsg: 'Choose the day to start counting rent from', hint: 'Rent is added for every month from this day. Anything they owed before it goes in the next box.' })}
+            ${T.dateField({ name: 'start', id: 'tf-start', label: 'When the lease started', value: l.start || moveIn0, hint: 'Usually the day they moved in.' })}
+            ${T.dateField({ name: 'trackFrom', id: 'tf-track', label: 'Start counting rent from', value: t.trackFrom || moveIn0, required: true, requiredMsg: 'Choose the day to start counting rent from', hint: 'Rent is added for every month from this day. Anything they owed before it goes in the next box.' })}
             ${ui.field({ name: 'opening', id: 'tf-opening', label: 'What they already owed', type: 'money', value: t.opening ? t.opening.amount : null, optional: true, placeholder: '0', hint: 'Money they owed you on that day. Put a minus sign in front (−250) if they had paid ahead.' })}
             <div class="field" data-sec="recurring"><span class="field-label">Other monthly charges</span><div class="field-hint">Extra amounts added every month with the rent, such as parking or a pet.</div>
               ${repeater('rec', (t.recurring || []).filter(Boolean), 'Add a monthly charge', 'tf-rec-add')}</div>
@@ -301,18 +294,19 @@ function editTenant(id, section) {
             ${ui.field({ name: 'emPhone', id: 'tf-em-phone', label: 'Their phone number', type: 'tel', value: em.phone, optional: true })}
             ${ui.field({ name: 'dueDay', id: 'tf-dueday', label: 'Rent is due on day…', type: 'number', value: l.dueDay, min: 1, max: 31, optional: true, placeholder: String(settings.dueDay), hint: 'Only if this tenant pays on a different day. Empty means the ' + T.ordinal(settings.dueDay) + ', like everyone else.' })}
             ${ui.field({ name: 'graceDays', id: 'tf-grace', label: 'Days before rent counts as late', type: 'number', value: l.graceDays, min: 0, max: 31, optional: true, placeholder: String(settings.graceDays), hint: 'Only if this tenant is different. Empty means ' + RB.plural(settings.graceDays, 'day') + ', like everyone else.' })}
-            ${ui.field({ name: 'depReceived', id: 'tf-dep-received', label: 'Day the deposit was paid', type: 'date', value: dep.received || '', optional: true, hint: 'Empty means the day they moved in.' })}
+            ${T.dateField({ name: 'depReceived', id: 'tf-dep-received', label: 'Day the deposit was paid', value: dep.received || '', optional: true, hint: 'Empty means the day they moved in.' })}
             ${ui.field({ name: 'heldAt', id: 'tf-heldat', label: 'Where the deposit is kept', value: dep.heldAt || '', optional: true, hint: 'For example: savings account at Coastal Bank.' })}
             ${ui.field({ name: 'insCarrier', id: 'tf-ins-carrier', label: 'Their renter’s insurance company', value: ins.carrier || '', optional: true, hint: 'If they have insurance, you can be reminded before it runs out.' })}
             ${ui.field({ name: 'insPolicy', id: 'tf-ins-policy', label: 'Insurance policy number', value: ins.policy || '', optional: true })}
-            ${ui.field({ name: 'insExpires', id: 'tf-ins-expires', label: 'Insurance runs out on', type: 'date', value: ins.expires || '', optional: true })}
+            ${T.dateField({ name: 'insExpires', id: 'tf-ins-expires', label: 'Insurance runs out on', value: ins.expires || '', optional: true })}
             <div class="field" data-sec="links"><span class="field-label">Links to documents</span><div class="field-hint">For example a copy of the lease saved online. Only addresses that start with https:// work.</div>
               ${repeater('link', (t.links || []).filter(Boolean), 'Add a link', 'tf-link-add')}</div>
             ${ui.field({ name: 'about', id: 'tf-about', label: 'About them', type: 'textarea', value: t.about || '', optional: true, rows: 3, hint: 'Anything worth remembering: pets, cars, gate codes.' })}
           </div></div>`);
         wireRepeaters(el);
         const q = s => el.querySelector(s);
-        const upd = () => show(q('#tf-end-wrap'), q('#tf-hasend').value === 'yes');
+        const hasEnd = () => (q('[name="hasEnd"]:checked') || {}).value;
+        const upd = () => show(q('#tf-end-wrap'), hasEnd() === 'yes');
         el.addEventListener('change', upd); upd();
         const more = q('#tf-more');
         const setMore = open => { more.setAttribute('aria-expanded', String(open)); q('#tf-more-body').hidden = !open; };
@@ -323,7 +317,7 @@ function editTenant(id, section) {
           const target = { contact: '#tf-phone', lease: '#tf-end', money: rentEditable ? '#tf-rent' : '#tf-deposit', track: '#tf-track', opening: '#tf-opening', cotenants: '#tf-co-add', emergency: '#tf-em-name', terms: '#tf-dueday', recurring: '#tf-rec-add', deposit: '#tf-dep-received', insurance: '#tf-ins-carrier', links: '#tf-link-add', about: '#tf-about' }[section];
           requestAnimationFrame(() => requestAnimationFrame(() => {
             let f = target && q(target);
-            if (section === 'lease' && q('#tf-hasend').value !== 'yes') f = q('#tf-hasend-label') ? el.querySelector('[data-seg-for="tf-hasend"] button[aria-pressed="true"]') : f;
+            if (section === 'lease' && hasEnd() !== 'yes') f = q('[name="hasEnd"]:checked') || f;
             if (f) { f.scrollIntoView({ block: 'center' }); f.focus(); }
           }));
         }
@@ -331,14 +325,14 @@ function editTenant(id, section) {
       initialFocus: '#tf-name',
       actions: [{ id: 'save', label: 'Save the changes', kind: 'primary', onClick: s => {
         const root = s.body;
-        const mtm = root.querySelector('#tf-hasend').value !== 'yes';
+        const mtm = (root.querySelector('[name="hasEnd"]:checked') || {}).value !== 'yes';
         const v = ui.form(root, { validate: v => {
           const clash = unitTaken(v.property, v.unit, id);
           return {
             end: !mtm && !v.end ? 'Choose the date the lease ends, or choose No' : !mtm && v.end && v.moveIn && v.end <= D.min(v.moveIn, v.start || v.moveIn) ? 'The lease has to end after it starts' : '',
             rent: rentEditable && v.rent !== null && v.rent <= 0 ? 'Write the monthly rent, for example 1,450' : '',
             deposit: v.deposit !== null && v.deposit < 0 ? 'A deposit can’t be less than zero' : '',
-            trackFrom: v.trackFrom && v.moveIn && v.trackFrom < v.moveIn ? 'This can’t be before they moved in — use ' + D.fmt(v.moveIn, today) + ' or later' : '',
+            trackFrom: v.trackFrom && v.moveIn && v.trackFrom < v.moveIn ? 'This can’t be before they moved in — use ' + T.day(v.moveIn, today) + ' or later' : '',
             unit: clash ? (clash.name || 'Someone') + ' already lives in ' + T.unitWord(v.unit) + ' at ' + v.property + '. Check the unit.' : '',
             dueDay: v.dueDay !== null && !(v.dueDay >= 1 && v.dueDay <= 31 && Number.isInteger(v.dueDay)) ? 'Use a day from 1 to 31, or leave it empty' : '',
             graceDays: v.graceDays !== null && !(v.graceDays >= 0 && v.graceDays <= 31 && Number.isInteger(v.graceDays)) ? 'Use a number from 0 to 31, or leave it empty' : '',
@@ -395,12 +389,12 @@ function changeRent(id) {
   return new Promise(resolve => {
     let ok = false;
     ui.sheet({
-      title: 'Raise or change the rent', sub: sub(t),
+      title: 'Change the rent', sub: sub(t),
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="tn-form">
           <p class="tn-lead">The rent is ${$(cur)} a month now.</p>
           ${ui.field({ name: 'amount', id: 'cr-amount', label: 'What will the new rent be?', type: 'money', value: null, required: true, requiredMsg: 'Write the new monthly rent', placeholder: 'For example: ' + M.input(Math.round(cur * 1.03 / 2500) * 2500 || 145000) })}
-          ${ui.field({ name: 'from', id: 'cr-from', label: 'From what date?', type: 'date', value: from0, required: true, requiredMsg: 'Choose when the new rent starts', hint: 'Usually the 1st of a month.' })}
+          ${T.dateField({ name: 'from', id: 'cr-from', label: 'From what date?', value: from0, required: true, requiredMsg: 'Choose when the new rent starts', hint: 'Usually the 1st of a month.' })}
           <p class="tn-summary-text" id="cr-sum" aria-live="polite"></p>
         </div>`);
         const upd = () => {
@@ -410,7 +404,7 @@ function changeRent(id) {
           const box = el.querySelector('#cr-sum');
           if (a > 0 && f && D.valid(f)) {
             const diff = a - was;
-            box.innerHTML = String(h`Rent changes from <strong>${$(was)}</strong> to <strong>${$(a)}</strong> on <strong>${D.fmtLong(f)}</strong>${diff ? ` (${diff > 0 ? 'up' : 'down'} ${$(Math.abs(diff))} a month)` : ''}. Months before that keep the old rent.${f <= today ? h` <span class="tone-warn">That date has already passed, so months from ${D.fmt(f, today)} will use the new rent.</span>` : ''}`);
+            box.innerHTML = String(h`Rent changes from ${$(was)} to ${$(a)} on ${T.dayLong(f, today)}${diff ? ` (${diff > 0 ? 'up' : 'down'} ${$(Math.abs(diff))} a month)` : ''}. Months before that keep the old rent.${f <= today ? h` That date has already passed, so months from ${T.day(f, today)} will use the new rent.` : ''}`);
             sh.setAction('save', { label: 'Change the rent to ' + $(a) });
           } else { box.textContent = 'Months before the date you choose keep the old rent.'; sh.setAction('save', { label: 'Change the rent' }); }
         };
@@ -419,13 +413,13 @@ function changeRent(id) {
       actions: [{ id: 'save', label: 'Change the rent', kind: 'primary', onClick: s => {
         const v = ui.form(s.body, { validate: v => ({
           amount: v.amount !== null && v.amount <= 0 ? 'Write the new monthly rent, for example 1,450' : v.amount !== null && v.from && v.amount === RB.model.rentOn(t, v.from) ? 'That is already the rent on that date' : '',
-          from: last && v.from && v.from <= last.from ? 'Choose a date after ' + D.fmt(last.from, today) + ' — the last change starts then' : '',
+          from: last && v.from && v.from <= last.from ? 'Choose a date after ' + T.day(last.from, today) + ' — the last change starts then' : '',
         }) });
         if (!v) return false;
         const prev = RB.clone(t.rent || []);
         S().updateTenant(id, { rent: prev.concat([{ from: v.from, amount: v.amount }]) }).catch(() => {});
         ok = true;
-        ui.toast('The rent for ' + t.name + ' changes to ' + $(v.amount) + ' on ' + D.fmt(v.from, today) + '.', { undo: () => S().updateTenant(id, { rent: prev }), duration: 10000 });
+        ui.toast('The rent for ' + t.name + ' changes to ' + $(v.amount) + ' on ' + T.day(v.from, today) + '.', { undo: () => S().updateTenant(id, { rent: prev }), duration: 10000 });
       } }],
       onClose: () => resolve(ok),
     });
@@ -445,7 +439,7 @@ function depositSentence(st, dueDate, today) {
   if (st.applied) parts.push('− unpaid rent ' + $(st.applied));
   if (st.creditRefunded) parts.push('+ money they paid ahead ' + $(st.creditRefunded));
   let s = parts.join(' ') + ' = ' + $(st.refund) + ' to give back';
-  if (dueDate) s += ', due by ' + D.fmt(dueDate, today);
+  if (dueDate) s += ', due by ' + T.day(dueDate, today);
   s += '.';
   if (st.shortfall) s += ' What you are keeping is ' + $(st.shortfall) + ' more than the deposit — they still owe that.';
   else if (st.balanceAfter > 0) s += ' They will still owe ' + $(st.balanceAfter) + '.';
@@ -453,11 +447,11 @@ function depositSentence(st, dueDate, today) {
 }
 function depositBody(el, data, t, balance, dueDate, today) {
   el.innerHTML = String(h`<div class="tn-form">
-    <p class="tn-lead">They paid a deposit of ${$(+t.deposit.amount)}.${dueDate ? h` You need to give back what you don’t keep by <strong>${D.fmtLong(dueDate)}</strong>.` : ''}</p>
-    ${T.pick({ name: 'keep', id: 'sd-keep', label: 'Do you need to keep any of it?', value: data.keep, options: [{ value: 'no', label: 'No — give it all back' }, { value: 'yes', label: 'Yes, some of it' }] })}
+    <p class="tn-lead">They paid a deposit of ${$(+t.deposit.amount)}.${dueDate ? h` Give back what you don’t keep by ${T.dayLong(dueDate, today)}.` : ''}</p>
+    ${ui.field({ name: 'keep', id: 'sd-keep', label: 'Do you need to keep any of it?', type: 'choice', cols: 2, value: data.keep, options: [{ value: 'no', label: 'No — give it all back' }, { value: 'yes', label: 'Yes, some of it' }] })}
     <div class="field" id="sd-ded-wrap" data-field="_ded"><span class="field-label">What are you keeping it for?</span><div class="field-hint">For example cleaning, a repair, or a missing key.</div>
       ${repeater('ded', (data.ded && data.ded.length ? data.ded : [{}]), 'Add another amount', 'sd-add')}</div>
-    ${balance > 0 ? T.pick({ name: 'useForRent', id: 'sd-apply', label: 'They still owe ' + $(balance) + '. Use the deposit to pay it?', value: data.useForRent, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] }) : ''}
+    ${balance > 0 ? ui.field({ name: 'useForRent', id: 'sd-apply', label: 'They still owe ' + $(balance) + '. Use the deposit to pay it?', type: 'choice', cols: 2, value: data.useForRent, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] }) : ''}
     ${balance < 0 ? h`<p class="tn-caption">They have ${$(-balance)} paid ahead. That is added to what you give back.</p>` : ''}
     <p class="tn-summary-text" id="sd-sum" aria-live="polite"></p>
   </div>`);
@@ -466,6 +460,7 @@ function depositBody(el, data, t, balance, dueDate, today) {
     const vals = ui.readForm(el).values;
     data.keep = vals.keep; if (vals.useForRent !== undefined) data.useForRent = vals.useForRent;
     data.ded = readRep(el, 'ded').map(d => ({ reason: d.reason, amount: d.amount, _bad: d._amountBad }));
+    if (data.ded.some(d => d.reason && d.amount > 0) || data.keep !== 'yes') repError(el, 'ded', '');
     show(el.querySelector('#sd-ded-wrap'), data.keep === 'yes');
     const st = depositSums(t, data, balance);
     el.querySelector('#sd-sum').textContent = depositSentence(st, dueDate, today);
@@ -511,8 +506,8 @@ function moveOutFlow(id) {
       { title: 'When are they moving out?',
         body: (el, d) => {
           el.innerHTML = String(h`
-            <p class="tn-lead">${t.name}, ${T.place(t)}.${l.end ? h` Their lease ends ${D.fmtLong(l.end)}.` : ' They are month-to-month.'}</p>
-            ${ui.field({ name: 'moveOut', id: 'mo-date', label: 'Moving-out day', type: 'date', value: d.moveOut, hint: 'If they have already gone, choose the day they left.' })}
+            <p class="tn-lead">${l.end ? h`Their lease ends ${T.dayLong(l.end, today)}.` : 'They are month-to-month.'}</p>
+            ${T.dateField({ name: 'moveOut', id: 'mo-date', label: 'Moving-out day', value: d.moveOut, hint: 'If they have already gone, choose the day they left.' })}
             <p class="tn-caption" id="mo-when"></p>`);
           const upd = () => {
             const box = el.querySelector('#mo-when');
@@ -520,8 +515,8 @@ function moveOutFlow(id) {
           };
           syncData(el, d, upd); upd();
         },
-        validate: d => ({ moveOut: !d.moveOut ? 'Choose the moving-out day' : l.moveIn && d.moveOut < l.moveIn ? 'That is before they moved in (' + D.fmt(l.moveIn, today) + ')' : '' }) },
-      { title: 'What they still owe',
+        validate: d => ({ moveOut: !d.moveOut ? 'Choose the moving-out day' : l.moveIn && d.moveOut < l.moveIn ? 'That is before they moved in (' + T.day(l.moveIn, today) + ')' : '' }) },
+      { title: holdsDeposit ? 'What they owe, and the deposit' : 'What they still owe',
         body: (el, d) => {
           const pv = preview(d);
           const rentRow = pv.finalRows.find(r => r.kind === 'rent');
@@ -530,16 +525,15 @@ function moveOutFlow(id) {
             : h`<li>${r.label}${r.prorate ? h`: ${r.prorate.days} of ${r.prorate.ofDays} days,` : ':'} ${$(r.amount)}</li>`);
           el.innerHTML = String(h`<div class="tn-sum" id="mo-sum">
             ${rentRow ? h`<p class="tn-lead">Their last rent is for ${D.monthName(pv.period)}:</p><ul class="tn-sumlist">${lines}</ul>` : h`<p class="tn-lead">There is no more rent to add for ${D.monthName(pv.period)}.</p>`}
-            <p class="tn-summary-text" id="mo-owed">${pv.balance > 0 ? h`If nothing more is paid, they will owe <strong>${$(pv.balance)}</strong> when they leave.` : pv.balance < 0 ? h`They will have <strong>${$(-pv.balance)}</strong> paid ahead when they leave.` : h`When they leave, they will be <strong>all paid up</strong>.`}${pv.balanceNow > 0 && pv.balanceNow !== pv.balance ? h` Today they owe ${$(pv.balanceNow)}.` : ''}</p>
-          </div>`);
-        } },
-      { title: holdsDeposit ? 'The deposit' : 'Anything else',
-        body: (el, d) => {
-          if (!holdsDeposit) { el.innerHTML = String(h`<p class="tn-lead">${+dep.amount > 0 ? 'The deposit has already been sorted out.' : 'No deposit is recorded, so there is nothing to give back.'}</p>`); return; }
-          if (d.moveOut > today) { el.innerHTML = String(h`<p class="tn-lead">They paid a ${$(+dep.amount)} deposit. Sort it out after they leave: on or after ${D.fmtLong(d.moveOut)}, open their page and choose “Give back the deposit”. Today will remind you.</p>`); return; }
-          depositBody(el, d, t, preview(d).balance, dueOf(d), today);
-          Object.defineProperty(d, '_el', { value: el, writable: true, configurable: true, enumerable: false });
+            <p class="tn-lead" id="mo-owed">${pv.balance > 0 ? h`If nothing more is paid, they will owe ${$(pv.balance)} when they leave.` : pv.balance < 0 ? h`They will have ${$(-pv.balance)} paid ahead when they leave.` : h`When they leave, they will be all paid up.`}${pv.balanceNow > 0 && pv.balanceNow !== pv.balance ? h` Today they owe ${$(pv.balanceNow)}.` : ''}</p>
+          </div><div class="tn-dep" id="mo-dep"></div>`);
+          const box = el.querySelector('#mo-dep');
+          if (!holdsDeposit) { box.innerHTML = String(h`<p class="tn-caption">${+dep.amount > 0 ? 'The deposit has already been sorted out.' : 'No deposit is recorded, so there is nothing to give back.'}</p>`); return; }
+          if (d.moveOut > today) { box.innerHTML = String(h`<p class="tn-caption">They paid a ${$(+dep.amount)} deposit. Sort it out after they leave: on or after ${T.day(d.moveOut, today)}, open their page and choose “Give back the deposit”. Today will remind you.</p>`); return; }
+          depositBody(box, d, t, pv.balance, dueOf(d), today);
+          Object.defineProperty(d, '_el', { value: box, writable: true, configurable: true, enumerable: false });
         },
+        checkOnLeave: false,   // the amounts kept are checked on Next (a half-typed row is not an error)
         validate: d => {
           if (!holdsDeposit || d.moveOut > today) return null;
           return d._el && d._el.isConnected ? depositErrors(d._el, d) : null;
@@ -547,13 +541,13 @@ function moveOutFlow(id) {
     ],
     summary: d => {
       const pv = preview(d);
-      if (d.moveOut > today) return h`<p class="tn-summary-text" id="mo-summary">${t.name} is moving out on ${D.fmtLong(d.moveOut)} (${W().rel(d.moveOut, today)}).</p>
+      if (d.moveOut > today) return h`<p class="tn-summary-text" id="mo-summary">${t.name} is moving out on ${T.dayLong(d.moveOut, today)} (${W().rel(d.moveOut, today)}).</p>
         <p class="tn-summary-more">${pv.balance > 0 ? h`If nothing more is paid, they will owe ${$(pv.balance)} then.` : 'They will be all paid up by then.'} You can finish the move-out on that day from their page or from Today.</p>`;
       const st = holdsDeposit ? depositSums(t, d, pv.balance) : null;
-      return h`<p class="tn-summary-text" id="mo-summary">${t.name} moved out on ${D.fmtLong(d.moveOut)}.</p>
+      return h`<p class="tn-summary-text" id="mo-summary">${t.name} moved out on ${T.dayLong(d.moveOut, today)}.</p>
         ${st ? h`<p class="tn-summary-more" id="mo-deposit">${depositSentence(st, dueOf(d), today)}</p>` : h`<p class="tn-summary-more">${pv.balance > 0 ? 'They still owe ' + $(pv.balance) + '.' : 'They are all paid up.'}</p>`}`;
     },
-    doneLabel: d => (d.moveOut > today ? 'Save — moving out ' + D.fmt(d.moveOut, today) : 'Finish the move-out'),
+    doneLabel: d => (d.moveOut > today ? 'Save — moving out ' + T.day(d.moveOut, today) : 'Finish the move-out'),
     onDone: d => {
       ok = true;
       if (d.moveOut > today) {
@@ -561,7 +555,7 @@ function moveOutFlow(id) {
         const lid = RB.id();
         S().updateTenant(id, { status: 'notice', lease: { noticeDate: l.noticeDate || today, moveOut: d.moveOut } }).catch(() => {});
         S().addLog(id, { id: lid, kind: 'notice', text: 'Moving out ' + D.fmtLong(d.moveOut) + '.', followUp: null, done: false }).catch(() => {});
-        ui.toast(firstName(t) + ' is moving out on ' + D.fmt(d.moveOut, today) + '.', { undo: () => { S().updateTenant(id, prevN); S().deleteLog(id, lid); }, duration: 10000 });
+        ui.toast(firstName(t) + ' is moving out on ' + T.day(d.moveOut, today) + '.', { undo: () => { S().updateTenant(id, prevN); S().deleteLog(id, lid); }, duration: 10000 });
         return;
       }
       const prev = { status: t.status || 'active', lease: { moveOut: l.moveOut || null } };
@@ -569,7 +563,7 @@ function moveOutFlow(id) {
       let undoDep = null;
       let st = null;
       if (holdsDeposit) { st = depositSums(t, d, S().ledger(id).balance); undoDep = writeSettlement(id, st, today); }
-      ui.toast(t.name + ' moved out on ' + D.fmt(d.moveOut, today) + (st ? '. Give back ' + $(st.refund) + ' of the deposit.' : '.'), { undo: () => { if (undoDep) undoDep(); S().updateTenant(id, prev); }, duration: 10000 });
+      ui.toast(t.name + ' moved out on ' + T.day(d.moveOut, today) + (st ? '. Give back ' + $(st.refund) + ' of the deposit.' : '.'), { undo: () => { if (undoDep) undoDep(); S().updateTenant(id, prev); }, duration: 10000 });
     },
   }).then(r => !!r && ok);
 }
@@ -604,8 +598,8 @@ function settleDeposit(id) {
   const today = S().today();
   const settings = S().settings();
   const dep = t.deposit || {};
-  if (!(+dep.amount > 0)) { ui.toast('No deposit is recorded for ' + t.name + '. You can add one under Edit their details.'); return Promise.resolve(false); }
-  if (dep.returned) { ui.toast('The deposit was already sorted out on ' + D.fmt(dep.returned.date, today) + '.'); return Promise.resolve(false); }
+  if (!(+dep.amount > 0)) { ui.toast('No deposit is recorded for ' + t.name + '. You can add one under Change their details.'); return Promise.resolve(false); }
+  if (dep.returned) { ui.toast('The deposit was already sorted out on ' + T.day(dep.returned.date, today) + '.'); return Promise.resolve(false); }
   const l = t.lease || {};
   const dueDate = l.moveOut ? D.addDays(l.moveOut, +settings.depositReturnDays || 0) : null;
   const data = { keep: 'no', useForRent: 'yes', ded: [] };
@@ -618,10 +612,10 @@ function settleDeposit(id) {
         const inner = document.createElement('div');
         el.appendChild(inner);
         depositBody(inner, data, t, S().ledger(id).balance, dueDate, today);
-        el.insertAdjacentHTML('beforeend', String(h`<div class="tn-form mt-4">${ui.field({ name: 'date', id: 'sd-date', label: 'When did you give it back?', type: 'date', value: today, required: true, requiredMsg: 'Choose the day you gave it back' })}</div>`));
+        el.insertAdjacentHTML('beforeend', String(h`<div class="tn-form tn-form-after">${T.dateField({ name: 'date', id: 'sd-date', label: 'When did you give it back?', value: today, required: true, requiredMsg: 'Choose the day you gave it back' })}</div>`));
       },
       actions: [
-        { id: 'copy', label: 'Copy the deposit sums', kind: '', onClick: s => {
+        { id: 'copy', label: 'Copy the deposit sums', kind: 'outline', onClick: s => {
           ui.copy(settlementText(S().tenant(id) || t, depositSums(t, data, S().ledger(id).balance), s.body.querySelector('#sd-date').value, settings), 'deposit sums');
           return false;
         } },
@@ -648,8 +642,8 @@ T.deleteTenant = async function deleteTenant(id) {
   const notes = T.logList(t).length;
   const ok = await ui.confirm({
     title: 'Remove ' + (t.name || 'this tenant') + '?',
-    body: h`<p>This deletes <strong>${t.name}</strong> (${T.place(t)}) and their whole payment history${n ? h` — ${RB.plural(n, 'payment or charge', 'payments and charges')}` : ''}${notes ? h` and ${RB.plural(notes, 'note')}` : ''}. It cannot be undone.</p>
-      ${t.status !== 'past' ? h`<p class="mt-2">If they have simply left, choose <strong>They are moving out</strong> instead — that keeps their history.</p>` : ''}`,
+    body: h`<p>This deletes ${t.name} (${T.place(t)}) and their whole payment history${n ? h` — ${RB.plural(n, 'payment or charge', 'payments and charges')}` : ''}${notes ? h` and ${RB.plural(notes, 'note')}` : ''}. It cannot be undone.</p>
+      ${t.status !== 'past' ? h`<p>If they have simply left, choose “They are moving out” instead — that keeps their history.</p>` : ''}`,
     confirmLabel: 'Remove ' + (t.name || 'this tenant'), danger: true,
   });
   if (!ok) return false;

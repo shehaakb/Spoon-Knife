@@ -172,10 +172,9 @@ const $ = id => document.getElementById(id);
 function renderChrome() {
   const st = RB.store.state;
   const att = st.ready ? RB.store.attention() : [];
-  // Today = every item in "What needs you"; Rent = tenants with rent past grace in any month (not just this one).
-  const lateCount = st.ready ? lateTenants().length : 0;
-  const counts = { today: att.length || '', rent: lateCount || '' };
-  const countWords = { today: n => RB.plural(n, 'thing') + ' need' + (n === 1 ? 's' : '') + ' you', rent: n => RB.plural(n, 'tenant') + ' late with rent' };
+  // v3: a badge only on Today (= every item in "Needs you"). Rent's badge is gone.
+  const counts = { today: att.length || '' };
+  const countWords = { today: n => RB.plural(n, 'thing') + ' need' + (n === 1 ? 's' : '') + ' you' };
   const active = navKey(cur.view);
   // rail
   const nav = $('rb-nav');
@@ -202,22 +201,19 @@ function renderChrome() {
   tn.hidden = !st.readOnly;
   if (st.readOnly) tn.innerHTML = String(ui.tag('View only', 'accent', 'key'));
   document.documentElement.classList.toggle('is-readonly', !!st.readOnly);
-  // rail footer: Help, Text size, sync note
+  // rail footer (v3): Help and a compact text-size control on one row; the sync note lives in Settings now.
   const foot = $('rb-sync');
   if (!foot.dataset.built) {
     foot.dataset.built = '1';
-    foot.innerHTML = String(h`<button type="button" class="btn rail-help" id="rb-help" data-cmd="help:howto">${ui.icon('alert')}<span class="rail-help-label">Help</span></button>
-      <div class="rail-textsize">${ui.textSizeControl({ id: 'rb-ts' })}</div>
-      <div class="rail-syncbox" id="rb-syncbox"></div>`);
+    foot.innerHTML = String(h`<div class="rail-foot-row"><button type="button" class="btn btn-ghost rail-help" id="rb-help" data-cmd="help:howto">${ui.icon('alert')}<span class="rail-help-label">Help</span></button>
+      <div class="rail-textsize">${ui.textSizeControl({ id: 'rb-ts', letters: true })}</div></div>`);
   }
-  const sb = $('rb-syncbox'); const sn = String(syncNote(st)); if (sb.innerHTML !== sn) sb.innerHTML = sn;
-  // banner
+  // banner: one line, one link
   const bn = $('rb-banner');
   let banner = null;
-  if (st.loadIssue === 'timeout') banner = h`<div class="banner-text">${ui.icon('alert')} <strong>Can’t reach your saved information yet.</strong> Still trying — what you see may be out of date.</div>`;
-  else if (st.loadIssue === 'error') banner = h`<div class="banner-text"><strong>Live updates stopped.</strong> What you see may be out of date. Close this page and open it again to reconnect.</div>`;
-  else if (st.ready && RB.store.hasSample()) banner = h`<div class="banner-text">You’re looking at <strong>sample tenants</strong>. Look around — nothing here is real.</div>
-    <div class="banner-actions"><button type="button" class="btn btn-sm btn-ghost" id="rb-banner-remove" data-cmd="sample:remove" data-write>Remove sample tenants</button><button type="button" class="btn btn-sm" id="rb-banner-import" data-cmd="setup:import" data-write>Bring in my tenants</button></div>`;
+  if (st.loadIssue === 'timeout') banner = h`<div class="banner-text"><strong>Can’t reach your saved information yet.</strong> Still trying — what you see may be out of date.</div>`;
+  else if (st.loadIssue === 'error') banner = h`<div class="banner-text"><strong>Live updates stopped.</strong> Close this page and open it again to reconnect.</div>`;
+  else if (st.ready && RB.store.hasSample()) banner = h`<div class="banner-text">These are example tenants —</div><div class="banner-actions"><button type="button" class="btn-link" id="rb-banner-remove" data-cmd="sample:remove" data-write>Remove them</button></div>`;
   bn.hidden = !banner;
   bn.className = 'banner' + (st.loadIssue ? ' banner-warn' : '');
   if (banner) { const s2 = String(banner); if (bn.innerHTML !== s2) bn.innerHTML = s2; }
@@ -226,6 +222,8 @@ function renderChrome() {
 function lateTenants() {
   return RB.store.tenantsList().filter(t => { const lg = RB.store.ledger(t.id); return lg && Object.values(lg.months).some(m => m.status === 'late'); });
 }
+/** The "saved on this device only" / "Everything is saved" note (SafeHTML) — Settings shows it under "Who can see this". */
+ui.syncNote = () => syncNote(RB.store.state);
 function syncNote(st) {
   let dot = 'dot', text;
   if (st.readOnly) { dot = 'dot dot-accent'; text = 'View only'; }
@@ -274,10 +272,11 @@ function openPalette(query) {
     },
   });
 }
-function quickAdd(anchor) {
-  const items = RB.commands.list().filter(c => c.quickAdd).sort((a, b) => a.quickAdd - b.quickAdd)
-    .map(c => ({ label: c.label, icon: c.icon, write: c.write, disabled: c.write && !RB.store.canWrite(), onSelect: () => RB.commands.run(c.id) }));
-  ui.menu(anchor, items, { align: 'end' });
+/** v3: the top-bar "+ Add" menu is gone. The `n` / `+` keys open the same things as a choices sheet. */
+function quickAdd() {
+  const items = RB.commands.list().filter(c => c.quickAdd && !(c.write && !RB.store.canWrite())).sort((a, b) => a.quickAdd - b.quickAdd)
+    .map(c => ({ label: c.label, run: () => RB.commands.run(c.id), write: c.write }));
+  return ui.choices({ title: 'What would you like to do?', items });
 }
 async function withTenant(title, fn, opts) { const id = await ui.pickTenant(Object.assign({ title }, opts || {})); if (id) fn(id); return id; }
 
@@ -309,7 +308,7 @@ const hook = (name, id, fallback) => (typeof RB.actions[name] === 'function' ? R
 const HELP = [
   { id: 'pay', q: 'Record a rent payment', a: 'Someone paid you. Choose who paid, check the amount, and press the big Record button. You can undo it straight after.', btn: 'Record a payment now', run: () => RB.commands.run('payment:record') },
   { id: 'part', q: 'A tenant paid only part of the rent', a: 'Choose who paid, pick “Only part of it”, and type the amount you got. Rent Book keeps track of what they still owe.', btn: 'Record a part payment', run: () => RB.commands.run('payment:part') },
-  { id: 'fix', q: 'Fix a mistake', a: 'Right after you do something, press Undo in the message at the bottom of the screen. Later on: open the tenant, find the payment in their Payment history, press More, then Change or Remove.', btn: 'Find the tenant', run: pickThen('Whose payment was wrong?', id => RB.actions.openTenant(id)) },
+  { id: 'fix', q: 'Fix a mistake', a: 'Right after you do something, press Undo in the message at the bottom of the screen. Later on: open the tenant, tap the payment in their Payment history, then choose Change or Remove.', btn: 'Find the tenant', run: pickThen('Whose payment was wrong?', id => RB.actions.openTenant(id)) },
   { id: 'tenant', q: 'Add a tenant', a: 'Write down their name, which unit they live in and the rent. It takes a minute, a step at a time.', btn: 'Add a tenant now', run: () => RB.commands.run('tenant:add') },
   { id: 'repair', q: 'Log a repair', a: 'Write down what needs fixing and where. You can add who fixed it and what it cost later.', btn: 'Log a repair now', run: () => RB.commands.run('ticket:add') },
   { id: 'owes', q: 'See who owes me money', a: 'The Rent page lists everyone who still owes for the month at the top, with how much and how late.', btn: 'Show who still owes', run: () => go('rent', 'owes') },
@@ -376,7 +375,7 @@ document.addEventListener('keydown', e => {
   gPending = 0;
   if (e.key === '/') { e.preventDefault(); openPalette(); return; }
   if (e.key === '?') { e.preventDefault(); keysSheet(); return; }
-  if (e.key === 'n' || e.key === '+') { e.preventDefault(); quickAdd($('rb-add')); return; }
+  if (e.key === 'n' || e.key === '+') { e.preventDefault(); quickAdd(); return; }
   const def = mounted && views[mounted.name];
   if (def && def.onKey && mounted.root.dataset.state === 'ready') { try { if (def.onKey(e, ctxFor('key')) === true) e.preventDefault(); } catch (err) { console.error(err); } }
 });
@@ -389,13 +388,11 @@ function go(route, intent) {
   location.hash = route;
 }
 function moreSheet() {
-  const s = RB.store.state;
   const sh = ui.sheet({
     title: 'More', cancel: false, actions: [{ id: 'ok', label: 'Close', kind: '' }],
     body: h`<div class="more-list">${NAV.filter(n => !TABS.includes(n.route) && n.route !== 'today').map(n => h`<a class="menu-item" href="#${n.route}" id="more-${n.route}" data-more>${ui.icon(n.icon)}<span>${n.label}</span></a>`)}
       <button type="button" class="menu-item" id="more-help" data-cmd="help:howto" data-more>${ui.icon('alert')}<span>Help — How do I…?</span></button></div>
-      <div class="more-textsize">${ui.textSizeControl({ id: 'more-ts' })}</div>
-      <div class="more-sync">${syncNote(s)}</div>`,
+      <div class="more-textsize">${ui.textSizeControl({ id: 'more-ts' })}</div>`,
   });
   sh.body.addEventListener('click', e => { if (e.target.closest('[data-more]')) sh.close(); });
 }
@@ -420,7 +417,7 @@ RB.shell = {
     registerBuiltins();
     $('rb-search-icon').innerHTML = String(ui.icon('search'));
     $('rb-find').innerHTML = String(h`${ui.icon('search')}<span>Find</span>`);
-    $('rb-add').innerHTML = String(h`${ui.icon('plus')}<span>Add</span>`);
+
     const search = $('rb-search');
     // The top-bar field is an affordance for the palette: clicking or typing in it opens the palette with that text.
     search.addEventListener('mousedown', e => { e.preventDefault(); openPalette(search.value); });
@@ -428,7 +425,7 @@ RB.shell = {
       if ((e.key.length === 1 && !e.metaKey && !e.ctrlKey) || e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); openPalette(e.key.length === 1 ? e.key : ''); }
     });
     $('rb-find').addEventListener('click', () => openPalette());
-    $('rb-add').addEventListener('click', e => quickAdd(e.currentTarget));
+
     document.addEventListener('click', e => {
       if (e.target.closest('#rb-more')) { moreSheet(); return; }
       const c = e.target.closest('[data-cmd]');
