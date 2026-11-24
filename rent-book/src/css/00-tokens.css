@@ -5,24 +5,24 @@
   --surface: #FFFFFF;
   --sunk: #ECEEF3;
   --ink: #131A26;
-  --ink-2: #485163;
-  --ink-3: #636C7D;            /* spec says #6F7889, but that is 4.11:1 on paper; darkened to meet the spec's own ≥4.5:1 rule (4.89 paper, 5.29 surface, 4.55 sunk) */
+  --ink-2: #3D4657;            /* 8.8:1 paper, 9.5 surface, 8.2 sunk */
+  --ink-3: #566072;            /* v2: ≥5.4:1 on every ground (5.9 paper, 6.3 surface, 5.5 sunk) */
   --line: #E0E4EB;
   --line-2: #C9CFDA;
-  --accent: #2A47C4;
+  --accent: #2440B8;           /* 7.8 paper, 8.4 surface; white on it 8.4 */
   --accent-ink: #FFFFFF;
   --accent-soft: #E7EBFA;
-  --ok: #1B7448;
+  --ok: #17663F;
   --ok-soft: #E2F2E9;
-  --warn: #9A5D07;
+  --warn: #835005;
   --warn-soft: #FAEFD9;
-  --bad: #B4362E;
+  --bad: #A3302A;
   --bad-soft: #FAE6E4;
 
   /* derived (still tokens: no literal colours outside this file) */
   --hover: #EEF0F5;            /* row / ghost-button hover */
   --accent-line: #B7C3F1;      /* border of accent-soft things */
-  --accent-hover: #2139A6;
+  --accent-hover: #1C3399;
   --ok-line: #A8D4BB;
   --warn-line: #E6C78C;
   --bad-line: #EBB3AD;
@@ -35,35 +35,45 @@
   --toast-hover: rgba(255, 255, 255, .12);
   --shadow-float: 0 1px 2px rgba(19, 26, 38, .06), 0 10px 28px rgba(19, 26, 38, .12);
   --shadow-modal: 0 2px 6px rgba(19, 26, 38, .08), 0 24px 60px rgba(19, 26, 38, .22);
-  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 5px var(--accent);
   color-scheme: light;
+}
 
-  /* type */
+/* Sizes. Declared on :root and on any .text-scope element so a subtree can use its own --text-scale (the kit shows
+   all three sizes side by side that way). */
+:root, .text-scope {
+  /* type: every size multiplies by --text-scale (Text size control: 1 / 1.12 / 1.25 on the root element, data-text="…").
+     Token names are historical; values were raised in v2 so nothing a person reads is under 14px. */
+  --text-scale: 1;
   --f-display: "Newsreader", "Iowan Old Style", "Charter", Georgia, "Times New Roman", serif;
   --f-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
-  --t-12: 12px;
-  --t-13: 13.5px;
-  --t-15: 15px;
-  --t-18: 18px;
-  --t-24: 24px;
-  --t-34: 34px;
-  --t-body: 13.5px;
-  --t-micro: 11px;
+  --t-12: calc(14px * var(--text-scale));     /* smallest readable: hints, captions, pills */
+  --t-13: calc(15px * var(--text-scale));     /* secondary lines */
+  --t-15: calc(17px * var(--text-scale));     /* emphasis, buttons */
+  --t-18: calc(20px * var(--text-scale));     /* section titles */
+  --t-24: calc(27px * var(--text-scale));     /* view titles */
+  --t-34: calc(38px * var(--text-scale));     /* large sums */
+  --t-body: calc(16px * var(--text-scale));
+  --t-micro: calc(14px * var(--text-scale));  /* uppercase labels (sparingly) */
+  --lh: 1.5;
 
-  /* space, radius, sizes */
-  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
-  --r-ctl: 6px;
-  --r-panel: 10px;
+  /* space, radius, sizes (all scale with text) */
+  --s1: calc(4px * var(--text-scale)); --s2: calc(8px * var(--text-scale)); --s3: calc(12px * var(--text-scale));
+  --s4: calc(16px * var(--text-scale)); --s5: calc(24px * var(--text-scale)); --s6: calc(32px * var(--text-scale)); --s7: calc(48px * var(--text-scale));
+  --r-ctl: 8px;
+  --r-panel: 12px;
   --r-plate: 3px;
-  --rail-w: 208px;
-  --top-h: 56px;
-  --tab-h: 56px;
-  --ctl-h: 32px;
-  --ctl-h-sm: 28px;
-  --ctl-h-lg: 40px;
-  --row-h: 44px;
+  --rail-w: calc(236px * var(--text-scale));
+  --top-h: calc(64px * var(--text-scale));
+  --tab-h: calc(68px * var(--text-scale));
+  --ctl-h: calc(44px * var(--text-scale));     /* ≥40 desktop */
+  --ctl-h-sm: calc(40px * var(--text-scale));
+  --ctl-h-lg: calc(52px * var(--text-scale));
+  --ctl-h-xl: calc(64px * var(--text-scale));  /* task buttons on Today */
+  --row-h: calc(56px * var(--text-scale));     /* ≥52 */
   --gutter: 32px;
+  --icon: calc(18px * var(--text-scale));
   --sticky-top: calc(env(safe-area-inset-top, 0px) + var(--top-h));
   --ease: cubic-bezier(.2, .7, .2, 1);
   --dur: 160ms;
@@ -75,8 +85,8 @@
     --surface: #151920;
     --sunk: #0A0C10;
     --ink: #E7EAF0;
-    --ink-2: #A8B0BE;
-    --ink-3: #7E8797;
+    --ink-2: #B0B8C6;
+    --ink-3: #8E97A7;
     --line: #232933;
     --line-2: #343C49;
     --accent: #8FA4FF;
@@ -107,13 +117,19 @@
   }
 }
 
+:root[data-text="lg"] { --text-scale: 1.12; }
+:root[data-text="xl"] { --text-scale: 1.25; }
+.text-scope[data-scale="normal"] { --text-scale: 1; }
+.text-scope[data-scale="lg"] { --text-scale: 1.12; }
+.text-scope[data-scale="xl"] { --text-scale: 1.25; }
+
 :root[data-theme="dark"] {
   --paper: #0E1116;
   --surface: #151920;
   --sunk: #0A0C10;
   --ink: #E7EAF0;
-  --ink-2: #A8B0BE;
-  --ink-3: #7E8797;
+  --ink-2: #B0B8C6;
+  --ink-3: #8E97A7;
   --line: #232933;
   --line-2: #343C49;
   --accent: #8FA4FF;
@@ -144,17 +160,17 @@
 }
 
 @media (max-width: 1099.98px) {
-  :root { --rail-w: 60px; --gutter: 24px; }
+  :root, .text-scope { --rail-w: calc(76px * var(--text-scale)); --gutter: 24px; }
 }
 @media (max-width: 759.98px) {
-  :root {
-    --t-body: 15px;
-    --ctl-h: 44px;
-    --ctl-h-sm: 36px;
-    --ctl-h-lg: 48px;
-    --row-h: 52px;
+  :root, .text-scope {
+    --t-body: calc(17px * var(--text-scale));
+    --ctl-h: calc(48px * var(--text-scale));     /* every tappable thing ≥48 on phone */
+    --ctl-h-sm: calc(48px * var(--text-scale));
+    --ctl-h-lg: calc(56px * var(--text-scale));
+    --row-h: calc(60px * var(--text-scale));
     --gutter: 16px;
     --rail-w: 0px;
-    --top-h: 52px;
+    --top-h: calc(60px * var(--text-scale));
   }
 }

@@ -6,27 +6,27 @@
 </style>
 <div class="app" id="rb-app">
   <aside class="rail" id="rb-rail" aria-label="Sections">
-    <a class="rail-brand" href="#today" id="rb-brand">
+    <a class="rail-brand" href="#today" id="rb-brand" aria-label="Rent Book — go to Today">
       <span class="rail-mark" aria-hidden="true">RB</span>
       <span class="rail-brand-text"><span class="rail-title">Rent Book</span><span class="rail-sub" id="rb-portfolio"></span></span>
     </a>
     <nav class="rail-nav" id="rb-nav"></nav>
-    <div class="rail-foot" id="rb-sync" aria-live="polite"></div>
+    <div class="rail-foot" id="rb-sync"></div>
   </aside>
   <div class="work" id="rb-work">
     <div class="banner" id="rb-banner" hidden></div>
     <header class="topbar" id="rb-topbar">
       <div class="topbar-inner">
+        <a class="topbar-brand" href="#today" id="rb-brand-phone"><span class="rail-mark" aria-hidden="true">RB</span><span class="vh">Rent Book — go to Today</span></a>
         <h1 class="topbar-title" id="rb-title">Today</h1>
         <span class="topbar-note" id="rb-topnote" hidden></span>
         <span class="spacer"></span>
         <label class="search topbar-search" for="rb-search">
           <span class="search-icon" id="rb-search-icon"></span>
-          <input class="input search-input" id="rb-search" type="search" placeholder="Search tenants, units…" autocomplete="off" spellcheck="false" aria-label="Search tenants and commands">
-          <kbd class="kbd search-kbd">/</kbd>
+          <input class="input search-input" id="rb-search" type="search" placeholder="Find a tenant or do something…" autocomplete="off" spellcheck="false" aria-label="Find a tenant or do something">
         </label>
-        <button class="btn btn-ghost btn-icon topbar-findbtn" id="rb-find" type="button" aria-label="Search"></button>
-        <button class="btn btn-soft btn-icon" id="rb-add" type="button" aria-label="Add" aria-haspopup="menu"></button>
+        <button class="btn btn-ghost topbar-findbtn" id="rb-find" type="button">Find</button>
+        <button class="btn btn-soft topbar-add" id="rb-add" type="button" aria-haspopup="menu">Add</button>
       </div>
     </header>
     <main class="view" id="rb-view" tabindex="-1" aria-live="off"></main>

@@ -16,7 +16,7 @@ const DEFAULT_SETTINGS = Object.freeze({
 });
 
 const STATUSES = ['paid', 'paid_late', 'partial', 'due', 'late', 'none'];
-const STATUS_LABEL = { paid: 'Paid', paid_late: 'Paid late', partial: 'Partial', due: 'Due', late: 'Late', none: 'No charge' };
+const STATUS_LABEL = { paid: 'Paid', paid_late: 'Paid late', partial: 'Part paid', due: 'Not paid yet', late: 'Late', none: 'No charge' };
 const CATEGORY_LABEL = { late_fee: 'Late fee', utility: 'Utility', damage: 'Damage', fee: 'Fee', other: 'Other' };
 const TYPE_ORDER = { opening: 0, charge: 1, credit: 2, payment: 3 };
 
@@ -307,7 +307,7 @@ function leaseState(tenant, settings, today) {
   } else {
     out.daysLeft = D.diffDays(today, l.end);
     out.inNoticeWindow = out.daysLeft <= settings.leaseNoticeDays;
-    if (out.kind !== 'upcoming') out.label = out.daysLeft === 0 ? 'ends today' : 'in ' + out.daysLeft + ' d';
+    if (out.kind !== 'upcoming') out.label = out.daysLeft === 0 ? 'ends today' : 'in ' + D.days(out.daysLeft);
     if (l.start && l.end > l.start) out.progress = Math.max(0, Math.min(1, D.diffDays(l.start, today) / D.diffDays(l.start, l.end)));
   }
   if (out.noticeGiven && l.moveOut) out.label = 'moving out ' + D.rel(l.moveOut, today);
@@ -376,7 +376,7 @@ function attention(state, today, getLedger) {
       } else if (lg.current.status === 'late' || Object.values(lg.months).some(m => m.status === 'late')) {
         const lateM = lg.current.status === 'late' ? lg.months[lg.current.period] : Object.values(lg.months).filter(m => m.status === 'late').pop();
         items.push({ id: 'late-' + t.id, kind: 'late', severity: 'high', rank: -lateM.daysLate, tenantId: t.id, unit,
-          title: name, detail: D.monthName(lateM.period) + ' rent · ' + M.fmt(lateM.open) + (lateM.paid > 0 ? ' still open (' + M.fmt(lateM.paid) + ' paid)' : '') + ' · ' + lateM.daysLate + ' d late',
+          title: name, detail: D.monthName(lateM.period) + ' rent · ' + M.fmt(lateM.open) + (lateM.paid > 0 ? ' still open (' + M.fmt(lateM.paid) + ' paid)' : '') + ' · ' + D.days(lateM.daysLate) + ' late',
           amount: lg.balance, date: lateM.due, action: pay, secondary: lateFee });
       } else {
         items.push({ id: 'partial-' + t.id, kind: 'partial', severity: 'medium', rank: 0, tenantId: t.id, unit,
@@ -418,7 +418,7 @@ function attention(state, today, getLedger) {
     const dd = depositDue(t, settings, today);
     if (dd) {
       items.push({ id: 'deposit-' + t.id, kind: 'deposit', severity: dd.daysLeft <= 7 ? 'high' : 'medium', rank: dd.daysLeft, tenantId: t.id, unit,
-        title: name, detail: 'Deposit ' + M.fmt(dd.amount) + ' due back ' + D.fmt(dd.dueDate, today) + ' (' + (dd.overdue ? -dd.daysLeft + ' d overdue' : D.rel(dd.dueDate, today)) + ')',
+        title: name, detail: 'Deposit ' + M.fmt(dd.amount) + ' due back ' + D.fmt(dd.dueDate, today) + ' (' + (dd.overdue ? D.days(-dd.daysLeft) + ' overdue' : D.rel(dd.dueDate, today)) + ')',
         amount: dd.amount, date: dd.dueDate, action: { type: 'settleDeposit', tenantId: t.id, label: 'Settle deposit' } });
     }
     const log = t.log || {};
@@ -742,3 +742,265 @@ function depositSettlement({ deposit, deductions, balance, applyToBalance }) {
 }
 RB.model.moveOutPreview = moveOutPreview;
 RB.model.depositSettlement = depositSettlement;
+
+// ================================================================= Repairs history (SPEC §9) — pure, tested in
+// test/repairs-model.test.mjs. A "repair" is a ticket doc. Appended section: owned by the Repairs view.
+const REPAIR_CATEGORIES = Object.freeze([
+  { key: 'plumbing', label: 'Plumbing', noun: 'plumbing' },
+  { key: 'electrical', label: 'Electrical', noun: 'electrical' },
+  { key: 'heating', label: 'Heating & cooling', noun: 'heating & cooling' },
+  { key: 'appliance', label: 'Appliances', noun: 'appliance' },
+  { key: 'roof', label: 'Roof & outside', noun: 'roof & outside' },
+  { key: 'doors', label: 'Doors, windows & locks', noun: 'door, window & lock' },
+  { key: 'pest', label: 'Pests', noun: 'pest' },
+  { key: 'painting', label: 'Painting & floors', noun: 'painting & floor' },
+  { key: 'other', label: 'Other', noun: '' },
+]);
+const REPAIR_CATEGORY_LABEL = Object.freeze(Object.fromEntries(REPAIR_CATEGORIES.map(c => [c.key, c.label])));
+const REPAIR_BUILDING = '*building';          // unit filter / unitKey for whole-building work
+
+/** The repair's category key; missing or unknown → 'other'. */
+function repairCategory(k) { return k && REPAIR_CATEGORY_LABEL[k.category] ? k.category : 'other'; }
+
+// Pests and phrases first (they beat single words), then nouns (earliest in the text wins), then weak words like "leak".
+const CAT_PHRASES = [
+  ['pest', /\b(pest|mice\b|mouse|rats?\b|roach|cockroach|ants?\b|bed ?bugs?|termite|wasp|hornet|bees?\b|exterminat|rodent|squirrel|raccoon)/],
+  ['plumbing', /\b(water heater|hot water|no water|water pressure|sump pump|running toilet)/],
+  ['electrical', /\b(smoke (detector|alarm)|carbon monoxide|co (detector|alarm)|(bathroom|exhaust|ceiling|extractor) fan|door ?bell|light fixture)/],
+  ['appliance', /\b(garbage disposal|washing machine|range hood|ice maker)/],
+  ['doors', /\b(garage door|sliding door|screen door|front door|back door)/],
+  ['heating', /\b(air con|a\/c\b|heat pump|mini ?split)/],
+  ['roof', /\b(snow removal|tree (trim|removal|work)|power ?wash)/],
+];
+const CAT_WORDS = [
+  ['appliance', /\b(dishwasher|fridge|refrigerator|freezer|oven|stove|cooktop|range\b|washer|dryer|microwave|disposal|appliance)/],
+  ['plumbing', /\b(tap\b|taps\b|faucet|sink|toilet|drain|pipe|plumb|shower|bath|tub\b|sewer|septic|valve|cistern|spigot)/],
+  ['heating', /\b(heat|furnace|boiler|radiator|thermostat|hvac|ac\b|cooling|air condition|vent\b|vents\b|duct)/],
+  ['electrical', /\b(electric|outlet|socket|switch|light|bulb|breaker|fuse|wiring|wire|power\b|gfci|fan\b|fans\b)/],
+  ['doors', /\b(door|window|lock|key\b|keys\b|screen|glass|pane\b|blind|latch|hinge|deadbolt|shutter)/],
+  ['roof', /\b(roof|gutter|downspout|siding|fence|deck\b|porch|driveway|yard|tree|lawn|snow|paving|exterior|shingle|flashing|chimney|brick|masonry|steps\b|stair|railing|walkway)/],
+  ['painting', /\b(paint|floor|carpet|tile|drywall|plaster|walls?\b|ceiling|grout|caulk|refinish|sanding|laminate|hardwood|repaint)/],
+];
+const CAT_WEAK = [['plumbing', /\b(leak|drip|clog|block(ed)? drain|flood|water)/]];
+/** Suggest a category key from a repair title ("Leaking tap" → 'plumbing'); null when nothing matches. */
+function suggestCategory(text) {
+  const s = ' ' + String(text || '').toLowerCase() + ' ';
+  if (!s.trim()) return null;
+  for (const [key, re] of CAT_PHRASES) if (re.test(s)) return key;
+  let best = null, at = Infinity;
+  for (const [key, re] of CAT_WORDS) { const m = s.match(re); if (m && m.index < at) { best = key; at = m.index; } }
+  if (best) return best;
+  for (const [key, re] of CAT_WEAK) if (re.test(s)) return key;
+  return null;
+}
+
+/** URL-safe slug for #p-<slug>: "418 Marlow Street" → "418-marlow-street". Never empty. */
+function propertySlug(name) {
+  const s = String(name || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
+  return s || 'property';
+}
+const repairIsBuilding = k => k.scope === 'building' || !String(k.unit || '').trim();
+const repairUnitKey = k => (repairIsBuilding(k) ? REPAIR_BUILDING : String(k.unit).trim());
+/** The date a repair belongs to in its history: when it was done, else when it was reported. */
+const repairDate = k => (D.isDate(k.completed) ? k.completed : D.isDate(k.reported) ? k.reported : D.isDate(k.scheduled) ? k.scheduled : '');
+/** "Unit 2B" / "No. 4" / "the whole building". */
+function unitWords(unit, building) {
+  if (building || unit === REPAIR_BUILDING || !String(unit || '').trim()) return 'the whole building';
+  const u = String(unit).trim();
+  return /^(no\.?|unit|apt\.?|flat|house|suite|#)\s*/i.test(u) ? u : 'Unit ' + u;
+}
+const capFirst = s => s.charAt(0).toUpperCase() + s.slice(1);
+/** "3 plumbing repairs" / "1 appliance repair" / "2 repairs marked Other" / "5 repairs". */
+function repairsNoun(n, category) {
+  const c = category && REPAIR_CATEGORIES.find(x => x.key === category);
+  const word = n === 1 ? 'repair' : 'repairs';
+  if (!c) return n + ' ' + word;
+  if (!c.noun) return n + ' ' + word + ' marked Other';
+  return n + ' ' + c.noun + ' ' + word;
+}
+
+/** Derived repair item: the ticket with id plus {date, year, category, building, unitKey, cost (cents, 0 if none), done}. */
+function repairItem(k) {
+  const date = repairDate(k);
+  return Object.assign({}, k, { date, year: date.slice(0, 4), category: repairCategory(k), building: repairIsBuilding(k),
+    unitKey: repairUnitKey(k), cost: Math.max(0, Math.round(+k.cost || 0)), done: k.status === 'done' });
+}
+const byNewest = (a, b) => D.cmp(b.date, a.date) || String(b.createdAt || '').localeCompare(String(a.createdAt || '')) || String(a.id).localeCompare(String(b.id));
+const sameProperty = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+
+/**
+ * Every property named by a tenant or a repair, with its repair summary (for the History by property landing).
+ * → [{name, slug (unique), units:[unit] (natural order), unitCount, count, total (done repairs), firstDate,
+ *     thisYear:{count, total}, last: item|null, open (not-done count), urgent}] sorted by name.
+ */
+function repairProperties(state, today) {
+  const names = new Map();
+  const add = n => { const s = String(n || '').trim(); if (s && !names.has(s.toLowerCase())) names.set(s.toLowerCase(), s); };
+  const tenants = tenantsArr(state), tickets = ticketsArr(state).map(repairItem);
+  tenants.forEach(t => add(t.property)); tickets.forEach(k => add(k.property));
+  const list = Array.from(names.values()).sort(RB.natCmp);
+  const used = {};
+  const year = String(today || '').slice(0, 4);
+  return list.map(name => {
+    let slug = propertySlug(name);
+    if (used[slug]) { let i = 2; while (used[slug + '-' + i]) i++; slug = slug + '-' + i; }
+    used[slug] = 1;
+    const units = new Set();
+    tenants.filter(t => sameProperty(t.property, name) && String(t.unit || '').trim()).forEach(t => units.add(String(t.unit).trim()));
+    const mine = tickets.filter(k => sameProperty(k.property, name));
+    mine.filter(k => !k.building).forEach(k => units.add(k.unitKey));
+    const done = mine.filter(k => k.done).sort(byNewest);
+    const ty = done.filter(k => k.year === year);
+    const open = mine.filter(k => !k.done);
+    return { name, slug, units: Array.from(units).sort(RB.natCmp), unitCount: units.size, count: done.length,
+      total: done.reduce((s, k) => s + k.cost, 0), firstDate: done.length ? done[done.length - 1].date : null,
+      thisYear: { count: ty.length, total: ty.reduce((s, k) => s + k.cost, 0) }, last: done[0] || null,
+      open: open.length, urgent: open.filter(k => k.priority === 'urgent').length };
+  });
+}
+/** The property whose slug is `slug` (as assigned by repairProperties), or null. */
+function propertyBySlug(state, slug, today) { return repairProperties(state, today).find(p => p.slug === slug) || null; }
+
+function matchesQuery(k, q) {
+  const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const hay = [k.title, k.detail, k.notes, k.vendor, k.unit, k.building ? 'whole building' : '', REPAIR_CATEGORY_LABEL[k.category]].join(' ').toLowerCase();
+  return words.every(w => hay.includes(w));
+}
+/**
+ * A property's repair history. filters: {unit: '' | REPAIR_BUILDING | unit, category: '' | key, year: '' | 'YYYY', q}.
+ * → {property, all (done repairs at the property, newest first), items (after filters), count, total, ownerTotal,
+ *    tenantTotal, years:[{year, count, total, items}] (newest first), firstDate, open (not-done repairs, oldest first), filters}
+ */
+function repairHistory(state, property, filters) {
+  const f = Object.assign({ unit: '', category: '', year: '', q: '' }, filters || {});
+  const mine = ticketsArr(state).map(repairItem).filter(k => sameProperty(k.property, property));
+  const all = mine.filter(k => k.done).sort(byNewest);
+  const items = all.filter(k => (!f.unit || k.unitKey === f.unit) && (!f.category || k.category === f.category)
+    && (!f.year || k.year === String(f.year)) && matchesQuery(k, f.q));
+  const years = [];
+  items.forEach(k => { let y = years[years.length - 1]; if (!y || y.year !== k.year) years.push(y = { year: k.year, count: 0, total: 0, items: [] }); y.count++; y.total += k.cost; y.items.push(k); });
+  const sum = (arr, p) => arr.filter(p || (() => true)).reduce((s, k) => s + k.cost, 0);
+  return { property, all, items, count: items.length, total: sum(items), ownerTotal: sum(items, k => k.paidBy !== 'tenant'),
+    tenantTotal: sum(items, k => k.paidBy === 'tenant'), years, firstDate: all.length ? all[all.length - 1].date : null,
+    open: mine.filter(k => !k.done).sort((a, b) => D.cmp(a.date, b.date)), filters: f };
+}
+
+/**
+ * Totals for a list of repair items (from repairHistory). opts: {today} — byYear runs without gaps from the first
+ * repair's year to today's year (zero years included).
+ * → {count, total, max:{year, category, unit}, byYear:[{year, count, total}] (oldest first),
+ *    byCategory:[{key, label, count, total}] (largest total first), byUnit:[{unitKey, unit, building, count, total, last}] (largest first)}
+ */
+function repairTotals(items, opts) {
+  const today = (opts && opts.today) || '';
+  const list = (items || []).filter(k => k && k.date);
+  const ys = {}, cs = {}, us = {};
+  list.forEach(k => {
+    const y = (ys[k.year] = ys[k.year] || { year: k.year, count: 0, total: 0 }); y.count++; y.total += k.cost;
+    const c = (cs[k.category] = cs[k.category] || { key: k.category, label: REPAIR_CATEGORY_LABEL[k.category], count: 0, total: 0 }); c.count++; c.total += k.cost;
+    const u = (us[k.unitKey] = us[k.unitKey] || { unitKey: k.unitKey, unit: k.building ? '' : k.unitKey, building: k.building, count: 0, total: 0, last: null });
+    u.count++; u.total += k.cost; if (!u.last || byNewest(k, u.last) < 0) u.last = k;
+  });
+  const byYear = [];
+  const yearsSeen = Object.keys(ys).sort();
+  if (yearsSeen.length) {
+    const last = Math.max(+yearsSeen[yearsSeen.length - 1], today ? +today.slice(0, 4) : 0);
+    for (let y = +yearsSeen[0]; y <= last; y++) byYear.push(ys[String(y)] || { year: String(y), count: 0, total: 0 });
+  }
+  const big = (a, b) => b.total - a.total || b.count - a.count;
+  const byCategory = Object.values(cs).sort((a, b) => big(a, b) || REPAIR_CATEGORIES.findIndex(c => c.key === a.key) - REPAIR_CATEGORIES.findIndex(c => c.key === b.key));
+  const byUnit = Object.values(us).sort((a, b) => big(a, b) || RB.natCmp(a.unit, b.unit));
+  const mx = arr => arr.reduce((m, x) => Math.max(m, x.total), 0);
+  return { count: list.length, total: list.reduce((s, k) => s + k.cost, 0), max: { year: mx(byYear), category: mx(byCategory), unit: mx(byUnit) }, byYear, byCategory, byUnit };
+}
+
+/**
+ * "Keep an eye on": repeat problems and live warranties for a list of repair items (done or not; whole history).
+ * Repeat rule: ≥3 repairs of the same category in the same unit (or the whole building) dated within the last 12 months
+ * (date > today − 12 months), or ≥2 within the last 90 days (0 ≤ today − date ≤ 90). One finding per unit+category
+ * (the 12-month one wins). Warranty: a done repair with warrantyUntil ≥ today.
+ * → [{kind:'repeat', unitKey, unit, building, category, count, total, windowDays:365|90, ids, text}
+ *    | {kind:'warranty', id, title, unitKey, building, until, daysLeft, vendor, text}]
+ */
+function repeatProblems(items, today) {
+  const out = [];
+  const from12 = D.addMonths(today, -12);
+  const groups = {};
+  (items || []).filter(k => k && k.date && k.date <= today).forEach(k => { const g = k.unitKey + '|' + k.category; (groups[g] = groups[g] || []).push(k); });
+  const money = c => (c ? ' (' + M.fmt(c) + ')' : '');
+  Object.keys(groups).forEach(g => {
+    const list = groups[g];
+    const k0 = list[0];
+    const in12 = list.filter(k => k.date > from12);
+    const in90 = list.filter(k => D.diffDays(k.date, today) <= 90);
+    let hit = null;
+    if (in12.length >= 3) hit = { arr: in12, windowDays: 365, words: 'in the last 12 months' };
+    else if (in90.length >= 2) hit = { arr: in90, windowDays: 90, words: 'in the last 90 days' };
+    if (!hit) return;
+    const total = hit.arr.reduce((s, k) => s + k.cost, 0);
+    out.push({ kind: 'repeat', unitKey: k0.unitKey, unit: k0.building ? '' : k0.unitKey, building: k0.building, category: k0.category,
+      count: hit.arr.length, total, windowDays: hit.windowDays, ids: hit.arr.map(k => k.id),
+      text: capFirst(unitWords(k0.unitKey, k0.building)) + ' has had ' + repairsNoun(hit.arr.length, k0.category) + ' ' + hit.words + money(total) });
+  });
+  out.sort((a, b) => b.windowDays - a.windowDays || b.count - a.count || b.total - a.total || RB.natCmp(a.unitKey, b.unitKey));
+  (items || []).filter(k => k && k.done && D.isDate(k.warrantyUntil) && k.warrantyUntil >= today)
+    .sort((a, b) => D.cmp(a.warrantyUntil, b.warrantyUntil))
+    .forEach(k => {
+      const where = k.building ? ' for the whole building' : ' in ' + unitWords(k.unitKey);
+      out.push({ kind: 'warranty', id: k.id, title: k.title || 'Repair', unitKey: k.unitKey, building: k.building, until: k.warrantyUntil,
+        daysLeft: D.diffDays(today, k.warrantyUntil), vendor: k.vendor || '',
+        text: '“' + (k.title || 'Repair') + '”' + where + ' is under warranty until ' + D.fmtLong(k.warrantyUntil) +
+          (k.vendor ? '. If it goes wrong, call ' + k.vendor + ' first' : '') });
+    });
+  return out;
+}
+
+/** "Showing 9 plumbing repairs in Unit 2B — $1,940" / "No plumbing repairs in Unit 2B in 2025". */
+function repairShowingText(hist) {
+  const f = hist.filters || {};
+  const where = f.unit ? (f.unit === REPAIR_BUILDING ? ' for the whole building' : ' in ' + unitWords(f.unit)) : '';
+  const tail = where + (f.year ? ' in ' + f.year : '') + (String(f.q || '').trim() ? ' matching “' + String(f.q).trim() + '”' : '');
+  if (!hist.count) return 'No ' + repairsNoun(2, f.category).replace(/^2 /, '') + tail;
+  const any = f.unit || f.category || f.year || String(f.q || '').trim();
+  return 'Showing ' + (any || hist.count === 1 ? '' : 'all ') + repairsNoun(hist.count, f.category) + tail + ' — ' + M.fmt(hist.total);
+}
+
+/** CSV ("Download for Excel") of repair items. */
+function repairsCsv(items) {
+  return csv(items || [], [
+    { label: 'Date', key: 'date' },
+    { label: 'Property', key: 'property' },
+    { label: 'Unit', get: k => (k.building ? 'Whole building' : k.unitKey) },
+    { label: 'What was fixed', key: 'title' },
+    { label: 'Kind of repair', get: k => REPAIR_CATEGORY_LABEL[k.category] },
+    { label: 'Who fixed it', key: 'vendor' },
+    { label: 'Cost', get: k => k.cost, money: true },
+    { label: 'Who paid', get: k => (k.paidBy === 'tenant' ? 'Tenant' : 'Owner') },
+    { label: 'What was wrong', key: 'detail' },
+    { label: 'Notes', key: 'notes' },
+    { label: 'Under warranty until', get: k => k.warrantyUntil || '' },
+  ]);
+}
+/** Plain text list for "Copy" (paste into an email to an accountant or insurer). opts: {title, showing} */
+function repairsText(items, opts) {
+  const o = opts || {};
+  const lines = [];
+  if (o.title) lines.push(o.title);
+  if (o.showing) lines.push(o.showing);
+  if (lines.length) lines.push('');
+  (items || []).forEach(k => {
+    lines.push([D.fmtLong(k.date), k.title || 'Repair', k.building ? 'Whole building' : unitWords(k.unitKey), REPAIR_CATEGORY_LABEL[k.category],
+      k.vendor || '', k.cost ? M.fmt(k.cost) : 'no cost', k.paidBy === 'tenant' ? 'tenant paid' : 'owner paid'].filter(Boolean).join(' · '));
+    if (k.notes) lines.push('    ' + String(k.notes).replace(/\s*\n\s*/g, ' '));
+    if (k.warrantyUntil) lines.push('    Under warranty until ' + D.fmtLong(k.warrantyUntil));
+  });
+  return lines.join('\n') + '\n';
+}
+
+Object.assign(RB.model, {
+  REPAIR_CATEGORIES, REPAIR_CATEGORY_LABEL, REPAIR_BUILDING, repairCategory, suggestCategory, propertySlug, repairDate,
+  repairItem, unitWords, repairsNoun, repairProperties, propertyBySlug, repairHistory, repairTotals, repeatProblems,
+  repairShowingText, repairsCsv, repairsText,
+});

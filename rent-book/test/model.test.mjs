@@ -57,8 +57,8 @@ test('date helpers never touch UTC and handle boundaries', () => {
   assert.equal(D.weekday('2026-11-23'), 'Mon');
   assert.equal(D.fmt('2026-11-03', '2026-11-23'), 'Nov 3');
   assert.equal(D.fmt('2025-11-03', '2026-11-23'), 'Nov 3, 2025');
-  assert.equal(D.rel('2026-12-05', '2026-11-23'), 'in 12 d');
-  assert.equal(D.rel('2026-11-14', '2026-11-23', { style: 'late' }), '9 d late');
+  assert.equal(D.rel('2026-12-05', '2026-11-23'), 'in 12 days');
+  assert.equal(D.rel('2026-11-14', '2026-11-23', { style: 'late' }), '9 days late');
   assert.equal(D.parseLoose('11/3/2026'), '2026-11-03');
   assert.equal(D.parseLoose('Nov 3, 2026'), '2026-11-03');
   assert.equal(D.parseLoose('2026-02-30'), null);
@@ -265,7 +265,7 @@ test('dueDay and graceDays overrides on the lease beat settings; due day clamps 
 test('leaseState and depositDue', () => {
   const s = { ...SETTINGS };
   let ls = leaseState(tenant(), s, '2026-11-15');
-  assert.equal(ls.kind, 'fixed'); assert.equal(ls.daysLeft, 46); assert.equal(ls.inNoticeWindow, true); assert.equal(ls.label, 'in 46 d');
+  assert.equal(ls.kind, 'fixed'); assert.equal(ls.daysLeft, 46); assert.equal(ls.inNoticeWindow, true); assert.equal(ls.label, 'in 46 days');
   assert.ok(ls.progress > 0.85 && ls.progress < 0.9);
   ls = leaseState(tenant({ lease: { ...tenant().lease, end: null } }), s, '2026-11-15');
   assert.equal(ls.kind, 'mtm');
@@ -343,7 +343,7 @@ test('sample data produces the described spread relative to today', () => {
     assert.equal(past, 1, today + ' moved out with deposit due');
     assert.ok(lateHist >= 3, today + ' paid_late history');
     assert.ok(incr >= 3, today + ' rent increases');
-    assert.equal(Object.keys(s.tickets).length, 6);
+    assert.equal(Object.keys(s.tickets).length, 6 + 45, 'six to-do tickets + 45 past repairs (SPEC §9)');
     assert.ok(ids.every(id => s.tenants[id].sample === true));
     const fu = ids.flatMap(id => Object.values(s.tenants[id].log || {})).filter(e => e.followUp && !e.done && e.followUp <= today);
     assert.equal(fu.length, 1, today + ' one follow-up due');

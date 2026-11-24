@@ -1,36 +1,94 @@
-// views/tenant-detail.js — the #t-<id> tenant detail drawer (right drawer on desktop, full page on phone).
-// Loaded before tenant-forms.js and tenants.js (name order); shares helpers with them through RB._tn.
-// Re-render contract: the drawer is patched part by part (data-part), so a store change never resets the drawer's
-// scroll position or the half-typed note in the composer (which is built once per tenant and never re-rendered).
+// views/tenant-detail.js — the tenant page (#t-<id>): a right drawer on desktop, a full page on phone.
+// Loaded before tenant-forms.js and tenants.js (name order); shares helpers with them (and, at render time, with
+// leases.js and reports.js) through RB._tn. Plain-language rules: docs/SPEC.md §8.
+// Re-render contract: the drawer is patched part by part (data-part), so a store change never resets its scroll.
 const RB = globalThis.RB;
 const { html: h, ui, date: D, money: M } = RB;
 const T = (RB._tn = RB._tn || {});
 const S = () => RB.store;
 
-// ------------------------------------------------------------------ shared helpers (used by forms + list)
+// ------------------------------------------------------------------ shared helpers (used by forms, list, leases, reports)
 /** Same checks as the shared actions: read-only / still loading → toast, false. */
 T.guard = function guard() {
   const st = S().state;
-  if (st.readOnly) { ui.toast('View only — you can’t change this rent book.', { tone: 'bad' }); return false; }
+  if (st.readOnly) { ui.toast('This rent book is view only — you can look, but not change anything.', { tone: 'bad' }); return false; }
   if (!st.mode || !st.ready) { ui.toast('Still loading — try again in a moment.'); return false; }
   return true;
 };
 T.who = t => RB.actions.who(t);
-T.order = [];   // tenant ids in the list's current order (set by tenants.js) — j/k stepping follows it
+T.order = [];   // tenant ids in the list's current order (set by tenants.js) — Previous/Next follow it
 T.ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
-/** "Owes $1,225" / "Paid up" / "$250 credit" (SafeHTML) */
-T.balanceWords = function balanceWords(bal, opts) {
-  const size = (opts && opts.size) || 'md';
-  if (bal > 0) return h`<span class="tn-balw tn-balw-owed">Owes ${ui.money(bal, { size, tone: 'owed' })}</span>`;
-  if (bal < 0) return h`<span class="tn-balw tn-balw-credit">${ui.money(-bal, { size })} credit</span>`;
-  return h`<span class="tn-balw tn-balw-zero">${ui.icon('check', { size: 14 })}Paid up</span>`;
-};
-T.place = t => [t.property, t.unit ? (/^[A-Za-z]?\d+[A-Za-z]?$/.test(t.unit) || /^\d?[A-Za-z]$/.test(t.unit) ? 'Unit ' + t.unit : t.unit) : ''].filter(Boolean).join(' · ');
+T.unitWord = u => (!u ? '' : /^(no\.?|unit|apt|house|#)/i.test(u) ? u : 'Unit ' + u);
+T.place = t => [T.unitWord(t.unit), t.property].filter(Boolean).join(' at ');
 const localDay = iso => { const d = new Date(iso); return isNaN(d) ? null : D.make(d.getFullYear(), d.getMonth() + 1, d.getDate()); };
 T.localDay = localDay;
 T.logList = t => Object.keys(t.log || {}).filter(k => t.log[k]).map(k => Object.assign({ id: k }, t.log[k])).sort((a, b) => D.cmp(b.at || '', a.at || ''));
-T.KIND_ICON = { note: 'note', call: 'phone', text: 'mail', email: 'mail', visit: 'home', notice: 'door' };
-T.KIND_LABEL = { note: 'Note', call: 'Call', text: 'Text', email: 'Email', visit: 'Visit', notice: 'Notice' };
+T.KIND_LABEL = { note: 'Note', call: 'Phone call', text: 'Text', email: 'Email', visit: 'Visit', notice: 'Moving out' };
+T.NOTE_KINDS = [{ value: 'note', label: 'Note' }, { value: 'call', label: 'Phone call' }, { value: 'text', label: 'Text' }, { value: 'email', label: 'Email' }, { value: 'visit', label: 'Visit' }];
+
+// ---- wording (glossary, SPEC §8 rule 4). Built on the shared date/money helpers; numbers always spelled with words.
+const W = (T.W = {});
+W.days = n => RB.plural(Math.abs(n), 'day');
+/** "in 24 days" / "22 days ago" / {style:'late'} "22 days late" / "today" — the shared relative phrase, never abbreviated. */
+W.rel = (d, today, o) => String(D.rel(d, today, o) || '').replace(/(\d+) ?d\b/g, (m, n) => (n === '1' ? '1 day' : n + ' days'));
+W.$ = c => M.fmt(c);
+W.date = (d, today) => D.fmt(d, today);
+/** "September" / "September 2025" */
+W.monthOf = (d, today) => { const k = D.monthKey(d); return D.monthName(k) + (k.slice(0, 4) !== today.slice(0, 4) ? ' ' + k.slice(0, 4) : ''); };
+/** Money owed in words: "Owes $1,225" · "All paid up" · "$250 paid ahead" (plain text). */
+W.balance = bal => (bal > 0 ? 'Owes ' + W.$(bal) : bal < 0 ? W.$(-bal) + ' paid ahead' : 'All paid up');
+/** This month's part payment, or null: {paid, charged, open, late, daysLate, month} */
+W.partial = function partial(lg, today) {
+  const c = lg.current;
+  if (!c || !(c.open > 0) || !(c.paid > 0) || (c.status !== 'partial' && c.status !== 'late')) return null;
+  return { paid: c.paid, charged: c.charged, open: c.open, late: c.status === 'late', daysLate: c.daysLate, month: D.monthName(c.period) };
+};
+/**
+ * One status sentence for a tenant: {text, tone:'bad'|'warn'|'ok'|''}.
+ * "Owes $3,300 — behind on rent since September" · "Owes $1,225 — 22 days late" ·
+ * "Has paid $800 of $1,475 for November. Still owes $675 — 22 days late." · "All paid up" · "$250 paid ahead"
+ */
+W.status = function status(t, lg, today) {
+  const bal = lg.balance, c = lg.current;
+  if (t.status === 'past') return bal > 0 ? { text: 'Moved out — still owes ' + W.$(bal), tone: 'bad' } : { text: 'Moved out — ' + (bal < 0 ? W.$(-bal) + ' paid ahead' : 'all paid up'), tone: '' };
+  if (lg.delinquent && bal > 0) return { text: 'Owes ' + W.$(bal) + ' — behind on rent since ' + W.monthOf(lg.oldestOpenDate, today), tone: 'bad' };
+  const p = W.partial(lg, today);
+  if (p) {
+    const more = bal > p.open ? ' Owes ' + W.$(bal) + ' in all.' : '';
+    return { text: 'Has paid ' + W.$(p.paid) + ' of ' + W.$(p.charged) + ' for ' + p.month + '. Still owes ' + W.$(p.open) + (p.late ? ' — ' + W.days(p.daysLate) + ' late' : '') + '.' + more, tone: p.late ? 'bad' : 'warn' };
+  }
+  if (c.status === 'late' && bal > 0) return { text: 'Owes ' + W.$(bal) + ' — ' + W.days(c.daysLate) + ' late', tone: 'bad' };
+  if (c.status === 'due' && bal > 0) return { text: 'Owes ' + W.$(bal) + ' — ' + D.monthName(c.period) + ' rent not paid yet', tone: 'warn' };
+  if (bal > 0) return { text: 'Owes ' + W.$(bal), tone: 'warn' };
+  return { text: W.balance(bal), tone: bal < 0 ? '' : 'ok' };
+};
+/** Lease in words: "Lease ends Dec 17 — in 24 days" · "Month-to-month" · "Moving out Dec 15 — in 21 days" · "Moved out Oct 31" */
+W.lease = function lease(t, ls, today) {
+  const l = t.lease || {};
+  if (t.status === 'past') return { text: 'Moved out' + (l.moveOut ? ' ' + W.date(l.moveOut, today) : ''), tone: '' };
+  if (l.moveOut && (t.status === 'notice' || ls.noticeGiven)) {
+    if (l.moveOut < today) return { text: 'Was moving out ' + W.date(l.moveOut, today) + ' — finish the move-out', tone: 'bad' };
+    return { text: 'Moving out ' + W.date(l.moveOut, today) + ' — ' + W.rel(l.moveOut, today), tone: 'warn' };
+  }
+  if (ls.kind === 'upcoming') return { text: 'Moves in ' + W.date(l.moveIn, today) + ' — ' + W.rel(l.moveIn, today), tone: 'accent' };
+  if (ls.kind === 'mtm') return { text: 'Month-to-month', tone: '' };
+  if (ls.kind === 'fixed' && l.end) return { text: 'Lease ends ' + W.date(l.end, today) + ' — ' + (ls.daysLeft === 0 ? 'today' : W.rel(l.end, today)), tone: ls.inNoticeWindow ? 'warn' : '' };
+  return { text: '', tone: '' };
+};
+/** Strip caption (rule 10). */
+T.STRIP_CAPTION = 'Each box is a month, oldest on the left. Green = paid on time. Green with a dot = paid late. Half box = part paid. Red = late. Empty box = not paid yet.';
+/** Big single-choice buttons that work like ui.field seg (hidden input + global click handler). */
+T.pick = function pick(o) {
+  const opts = (o.options || []).map(x => (typeof x === 'object' ? x : { value: x, label: x }));
+  const val = o.value == null ? '' : String(o.value);
+  return h`<div class="field tn-pick-field${o.span === 2 ? ' span-2' : ''}" data-field="${o.name}">
+    ${o.label ? h`<span class="field-label" id="${o.id}-label">${o.label}</span>` : ''}
+    <input type="hidden" id="${o.id}" name="${o.name}" value="${val}" data-kind="seg"${o.required ? RB.raw(' required') : ''}${o.requiredMsg ? h` data-required-msg="${o.requiredMsg}"` : ''}>
+    <div class="seg tn-pick${o.stack ? ' tn-pick-stack' : ''}" role="radiogroup" aria-labelledby="${o.id}-label" data-seg-for="${o.id}">${opts.map(x => h`<button type="button" role="radio" data-value="${x.value}" aria-checked="${String(String(x.value) === val)}" aria-pressed="${String(String(x.value) === val)}"><span class="tn-pick-l">${x.label}</span>${x.sub ? h`<span class="tn-pick-s">${x.sub}</span>` : ''}</button>`)}</div>
+    ${o.hint ? h`<div class="field-hint" id="${o.id}-hint">${o.hint}</div>` : ''}
+    <div class="field-error" id="${o.id}-err" aria-live="polite"></div>
+  </div>`;
+};
 
 /** Step to the previous/next tenant in the list's current order. */
 T.step = function step(dir) {
@@ -42,23 +100,26 @@ T.step = function step(dir) {
 };
 
 // ------------------------------------------------------------------ drawer
-/** Open (or switch) the drawer to tenant `id`. */
 T.openDrawer = function openDrawer(id) {
   return ui.drawer({
-    label: 'Tenant details',
+    label: 'Tenant',
     scrim: false,
     onClose: () => { if (/^#t-/.test(location.hash)) location.hash = 'tenants'; },
     render: el => renderDrawer(el, id),
   });
 };
 
+const backBtn = () => h`<button type="button" class="btn tn-back" data-drawer-close>${ui.icon('chevron-left')}<span>Back to tenants</span></button>`;
+const closeBtn = () => h`<button type="button" class="btn btn-ghost tn-close hide-phone" data-drawer-close>${ui.icon('x')}<span>Close</span></button>`;
+
 function renderDrawer(el, id) {
   const t = S().tenant(id);
+  el.classList.add('tn-drawer');
   if (!t) {
     el.dataset.tid = '';
     el._tnParts = null;
-    el.innerHTML = String(h`<div class="drawer-head tn-dhead"><div class="tn-dhead-bar"><button type="button" class="btn btn-ghost btn-sm tn-back show-phone" data-drawer-close>${ui.icon('chevron-left')}<span>Tenants</span></button><span class="spacer"></span><span class="hide-phone">${ui.drawerClose()}</span></div><h2 class="drawer-title">Tenant not found</h2></div>
-      <div class="drawer-body">${ui.empty({ icon: 'user', title: 'No tenant at this link', body: 'They may have been deleted, or the link is from another rent book.', actions: [{ label: 'Back to tenants', kind: 'soft', act: 'back' }] })}</div>`);
+    el.innerHTML = String(h`<div class="drawer-head tn-dhead"><div class="tn-dhead-bar">${backBtn()}<span class="spacer"></span>${closeBtn()}</div><h2 class="drawer-title">Tenant not found</h2></div>
+      <div class="drawer-body">${ui.empty({ icon: 'user', title: 'There is no tenant at this link', body: 'They may have been removed, or the link is from another rent book.', actions: [{ label: 'Back to tenants', kind: 'primary', act: 'back' }] })}</div>`);
     ui.bind(el, { back: () => { location.hash = 'tenants'; } });
     return;
   }
@@ -66,19 +127,17 @@ function renderDrawer(el, id) {
     el.dataset.tid = id;
     el._tnParts = {};
     el._tnShowAll = false;
-    el.innerHTML = String(h`<div class="drawer-head tn-dhead" data-part="head"></div>
+    el.innerHTML = String(h`<div class="drawer-head tn-dhead" data-part="bar"></div>
       <div class="drawer-body tn-dbody" id="tn-dbody">
+        <div class="tn-dtop" data-part="head"></div>
         <div data-part="alerts"></div>
-        <section class="tn-dsec" aria-labelledby="tn-h-contact"><div class="sec"><h3 class="sec-title" id="tn-h-contact">Contact</h3><div class="sec-actions"><button type="button" class="btn btn-ghost btn-sm" data-act="edit" data-sec="contact" data-write>${ui.icon('edit')}<span>Edit</span></button></div></div><div data-part="contact"></div></section>
-        <section class="tn-dsec" aria-labelledby="tn-h-lease"><div data-part="leasehead"></div><div data-part="lease"></div></section>
-        <section class="tn-dsec" aria-labelledby="tn-h-ledger"><div data-part="ledgerhead"></div><div data-part="ledger"></div></section>
-        <section class="tn-dsec" aria-labelledby="tn-h-notes"><div class="sec"><h3 class="sec-title" id="tn-h-notes">Notes &amp; timeline</h3><span class="sec-meta" data-part="notecount"></span></div>
-          ${composer()}
-          <div data-part="timeline"></div></section>
+        <section class="tn-dsec" aria-labelledby="tn-h-contact"><div class="tn-sec-head"><h3 class="tn-sec-title" id="tn-h-contact">Contact</h3><button type="button" class="btn" data-act="edit" data-sec="contact" data-write>${ui.icon('edit')}<span>Change</span></button></div><div data-part="contact"></div></section>
+        <section class="tn-dsec" aria-labelledby="tn-h-lease"><div class="tn-sec-head"><h3 class="tn-sec-title" id="tn-h-lease">Lease and rent</h3></div><div data-part="lease"></div></section>
+        <section class="tn-dsec" aria-labelledby="tn-h-ledger"><div class="tn-sec-head"><h3 class="tn-sec-title" id="tn-h-ledger">Payment history</h3></div><div data-part="ledger"></div></section>
+        <section class="tn-dsec" aria-labelledby="tn-h-notes"><div class="tn-sec-head"><h3 class="tn-sec-title" id="tn-h-notes">Notes</h3><button type="button" class="btn" id="tn-add-note" data-act="note" data-write>${ui.icon('note')}<span>Add a note</span></button></div><div data-part="timeline"></div></section>
+        <section class="tn-dsec" aria-labelledby="tn-h-repairs" data-part-wrap="repairs"><div class="tn-sec-head"><h3 class="tn-sec-title" id="tn-h-repairs">Repairs in this unit</h3></div><div data-part="repairs"></div></section>
+        <nav class="tn-dnav" aria-label="Other tenants" data-part="nav"></nav>
       </div>`);
-    const ta = el.querySelector('#tn-note-text');
-    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submitNote(el, id); } });
-    ta.addEventListener('input', () => { const err = el.querySelector('#tn-note-text-err'); if (err) err.textContent = ''; });
   }
   const today = S().today();
   const lg = S().ledger(id);
@@ -92,56 +151,64 @@ function renderDrawer(el, id) {
     const node = el.querySelector('[data-part="' + name + '"]');
     if (node) node.innerHTML = s;
   };
+  set('bar', barPart(t));
   set('head', headPart(t, lg, ls, today));
   set('alerts', alertsPart(t, lg, settings, today));
   set('contact', contactPart(t));
-  set('leasehead', h`<div class="sec"><h3 class="sec-title" id="tn-h-lease">Lease</h3><div class="sec-actions">${t.status !== 'past' ? h`<button type="button" class="btn btn-ghost btn-sm" data-act="rent" data-write>Change rent</button><button type="button" class="btn btn-ghost btn-sm" data-act="renew" data-write>Renew</button>` : ''}<button type="button" class="btn btn-ghost btn-sm" data-act="edit" data-sec="lease" data-write>${ui.icon('edit')}<span>Edit</span></button></div></div>`);
   set('lease', leasePart(t, lg, ls, settings, today));
-  set('ledgerhead', ledgerHead(t, lg));
   set('ledger', ledgerPart(t, lg, today, el._tnShowAll));
-  const logs = T.logList(t);
-  set('notecount', logs.length ? String(logs.length) : '');
-  set('timeline', timelinePart(logs, today));
+  set('timeline', timelinePart(T.logList(t), today));
+  const rep = repairsPart(t);
+  const wrap = el.querySelector('[data-part-wrap="repairs"]');
+  if (wrap) wrap.hidden = rep === null;
+  set('repairs', rep || '');
+  set('nav', navPart(t));
   el.setAttribute('aria-labelledby', 'tn-dtitle');
   ui.bind(el, handlers(el, id));
 }
 
-function headPart(t, lg, ls, today) {
-  const cur = lg.current;
+function navPart(t) {
   const pos = T.order.indexOf(t.id);
-  const tags = [];
-  if (t.status === 'past') tags.push(ui.tag('Moved out' + (ls.moveOut ? ' ' + D.fmt(ls.moveOut, today) : ''), 'quiet', 'door'));
-  else if (t.status === 'notice') tags.push(ui.tag('Notice given' + (ls.moveOut ? ' · moves out ' + D.fmt(ls.moveOut, today) : ''), 'warn', 'door'));
-  if (t.status !== 'past') {
-    if (ls.kind === 'upcoming') tags.push(ui.tag(ls.label.replace(/^./, c => c.toUpperCase()), 'accent', 'calendar'));
-    else if (ls.kind === 'mtm') tags.push(ui.tag(ls.holdover ? 'Month-to-month (lease ended ' + D.fmt(ls.end, today) + ')' : 'Month-to-month', 'quiet'));
-    else if (ls.kind === 'fixed' && t.status !== 'notice') tags.push(ui.tag('Lease ends ' + D.fmt(ls.end, today) + ' · ' + ls.label, ls.inNoticeWindow ? 'warn' : 'quiet', 'leases'));
-  }
-  if (lg.delinquent) tags.push(ui.tag('Delinquent · since ' + D.fmt(lg.oldestOpenDate, today), 'bad', 'alert'));
-  const month = cur.status === 'none' ? null
-    : h`<span class="tn-dmonth"><span class="faint">${D.monthName(cur.period)}</span>${ui.pill(cur.status, { daysLate: cur.daysLate, label: cur.status === 'paid' || cur.status === 'paid_late' ? (cur.status === 'paid' ? 'Paid ' : 'Paid late ') + D.fmt(cur.paidOn, today) : cur.status === 'partial' ? M.fmt(cur.paid) + ' of ' + M.fmt(cur.charged) + ' paid' : cur.status === 'due' ? 'Due ' + D.fmt(cur.due, today) : null })}</span>`;
+  return h`<button type="button" class="btn" data-act="step" data-d="-1"${pos <= 0 ? RB.raw(' disabled') : ''}>${ui.icon('chevron-left')}<span>Previous tenant</span></button>
+    <button type="button" class="btn" data-act="step" data-d="1"${pos < 0 || pos === T.order.length - 1 ? RB.raw(' disabled') : ''}><span>Next tenant</span>${ui.icon('chevron-right')}</button>`;
+}
+
+/** The primary payment button's label and amount: "Record the rest ($675)" when this month is part paid. */
+T.payLabel = function payLabel(lg, today) {
+  const p = W.partial(lg, today);
+  return p ? { label: 'Record the rest (' + W.$(p.open) + ')', amount: p.open, partial: true } : { label: 'Record a payment', amount: null, partial: false };
+};
+
+function barPart(t) {
+  const pos = T.order.indexOf(t.id);
   return h`<div class="tn-dhead-bar">
-      <button type="button" class="btn btn-ghost btn-sm tn-back show-phone" data-drawer-close>${ui.icon('chevron-left')}<span>Tenants</span></button>
+      ${backBtn()}
       <span class="spacer"></span>
-      ${pos >= 0 ? h`<span class="tn-pos faint hide-phone">${pos + 1} of ${T.order.length}</span>` : ''}
-      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-act="step" data-d="-1" aria-label="Previous tenant (k)" title="Previous tenant  k"${pos === 0 ? RB.raw(' disabled') : ''}>${ui.icon('chevron-up')}</button>
-      <button type="button" class="btn btn-ghost btn-icon btn-sm" data-act="step" data-d="1" aria-label="Next tenant (j)" title="Next tenant  j"${pos >= 0 && pos === T.order.length - 1 ? RB.raw(' disabled') : ''}>${ui.icon('chevron-down')}</button>
-      <span class="hide-phone">${ui.drawerClose()}</span>
-    </div>
-    <div class="tn-dident">
-      ${ui.plate(t.unit, { size: 'lg', status: cur.status, title: T.place(t) })}
+      <span class="tn-steps hide-phone">
+        <button type="button" class="btn btn-ghost" data-act="step" data-d="-1"${pos <= 0 ? RB.raw(' disabled') : ''}>${ui.icon('chevron-up')}<span>Previous</span></button>
+        <button type="button" class="btn btn-ghost" data-act="step" data-d="1"${pos < 0 || pos === T.order.length - 1 ? RB.raw(' disabled') : ''}>${ui.icon('chevron-down')}<span>Next</span></button>
+      </span>
+      ${closeBtn()}
+    </div>`;
+}
+function headPart(t, lg, ls, today) {
+  const st = W.status(t, lg, today);
+  const le = W.lease(t, ls, today);
+  const pay = T.payLabel(lg, today);
+  const co = (t.coTenants || []).filter(c => c && c.name).map(c => c.name);
+  return h`    <div class="tn-dident">
+      ${ui.plate(t.unit, { size: 'lg', status: lg.current.status, title: T.place(t) })}
       <div class="grow">
         <h2 class="drawer-title" id="tn-dtitle">${t.name || 'Unnamed tenant'}</h2>
-        <div class="tn-dplace">${T.place(t)}${(t.coTenants || []).filter(c => c && c.name).length ? h` <span class="faint">· with ${(t.coTenants || []).filter(c => c && c.name).map(c => c.name).join(', ')}</span>` : ''}</div>
+        <div class="tn-dplace">${T.place(t)}${co.length ? h`<span class="tn-dwith"> · with ${co.join(', ')}</span>` : ''}</div>
       </div>
     </div>
-    ${tags.length ? h`<div class="tn-dtags">${tags}</div>` : ''}
-    <div class="tn-dstat">
-      <div class="tn-dbal">${T.balanceWords(lg.balance)}${month}</div>
-      <div class="tn-dacts">
-        <button type="button" class="btn btn-primary" data-act="pay" data-write>${ui.icon('cash')}<span>Record payment</span></button>
-        <button type="button" class="btn btn-icon" data-act="more" aria-label="More actions" aria-haspopup="menu" title="More actions">${ui.icon('more')}</button>
-      </div>
+    <p class="tn-dstatus tone-${st.tone || 'ink'}" id="tn-dstatus">${st.text}</p>
+    ${le.text && t.status !== 'past' ? h`<p class="tn-dlease${le.tone ? ' tone-' + le.tone : ''}">${le.text}</p>` : ''}
+    <div class="tn-dacts">
+      <button type="button" class="btn btn-primary btn-lg" data-act="pay" data-write>${ui.icon('cash')}<span>${pay.label}</span></button>
+      <button type="button" class="btn btn-lg" data-act="note" data-write>${ui.icon('note')}<span>Add a note</span></button>
+      <button type="button" class="btn btn-lg" data-act="more" aria-haspopup="dialog">${ui.icon('more')}<span>More</span></button>
     </div>`;
 }
 
@@ -150,116 +217,121 @@ function alertsPart(t, lg, settings, today) {
   const fee = lg.suggestedLateFee;
   if (fee && t.status !== 'past') {
     const m = lg.months[fee.period];
-    out.push(h`<div class="tn-alert">${ui.icon('triangle', { size: 12, cls: 'tone-bad' })}<span class="grow">${D.monthName(fee.period)} rent is ${m ? m.daysLate : ''} d late and has no late fee.</span><button type="button" class="linkbtn" data-act="fee" data-write>Add late fee ${M.fmt(fee.amount)}</button></div>`);
+    out.push(h`<div class="tn-alert"><span class="tn-alert-text">${D.monthName(fee.period)} rent is ${m ? W.days(m.daysLate) + ' ' : ''}late. Your rules suggest a late fee of ${W.$(fee.amount)}.</span><button type="button" class="btn" data-act="fee" data-write>Add a ${W.$(fee.amount)} late fee</button></div>`);
   }
   const dd = RB.model.depositDue(t, settings, today);
-  if (dd) out.push(h`<div class="tn-alert">${ui.icon('clock', { size: 14, cls: dd.overdue || dd.daysLeft <= 7 ? 'tone-bad' : 'tone-warn' })}<span class="grow">Deposit ${M.fmt(dd.amount)} due back ${dd.overdue ? h`<strong class="tone-bad">${-dd.daysLeft} d overdue</strong> (${D.fmt(dd.dueDate, today)})` : h`by ${D.fmt(dd.dueDate, today)} (${D.rel(dd.dueDate, today)})`}.</span><button type="button" class="linkbtn" data-act="settle" data-write>Settle deposit</button></div>`);
+  if (dd) out.push(h`<div class="tn-alert"><span class="tn-alert-text">The ${W.$(dd.amount)} deposit has to go back by ${W.date(dd.dueDate, today)} — ${dd.overdue ? h`<strong class="tone-bad">${W.days(-dd.daysLeft)} overdue</strong>` : W.rel(dd.dueDate, today)}.</span><button type="button" class="btn" data-act="settle" data-write>Give back the deposit</button></div>`);
   const ls = RB.model.leaseState(t, settings, today);
-  if (t.status === 'notice' && ls.moveOut && ls.moveOut <= today) out.push(h`<div class="tn-alert">${ui.icon('door', { size: 14, cls: 'tone-warn' })}<span class="grow">${ls.moveOut === today ? 'Moves out today.' : h`Move-out date ${D.fmt(ls.moveOut, today)} has passed.`}</span><button type="button" class="linkbtn" data-act="moveout" data-write>Complete move-out</button></div>`);
+  if (t.status === 'notice' && ls.moveOut && ls.moveOut <= today) out.push(h`<div class="tn-alert"><span class="tn-alert-text">${ls.moveOut === today ? 'They move out today.' : h`They were moving out on ${W.date(ls.moveOut, today)}.`} When they have gone, finish the move-out.</span><button type="button" class="btn" data-act="moveout" data-write>Finish the move-out</button></div>`);
   return out.length ? h`<div class="tn-alerts">${out}</div>` : '';
 }
 
-const addBtn = (label, sec) => h`<button type="button" class="linkbtn linkbtn-muted tn-add" data-act="edit" data-sec="${sec}" data-write>${ui.icon('plus', { size: 14 })}${label}</button>`;
 const telHref = p => { const d = String(p || '').replace(/[^\d+]/g, ''); return d.length >= 5 ? 'tel:' + d : null; };
 const mailHref = e => (/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(String(e || '').trim()) ? 'mailto:' + String(e).trim() : null);
-const phoneLine = p => ui.copyline(p, 'phone number', telHref(p) ? { href: telHref(p), hrefLabel: 'Call', hrefIcon: 'phone' } : null);
-const emailLine = e => ui.copyline(e, 'email address', mailHref(e) ? { href: mailHref(e), hrefLabel: 'Write an email', hrefIcon: 'mail' } : null);
+function contactLine(value, kind) {
+  const what = kind === 'phone' ? 'phone number' : 'email address';
+  const href = kind === 'phone' ? telHref(value) : mailHref(value);
+  return h`<div class="tn-cline"><span class="tn-cval">${value}</span><span class="tn-cbtns">
+    <button type="button" class="btn" data-copy="${value}" data-copy-what="${what}">${ui.icon('copy')}<span>Copy</span></button>
+    ${href ? h`<a class="btn" href="${href}">${ui.icon(kind === 'phone' ? 'phone' : 'mail')}<span>${kind === 'phone' ? 'Call' : 'Email'}</span></a>` : ''}</span></div>`;
+}
+const addBtn = (label, sec) => h`<button type="button" class="btn btn-ghost tn-addbtn" data-act="edit" data-sec="${sec}" data-write>${ui.icon('plus')}<span>${label}</span></button>`;
 
 function contactPart(t) {
   const co = (t.coTenants || []).filter(c => c && (c.name || c.phone || c.email));
   const em = t.emergency || {};
-  return h`<dl class="kv tn-kv">
-    <dt>Phone</dt><dd>${t.phone ? phoneLine(t.phone) : addBtn('Add phone', 'contact')}</dd>
-    <dt>Email</dt><dd>${t.email ? emailLine(t.email) : addBtn('Add email', 'contact')}</dd>
-    <dt>Co-tenants</dt><dd>${co.length ? h`<div class="stack stack-1">${co.map(c => h`<div class="tn-person"><span class="medium">${c.name || 'Unnamed'}</span>${c.phone ? h`<span class="tn-person-line">${phoneLine(c.phone)}</span>` : ''}${c.email ? h`<span class="tn-person-line">${emailLine(c.email)}</span>` : ''}</div>`)}</div>` : addBtn('Add co-tenant', 'cotenants')}</dd>
-    <dt>Emergency</dt><dd>${em.name || em.phone ? h`<div class="tn-person">${em.name ? h`<span class="medium">${em.name}</span>` : ''}${em.phone ? h`<span class="tn-person-line">${phoneLine(em.phone)}</span>` : ''}</div>` : addBtn('Add emergency contact', 'emergency')}</dd>
+  return h`<dl class="tn-facts">
+    <div><dt>Phone</dt><dd>${t.phone ? contactLine(t.phone, 'phone') : addBtn('Add a phone number', 'contact')}</dd></div>
+    <div><dt>Email</dt><dd>${t.email ? contactLine(t.email, 'email') : addBtn('Add an email address', 'contact')}</dd></div>
+    ${co.length ? h`<div><dt>Also on the lease</dt><dd>${co.map(c => h`<div class="tn-person"><div class="tn-person-name">${c.name || 'Unnamed'}</div>${c.phone ? contactLine(c.phone, 'phone') : ''}${c.email ? contactLine(c.email, 'email') : ''}</div>`)}</dd></div>` : ''}
+    ${em.name || em.phone ? h`<div><dt>In an emergency, call</dt><dd><div class="tn-person">${em.name ? h`<div class="tn-person-name">${em.name}</div>` : ''}${em.phone ? contactLine(em.phone, 'phone') : ''}</div></dd></div>` : ''}
   </dl>`;
 }
 
 function leasePart(t, lg, ls, settings, today) {
   const l = t.lease || {};
   const rows = [];
-  // term
-  let term;
-  if (ls.kind === 'fixed' || (ls.kind === 'upcoming' && l.end)) {
-    const pct = Math.round((ls.progress || 0) * 1000) / 10;
-    term = h`<div>${D.fmt(l.start, today)} <span class="faint">→</span> ${D.fmt(l.end, today)}</div>
-      <div class="bar bar-thin tn-term" role="img" aria-label="${Math.round(pct)}% through the lease term"><span class="bar-seg${ls.inNoticeWindow ? ' bar-seg-warn' : ''}" style="width:${pct}%"></span></div>
-      <div class="tn-kv-sub">${ls.daysLeft === 0 ? 'Ends today' : ls.daysLeft + ' days left'}${ls.inNoticeWindow && !ls.noticeGiven ? h` · <span class="tone-warn">inside the ${settings.leaseNoticeDays}-day notice window</span>` : ''}</div>`;
-  } else if (ls.kind === 'mtm' || (ls.kind === 'upcoming' && !l.end)) {
-    term = h`<div>Month-to-month since ${D.fmt(ls.holdover ? D.addDays(l.end, 1) : l.start, today)}</div>${ls.holdover ? h`<div class="tn-kv-sub">Fixed term ${D.fmt(l.start, today)} → ${D.fmt(l.end, today)}</div>` : ''}`;
-  } else {
-    term = h`<div>${D.fmt(l.start, today)} <span class="faint">→</span> ${l.end ? D.fmt(l.end, today) : 'month-to-month'}</div>`;
-  }
-  rows.push(['Term', term]);
-  // move in / notice / move out
-  const dates = [h`Moved in ${D.fmt(l.moveIn, today) || '—'}`];
-  if (l.noticeDate) dates.push(h`notice given ${D.fmt(l.noticeDate, today)}`);
-  if (l.moveOut) dates.push(l.moveOut <= today || t.status === 'past' ? h`moved out ${D.fmt(l.moveOut, today)}` : h`<span class="tone-warn">moves out ${D.fmt(l.moveOut, today)} (${D.rel(l.moveOut, today)})</span>`);
-  rows.push(['Dates', h`${RB.html.join(dates, ' · ')}`]);
-  // rent with history
   const sched = (t.rent || []).filter(r => r && D.isDate(r.from)).slice().sort((a, b) => D.cmp(a.from, b.from));
   const nowIdx = sched.reduce((acc, r, i) => (r.from <= today ? i : acc), 0);
   const curR = sched[nowIdx], prevR = sched[nowIdx - 1], next = sched.filter(r => r.from > today);
-  let rent = h`<div><strong class="medium">${ui.money(lg.rent)}</strong>${prevR && curR ? h` <span class="muted">since ${D.fmt(curR.from, today)}</span> <span class="faint">· was ${M.fmt(prevR.amount)}</span>` : ''}</div>`;
-  if (next.length) rent = h`${rent}<div class="tn-kv-sub tone-accent">${next.map(r => h`Changes to ${M.fmt(r.amount)} on ${D.fmt(r.from, today)}`)}</div>`;
-  if (sched.length > 2) rent = h`${rent}<details class="tn-hist"><summary>All ${sched.length} rent amounts</summary><ul>${sched.slice().reverse().map(r => h`<li><span class="mono">${D.fmt(r.from, today)}</span><span class="spacer"></span>${ui.money(r.amount)}</li>`)}</ul></details>`;
-  rows.push(['Rent', rent]);
-  const rec = (t.recurring || []).filter(r => r && r.amount);
-  rows.push(['Also monthly', rec.length ? h`<div class="stack stack-1">${rec.map(r => h`<div>${r.label || 'Recurring charge'} <span class="muted">${ui.money(r.amount)}/mo</span>${r.to && r.to < today ? h` <span class="faint">· ended ${D.fmt(r.to, today)}</span>` : r.from && r.from > today ? h` <span class="faint">· from ${D.fmt(r.from, today)}</span>` : r.to ? h` <span class="faint">· until ${D.fmt(r.to, today)}</span>` : ''}</div>`)}</div>` : addBtn('Add parking, pet rent…', 'recurring')]);
+  rows.push(['Rent', h`<div class="tn-big">${ui.money(lg.rent)} a month</div>
+    ${prevR && curR ? h`<div class="tn-sub">Since ${W.date(curR.from, today)}. It was ${W.$(prevR.amount)} before that.</div>` : ''}
+    ${next.map(r => h`<div class="tn-sub tone-accent">Goes to ${W.$(r.amount)} on ${W.date(r.from, today)}.</div>`)}`]);
   const terms = RB.model.termsOf(t, settings);
-  const custom = l.dueDay != null || l.graceDays != null;
-  rows.push(['Due', h`${T.ordinal(terms.dueDay)} of the month · ${RB.plural(terms.graceDays, 'day')} grace${custom ? h` <span class="faint">(this tenant)</span>` : ''}`]);
+  rows.push(['When rent is due', h`On the ${T.ordinal(terms.dueDay)} of each month. It counts as late after ${RB.plural(terms.graceDays, 'more day')}${l.dueDay != null || l.graceDays != null ? ' (special for this tenant)' : ''}.`]);
+  const rec = (t.recurring || []).filter(r => r && r.amount && !(r.to && r.to < today));
+  if (rec.length) rows.push(['Other monthly charges', h`${rec.map(r => h`<div>${r.label || 'Monthly charge'}: ${W.$(r.amount)} a month${r.from && r.from > today ? ' from ' + W.date(r.from, today) : r.to ? ' until ' + W.date(r.to, today) : ''}</div>`)}`]);
+  // lease
+  let lease;
+  if (t.status === 'past') lease = h`Moved out ${W.date(l.moveOut, today)}. They had moved in ${W.date(l.moveIn || l.start, today)}.`;
+  else if (ls.kind === 'mtm') lease = h`Month-to-month${ls.holdover ? h` since the lease ended ${W.date(l.end, today)}` : ''}. Moved in ${W.date(l.moveIn || l.start, today)}.`;
+  else if (ls.kind === 'upcoming') lease = h`Moves in ${W.date(l.moveIn, today)}${l.end ? h`. The lease ends ${W.date(l.end, today)}` : ' (month-to-month)'}.`;
+  else lease = h`Runs from ${W.date(l.start, today)} to ${W.date(l.end, today)} — ${ls.daysLeft === 0 ? 'ends today' : W.days(ls.daysLeft) + ' left'}. Moved in ${W.date(l.moveIn || l.start, today)}.`;
+  rows.push(['Lease', h`${lease}${l.moveOut && t.status !== 'past' ? h`<div class="tn-sub tone-warn">Moving out ${W.date(l.moveOut, today)} — ${W.rel(l.moveOut, today)}.</div>` : ''}`]);
   // deposit
   const dep = t.deposit || {};
-  let depo;
-  if (!(+dep.amount > 0)) depo = addBtn('Add deposit', 'deposit');
-  else if (dep.returned) {
-    const kept = (dep.returned.deductions || []).reduce((s, d) => s + (+d.amount || 0), 0);
-    depo = h`<div>${ui.money(dep.amount)} <span class="muted">settled ${D.fmt(dep.returned.date, today)}</span></div><div class="tn-kv-sub">${M.fmt(dep.returned.refund || 0)} refunded${kept ? ' · ' + M.fmt(kept) + ' deducted' : ''}${dep.returned.applied ? ' · ' + M.fmt(dep.returned.applied) + ' applied to balance' : ''}</div>`;
-  } else {
-    const dd = RB.model.depositDue(t, settings, today);
-    depo = h`<div>${ui.money(dep.amount)}${dep.received ? h` <span class="muted">received ${D.fmt(dep.received, today)}</span>` : ''}${dep.heldAt ? h` <span class="faint">· held at ${dep.heldAt}</span>` : ''}</div>${dd ? h`<div class="tn-kv-sub ${dd.overdue ? 'tone-bad' : 'tone-warn'}">Return by ${D.fmt(dd.dueDate, today)} — ${dd.overdue ? -dd.daysLeft + ' d overdue' : D.rel(dd.dueDate, today)} <button type="button" class="linkbtn" data-act="settle" data-write>Settle deposit</button></div>` : ''}`;
+  if (+dep.amount > 0) {
+    if (dep.returned) {
+      const kept = (dep.returned.deductions || []).reduce((s, d) => s + (+d.amount || 0), 0);
+      rows.push(['Deposit', h`${W.$(dep.amount)}. Sorted out on ${W.date(dep.returned.date, today)}: ${W.$(dep.returned.refund || 0)} given back${kept ? ', ' + W.$(kept) + ' kept' : ''}${dep.returned.applied ? ', ' + W.$(dep.returned.applied) + ' used for unpaid rent' : ''}.`]);
+    } else rows.push(['Deposit', h`${W.$(dep.amount)}${dep.received ? ', paid ' + W.date(dep.received, today) : ''}${dep.heldAt ? h`, kept at ${dep.heldAt}` : ''}.`]);
   }
-  rows.push(['Deposit', depo]);
-  rows.push(['Tracked from', h`${D.fmt(lg.trackFrom, today)}${t.opening && +t.opening.amount ? h` <span class="muted">· ${M.fmt(Math.abs(t.opening.amount))} ${t.opening.amount > 0 ? 'brought forward' : 'credit brought forward'}</span>` : ''}`]);
   const ins = t.insurance;
-  rows.push(['Insurance', ins && (ins.carrier || ins.policy || ins.expires) ? h`<div>${ins.carrier || 'Insurer'}${ins.policy ? h` <span class="muted mono">${ins.policy}</span>` : ''}</div>${ins.expires ? h`<div class="tn-kv-sub ${ins.expires < today ? 'tone-bad' : D.diffDays(today, ins.expires) <= 30 ? 'tone-warn' : ''}">${ins.expires < today ? 'Expired' : 'Expires'} ${D.fmt(ins.expires, today)}</div>` : ''}` : addBtn('Add renter’s insurance', 'insurance')]);
+  if (ins && (ins.carrier || ins.policy || ins.expires)) rows.push(['Renter’s insurance', h`${ins.carrier || 'Insurer'}${ins.policy ? h`, policy ${ins.policy}` : ''}${ins.expires ? h`<div class="tn-sub ${ins.expires < today ? 'tone-bad' : D.diffDays(today, ins.expires) <= 30 ? 'tone-warn' : ''}">${ins.expires < today ? 'Ran out' : 'Runs out'} ${W.date(ins.expires, today)}</div>` : ''}`]);
   const links = (t.links || []).filter(x => x && RB.safeUrl(x.url));
-  rows.push(['Links', links.length ? h`<div class="stack stack-1">${links.map(x => h`<a class="tn-link" href="${RB.safeUrl(x.url)}" target="_blank" rel="noopener noreferrer">${ui.icon('link', { size: 14 })}<span class="truncate">${x.label || x.url}</span>${ui.icon('external', { size: 12 })}</a>`)}</div>` : addBtn('Add a link to the lease', 'links')]);
-  rows.push(['About', t.about ? h`<div class="prewrap">${t.about}</div>` : addBtn('Add pets, vehicles, quirks…', 'about')]);
-  return h`<dl class="kv tn-kv">${rows.map(([k, v]) => h`<dt>${k}</dt><dd>${v}</dd>`)}</dl>`;
-}
-
-function ledgerHead(t, lg) {
-  return h`<div class="sec"><h3 class="sec-title" id="tn-h-ledger">Ledger</h3><span class="sec-meta">${lg.balance > 0 ? h`<span class="tone-bad">${M.fmt(lg.balance)} owed</span>` : lg.balance < 0 ? M.fmt(-lg.balance) + ' credit' : 'Paid up'}</span></div>
-    <div class="tn-ltools">
-      <button type="button" class="btn btn-sm btn-soft" data-act="pay" data-write>${ui.icon('cash')}<span>Record payment</span></button>
-      <button type="button" class="btn btn-sm" data-act="charge" data-write>${ui.icon('plus')}<span>Add charge</span></button>
-      <span class="spacer"></span>
-      <button type="button" class="btn btn-sm btn-ghost" data-act="stmt">${ui.icon('copy')}<span>Copy statement</span></button>
-      <button type="button" class="btn btn-sm btn-ghost" data-act="csv" title="Download CSV">${ui.icon('download')}<span>CSV</span></button>
+  if (links.length) rows.push(['Documents', h`${links.map(x => h`<div><a class="tn-link" href="${RB.safeUrl(x.url)}" target="_blank" rel="noopener noreferrer">${x.label || x.url} ${ui.icon('external', { size: 14 })}</a></div>`)}`]);
+  if (t.about) rows.push(['About them', h`<div class="prewrap">${t.about}</div>`]);
+  const live = t.status !== 'past';
+  return h`<dl class="tn-facts">${rows.map(([k, v]) => h`<div><dt>${k}</dt><dd>${v}</dd></div>`)}</dl>
+    <div class="tn-btnrow">
+      ${live ? h`<button type="button" class="btn" data-act="rent" data-write>Raise or change the rent</button><button type="button" class="btn" data-act="renew" data-write>Renew the lease</button>` : ''}
+      <button type="button" class="btn btn-ghost" data-act="edit" data-sec="lease" data-write>${ui.icon('edit')}<span>Change these details</span></button>
     </div>`;
 }
 
+// ---- payment history
+/** Which payments were part payments: a payment after which a rent charge it went to is still not fully paid. */
+function paymentKinds(rows) {
+  const paidSoFar = {}, byId = {}, out = {};
+  rows.forEach(r => { byId[r.id] = r; });
+  rows.forEach(r => {
+    if (r.type === 'charge' || r.void || !r.applied) return;
+    let part = false, rest = false;
+    r.applied.forEach(a => {
+      const before = paidSoFar[a.id] || 0;
+      paidSoFar[a.id] = before + a.amount;
+      const c = byId[a.id];
+      if (c && (c.kind === 'rent' || c.kind === 'recurring')) { if (paidSoFar[a.id] < c.amount) part = true; else if (before > 0) rest = true; }
+    });
+    out[r.id] = part ? 'part' : rest ? 'rest' : '';
+  });
+  return out;
+}
+function rowWhat(r, kinds) {
+  if (r.kind === 'rent') return D.monthName(r.period) + (r.period.slice(0, 4) !== S().today().slice(0, 4) ? ' ' + r.period.slice(0, 4) : '') + ' rent';
+  if (r.kind === 'recurring') return r.label || 'Monthly charge';
+  if (r.kind === 'opening') return 'What they already owed';
+  const e = r.entry || {};
+  if (r.type === 'payment') { const k = kinds[r.id]; return (k === 'part' ? 'Part payment' : k === 'rest' ? 'Payment — the rest' : 'Payment') + (r.method ? ' (' + r.method + ')' : ''); }
+  if (r.type === 'credit') return 'Money off' + (r.memo ? ': ' + r.memo : '');
+  if (e.category === 'late_fee') return 'Late fee' + (r.period ? ' for ' + D.monthName(r.period) : '');
+  return r.memo || 'Charge';
+}
 function rowSub(r, today) {
   const bits = [];
-  if (r.void) bits.push('Voided');
-  if (r.prorate) bits.push(h`${r.prorate.days} of ${r.prorate.ofDays} days × ${M.fmt(r.prorate.full)}`);
-  if (r.kind === 'opening') bits.push('Owed before tracking began');
+  if (r.void) bits.push('Removed — it was a mistake');
+  if (r.prorate) bits.push(h`${r.prorate.days} of ${r.prorate.ofDays} days of ${W.$(r.prorate.full)}`);
   if (r.type === 'charge' && !r.void && r.amount > 0) {
-    if (r.open === 0 && r.paidOn && r.paidOn !== r.date) bits.push(h`<span class="tn-paidon">${ui.icon('check', { size: 12 })}paid ${D.fmt(r.paidOn, today)}</span>`);
-    else if (r.open > 0 && r.paid > 0) bits.push(h`<span class="tone-warn">${M.fmt(r.open)} still open</span>`);
-    else if (r.open > 0 && r.date < today && r.kind !== 'opening') bits.push(h`<span class="tone-bad">unpaid</span>`);
+    if (r.open === 0 && r.paidOn) bits.push(h`<span class="tone-ok">Paid ${W.date(r.paidOn, today)}</span>`);
+    else if (r.open > 0 && r.paid > 0) bits.push(h`<span class="tone-warn">${W.$(r.paid)} paid so far, ${W.$(r.open)} still owed</span>`);
+    else if (r.open > 0) bits.push(h`<span class="${r.date < today ? 'tone-bad' : ''}">Not paid yet</span>`);
   }
   if (r.kind === 'entry') {
-    if (r.ref) bits.push(h`<span class="mono">Ref ${r.ref}</span>`);
+    if (r.ref) bits.push(h`Reference ${r.ref}`);
     if (r.type === 'payment' && r.memo) bits.push(r.memo);
-    if (r.type === 'charge' && r.category && r.memo && !String(r.memo).toLowerCase().startsWith(String(RB.model.CATEGORY_LABEL[r.category] || '~').toLowerCase())) bits.push(RB.model.CATEGORY_LABEL[r.category] || '');
-    if (r.type !== 'charge' && !r.void && r.unapplied > 0) bits.push(h`${M.fmt(r.unapplied)} to credit`);
+    if (r.type !== 'charge' && !r.void && r.unapplied > 0) bits.push(h`${W.$(r.unapplied)} paid ahead`);
   }
-  const b = bits.filter(Boolean);
-  return b.length ? h`<span class="l-sub">${RB.html.join(b, ' · ')}</span>` : '';
+  return bits.length ? h`<span class="tn-l-sub">${RB.html.join(bits, ' · ')}</span>` : '';
 }
 
 function ledgerPart(t, lg, today, showAll) {
@@ -267,73 +339,187 @@ function ledgerPart(t, lg, today, showAll) {
   const all = lg.rows.slice().reverse();
   const shown = showAll ? all : all.filter(r => r.date >= cutoff);
   const hidden = all.length - shown.length;
-  if (!all.length) return ui.empty({ quiet: true, title: 'No charges yet — rent starts ' + D.fmt(lg.trackFrom, today) + '.' });
+  const cells = RB.model.monthsBack(lg, D.monthKey(today), 12);
+  const kinds = paymentKinds(lg.rows);
+  const tools = h`<div class="tn-btnrow">
+      <button type="button" class="btn" data-act="pay" data-write>${ui.icon('cash')}<span>Record a payment</span></button>
+      <button type="button" class="btn" data-act="charge" data-write>${ui.icon('plus')}<span>Add a charge</span></button>
+      <button type="button" class="btn btn-ghost" data-act="stmt">${ui.icon('copy')}<span>Copy a statement</span></button>
+      <button type="button" class="btn btn-ghost" data-act="csv">${ui.icon('download')}<span>Download for Excel</span></button>
+    </div>`;
+  const strip = h`<figure class="tn-strip"><figcaption class="tn-strip-h">The last 12 months</figcaption>${ui.strip(cells, { lg: true, today })}<p class="tn-caption">${T.STRIP_CAPTION}</p></figure>`;
+  if (!all.length) return h`${strip}${ui.empty({ quiet: true, title: 'Nothing here yet. Rent starts ' + W.date(lg.trackFrom, today) + '.' })}${tools}`;
   let last = null;
   const out = [];
   for (const r of shown) {
     const mk = D.monthKey(r.date);
-    if (mk !== last) { out.push(h`<tr class="ledger-month"><td colspan="6">${D.fmtMonth(mk)}</td></tr>`); last = mk; }
+    if (mk !== last) { out.push(h`<tr class="tn-l-month"><th colspan="6" scope="rowgroup">${D.fmtMonth(mk)}</th></tr>`); last = mk; }
     const stored = r.kind === 'entry';
-    out.push(h`<tr class="${r.void ? 'is-void' : ''}" data-row="${r.id}"><td class="l-date">${D.fmtNum(r.date, { mon: true })}</td><td class="l-desc"><span class="l-desc-text">${r.label}</span>${rowSub(r, today)}</td><td class="l-amt">${r.type === 'charge' ? ui.money(r.amount) : ''}</td><td class="l-amt l-pay">${r.type !== 'charge' ? ui.money(r.amount) : ''}</td><td class="l-bal"><span class="tn-bal-lbl">bal </span>${ui.money(r.balance)}</td><td class="l-act">${stored ? h`<button type="button" class="btn btn-ghost btn-icon btn-sm" data-act="lmenu" data-eid="${r.id}" aria-label="Actions for ${r.label} ${D.fmt(r.date, today)}" aria-haspopup="menu">${ui.icon('more')}</button>` : ''}</td></tr>`);
+    const what = rowWhat(r, kinds);
+    out.push(h`<tr class="${r.void ? 'is-void' : ''}" data-row="${r.id}">
+      <td class="tn-l-date">${W.date(r.date, today)}</td>
+      <td class="tn-l-what"><span class="tn-l-text">${what}</span>${rowSub(r, today)}</td>
+      <td class="tn-l-amt" data-label="Charged">${r.type === 'charge' ? ui.money(r.amount) : ''}</td>
+      <td class="tn-l-amt tn-l-pay" data-label="Paid">${r.type !== 'charge' ? ui.money(r.amount) : ''}</td>
+      <td class="tn-l-amt tn-l-bal" data-label="Still owed">${r.balance < 0 ? h`${ui.money(-r.balance)} ahead` : ui.money(r.balance)}</td>
+      <td class="tn-l-act">${stored ? h`<button type="button" class="btn btn-ghost" data-act="lmenu" data-eid="${r.id}" aria-haspopup="menu" aria-label="More about: ${what}, ${W.date(r.date, today)}"><span>More</span></button>` : ''}</td></tr>`);
   }
-  return h`<table class="ledger tn-ledger"><thead><tr><th>Date</th><th>Description</th><th class="l-amt">Charge</th><th class="l-amt">Payment</th><th class="l-bal">Balance</th><th class="l-act"><span class="vh">Actions</span></th></tr></thead><tbody>${out}</tbody></table>
-    ${hidden > 0 ? h`<div class="tn-more-rows"><button type="button" class="btn btn-sm btn-ghost" data-act="earlier">${ui.icon('chevron-down')}<span>Show ${RB.plural(hidden, 'earlier entry', 'earlier entries')}</span></button></div>`
-      : showAll && all.some(r => r.date < cutoff) ? h`<div class="tn-more-rows"><button type="button" class="btn btn-sm btn-ghost" data-act="earlier">${ui.icon('chevron-up')}<span>Show the last 12 months only</span></button></div>` : ''}`;
-}
-
-function composer() {
-  const kinds = RB.actions.LOG_KINDS || [];
-  return h`<form class="tn-composer" id="tn-note-form" data-submit="note" novalidate autocomplete="off" data-write>
-    <label class="vh" for="tn-note-text">Add a note</label>
-    <textarea class="input textarea tn-note-text" id="tn-note-text" name="text" rows="2" placeholder="Add a note — a call, a text, a visit…" aria-describedby="tn-note-text-err"></textarea>
-    <div class="field-error" id="tn-note-text-err" aria-live="polite"></div>
-    <div class="tn-composer-row">
-      <input type="hidden" id="tn-note-kind" name="kind" value="note" data-kind="seg">
-      <div class="seg" role="radiogroup" aria-label="Kind of note" data-seg-for="tn-note-kind">${kinds.map(k => h`<button type="button" role="radio" data-value="${k.value}" aria-checked="${String(k.value === 'note')}" aria-pressed="${String(k.value === 'note')}">${k.label}</button>`)}</div>
-      <label class="tn-follow"><span class="faint">${ui.icon('calendar', { size: 14 })}</span><span class="vh">Follow up on</span><input class="input" type="date" id="tn-note-follow" name="followUp" data-kind="date" title="Follow up on (optional)"></label>
-      <span class="spacer"></span>
-      <button type="submit" class="btn btn-sm btn-primary">Add note</button>
-    </div>
-  </form>`;
+  return h`${strip}${tools}
+    <table class="tn-ledger" aria-describedby="tn-ledger-cap"><thead><tr><th scope="col">Date</th><th scope="col">What</th><th scope="col" class="tn-l-amt">Charged</th><th scope="col" class="tn-l-amt">Paid</th><th scope="col" class="tn-l-amt">Still owed</th><th scope="col" class="tn-l-act"><span class="vh">More</span></th></tr></thead><tbody>${out}</tbody></table>
+    <p class="tn-caption" id="tn-ledger-cap">Newest first. “Still owed” is what they owed after each line${lg.balance < 0 ? ' (“ahead” means they have paid more than was due)' : ''}.</p>
+    ${hidden > 0 ? h`<div class="tn-more-rows"><button type="button" class="btn" data-act="earlier">${ui.icon('chevron-down')}<span>Show ${RB.plural(hidden, 'older line')}</span></button></div>`
+      : showAll && all.some(r => r.date < cutoff) ? h`<div class="tn-more-rows"><button type="button" class="btn" data-act="earlier">${ui.icon('chevron-up')}<span>Show only the last 12 months</span></button></div>` : ''}`;
 }
 
 function timelinePart(logs, today) {
-  if (!logs.length) return ui.empty({ quiet: true, title: 'No notes yet. Calls, texts and visits you log here show up newest first.' });
-  return h`<div class="tl tn-tl">${logs.map(e => {
+  if (!logs.length) return h`<p class="tn-caption">No notes yet. Write down calls, texts and visits here so you remember them.</p>`;
+  return h`<ul class="tn-notes">${logs.map(e => {
     const day = localDay(e.at);
-    const when = day ? (day.slice(0, 4) === today.slice(0, 4) ? D.fmtNum(day, { mon: true }) : D.MON[+day.slice(5, 7) - 1] + ' ’' + day.slice(2, 4)) : '';
     const fu = e.followUp;
-    const fuText = fu ? (e.done ? h`Follow-up done · was due ${D.fmt(fu, today)}` : fu < today ? h`<span class="tone-bad">Follow up ${D.fmt(fu, today)} · ${D.rel(fu, today, { style: 'late' })}</span>` : fu === today ? h`<span class="tone-warn">Follow up today</span>` : h`Follow up ${D.fmt(fu, today)} · ${D.rel(fu, today)}`) : null;
-    return h`<div class="tl-item${e.done && fu ? ' is-done' : ''}" data-lid="${e.id}">
-      <span class="tl-when" title="${day ? D.fmtLong(day) : ''}">${when}</span>
-      <div class="tl-body"><span class="tn-kind">${ui.icon(T.KIND_ICON[e.kind] || 'note', { size: 12 })}${T.KIND_LABEL[e.kind] || 'Note'}</span><span class="prewrap">${e.text}</span>${fuText ? h`<div class="tl-meta">${ui.icon('calendar', { size: 12 })}${fuText}</div>` : ''}</div>
-      <div class="tn-tl-act">${fu ? h`<label class="tn-tick" title="${e.done ? 'Reopen follow-up' : 'Mark follow-up done'}"><input type="checkbox" data-change="fudone" data-lid="${e.id}"${e.done ? RB.raw(' checked') : ''} data-write><span class="vh">Follow-up done</span></label>` : ''}<button type="button" class="btn btn-ghost btn-icon btn-sm" data-act="logmenu" data-lid="${e.id}" aria-label="Actions for this note" aria-haspopup="menu">${ui.icon('more')}</button></div>
-    </div>`;
-  })}</div>`;
+    const fuText = fu ? (e.done ? h`Followed up (was due ${W.date(fu, today)})` : fu < today ? h`<span class="tone-bad">Follow up was due ${W.date(fu, today)} — ${W.rel(fu, today, { style: 'late' })}</span>` : fu === today ? h`<span class="tone-warn">Follow up today</span>` : h`Follow up ${W.date(fu, today)} — ${W.rel(fu, today)}`) : null;
+    return h`<li class="tn-note${e.done && fu ? ' is-done' : ''}" data-lid="${e.id}">
+      <div class="tn-note-meta">${day ? W.date(day, today) : ''} · ${T.KIND_LABEL[e.kind] || 'Note'}</div>
+      <div class="tn-note-text prewrap">${e.text}</div>
+      ${fuText ? h`<div class="tn-note-fu">${ui.icon('calendar', { size: 16 })}<span>${fuText}</span></div>` : ''}
+      <div class="tn-note-acts">${fu ? h`<label class="check tn-tick"><input type="checkbox" data-change="fudone" data-lid="${e.id}"${e.done ? RB.raw(' checked') : ''} data-write><span>Followed up</span></label>` : ''}
+        <button type="button" class="btn btn-ghost" data-act="logmenu" data-lid="${e.id}" aria-haspopup="menu"><span>More</span></button></div>
+    </li>`;
+  })}</ul>`;
 }
 
-function submitNote(el, id) {
-  if (!T.guard()) return;
-  const form = el.querySelector('#tn-note-form');
-  const ta = form.querySelector('#tn-note-text');
-  const text = ta.value.trim();
-  const err = form.querySelector('#tn-note-text-err');
-  if (!text) { err.textContent = 'Write what happened first.'; ta.focus(); return; }
-  const fu = form.querySelector('#tn-note-follow').value || null;
-  if (fu && !D.valid(fu)) { err.textContent = 'That follow-up date isn’t valid — pick one from the calendar.'; return; }
-  const kind = form.querySelector('#tn-note-kind').value || 'note';
-  const lid = RB.id();
-  S().addLog(id, { id: lid, kind, text, followUp: fu, done: false }).catch(() => {});
-  ta.value = ''; form.querySelector('#tn-note-follow').value = ''; err.textContent = '';
-  ui.setValue(form, 'kind', 'note');
-  ui.toast(fu ? 'Note added · follow up ' + D.fmt(fu, S().today()) : 'Note added', { undo: () => S().deleteLog(id, lid) });
+/** Repairs in this unit: provided by the Repairs view (RB.repairs.unitSection) when it exists. null = hide the section. */
+function repairsPart(t) {
+  const R = RB.repairs;
+  if (!R || typeof R.unitSection !== 'function') return null;
+  try {
+    const out = R.unitSection(t);
+    if (out == null || out === '') return null;
+    if (RB.isSafe(out)) return out;
+    if (out && out.nodeType === 1) return RB.raw(out.outerHTML);
+    return R.unitSectionIsSafe ? RB.raw(String(out)) : h`${String(out)}`;
+  } catch (e) { console.warn(e); return null; }
 }
+
+// ------------------------------------------------------------------ note sheet (add + change)
+T.noteSheet = function noteSheet(id, lid) {
+  if (!T.guard()) return Promise.resolve(null);
+  const t = S().tenant(id); if (!t) return Promise.resolve(null);
+  const e = lid && t.log && t.log[lid] ? t.log[lid] : null;
+  if (lid && !e) return Promise.resolve(null);
+  const today = S().today();
+  return new Promise(resolve => {
+    let saved = null;
+    ui.sheet({
+      title: e ? 'Change this note' : 'Add a note', sub: t.name + ' — ' + T.place(t),
+      body: h`<div class="tn-form">
+        ${ui.field({ name: 'text', id: 'tn-note-text', label: 'What happened?', type: 'textarea', value: e ? e.text : '', required: true, requiredMsg: 'Write what happened first', rows: 4, placeholder: 'For example: Called about the late rent. She will pay on Friday.' })}
+        ${T.pick({ name: 'kind', id: 'tn-note-kind', label: 'How?', value: e ? (e.kind === 'notice' ? 'note' : e.kind) : 'note', options: T.NOTE_KINDS })}
+        ${ui.field({ name: 'followUp', id: 'tn-note-follow', label: 'Remind me to follow up on…', type: 'date', value: e ? e.followUp || '' : '', optional: true, hint: 'Leave this empty if you don’t need a reminder. On that day it shows on Today.' })}
+      </div>`,
+      initialFocus: '#tn-note-text',
+      cancel: 'Close',
+      actions: [{ id: 'save', label: e ? 'Save the note' : 'Add the note', kind: 'primary', onClick: s => {
+        const v = ui.form(s.body, { validate: v => ({ followUp: v.followUp && !D.valid(v.followUp) ? 'Pick a date from the calendar' : '' }) });
+        if (!v) return false;
+        if (e) {
+          const prev = { kind: e.kind || 'note', text: e.text || '', followUp: e.followUp || null, done: !!e.done };
+          const patch = { kind: v.kind || 'note', text: v.text, followUp: v.followUp || null };
+          if (patch.followUp !== prev.followUp) patch.done = false;
+          S().updateLog(id, lid, patch).catch(() => {});
+          saved = lid;
+          ui.toast('Saved the note for ' + t.name + '.', { undo: () => S().updateLog(id, lid, prev), duration: 10000 });
+        } else {
+          const nid = RB.id();
+          S().addLog(id, { id: nid, kind: v.kind || 'note', text: v.text, followUp: v.followUp || null, done: false }).catch(() => {});
+          saved = nid;
+          ui.toast('Added a note for ' + t.name + (v.followUp ? '. You’ll be reminded on ' + W.date(v.followUp, today) + '.' : '.'), { undo: () => S().deleteLog(id, nid), duration: 10000 });
+        }
+      } }],
+      onClose: () => resolve(saved),
+    });
+  });
+};
+
+// ------------------------------------------------------------------ entries: remove / put back
+const entryWord = e => (e.type === 'payment' ? 'payment' : e.type === 'credit' ? 'money off' : e.category === 'late_fee' ? 'late fee' : 'charge');
+T.removeEntry = function removeEntry(id, eid) {
+  if (!T.guard()) return;
+  const e = S().entries(id)[eid]; if (!e) return;
+  S().voidEntry(id, eid).catch(() => {});
+  ui.toast('Removed the ' + W.$(e.amount) + ' ' + entryWord(e) + ' from ' + W.date(e.date, S().today()) + '.', { undo: () => S().unvoidEntry(id, eid), duration: 10000 });
+};
+T.putBack = function putBack(id, eid) {
+  if (!T.guard()) return;
+  const e = S().entries(id)[eid]; if (!e) return;
+  S().unvoidEntry(id, eid).catch(() => {});
+  ui.toast('Put back the ' + W.$(e.amount) + ' ' + entryWord(e) + '.', { undo: () => S().voidEntry(id, eid), duration: 10000 });
+};
+/** Payment history as a file for Excel — column headings in plain words. */
+T.downloadHistory = function downloadHistory(id) {
+  const t = S().tenant(id); const lg = S().ledger(id);
+  if (!t || !lg) return Promise.resolve(false);
+  const kinds = paymentKinds(lg.rows);
+  const csv = RB.model.csv(lg.rows, [
+    { label: 'Date', key: 'date' },
+    { label: 'What', get: r => rowWhat(r, kinds) },
+    { label: 'For month', get: r => (r.period ? D.fmtMonth(r.period) : '') },
+    { label: 'Charged', money: true, get: r => (r.type === 'charge' ? r.amount : null) },
+    { label: 'Paid or money off', money: true, get: r => (r.type !== 'charge' ? r.amount : null) },
+    { label: 'Still owed after this line', money: true, get: r => r.balance },
+    { label: 'How they paid', get: r => r.method || '' },
+    { label: 'Reference', get: r => r.ref || '' },
+    { label: 'Note', get: r => (r.kind === 'entry' ? r.memo || '' : '') },
+    { label: 'Removed', get: r => (r.void ? 'Removed — it was a mistake' : '') },
+  ]);
+  const slug = String(t.unit + ' ' + t.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'tenant';
+  return RB.actions.downloadFile('payment-history-' + slug + '-' + S().today() + '.csv', csv, 'text/csv');
+};
+
+// ------------------------------------------------------------------ "More" — every other action, with a line each
+T.moreSheet = function moreSheet(id) {
+  const t = S().tenant(id); if (!t) return;
+  const A = RB.actions;
+  const today = S().today();
+  const lg = S().ledger(id);
+  const p = W.partial(lg, today);
+  const l = t.lease || {};
+  const live = t.status !== 'past';
+  const items = [];
+  if (p) items.push(['part', 'Record another part payment', 'They paid some more, but not all of it', () => A.recordPayment(id, { part: true })]);
+  else if (lg.balance > 0) items.push(['payall', 'Record a payment', 'Someone paid you — write it down', () => A.recordPayment(id)]);
+  items.push(['charge', 'Add a charge', 'A late fee, repair bill or utility', () => A.addCharge(id)]);
+  items.push(['credit', 'Take money off what they owe', 'A discount, or money you are giving back', () => A.addCredit(id)]);
+  if (live) {
+    items.push(['rent', 'Raise or change the rent', 'Set a new monthly rent from a date you choose', () => A.changeRent(id)]);
+    items.push(['renew', 'Renew the lease', 'Give the lease a new end date', () => A.renewLease(id)]);
+    items.push(['moveout', t.status === 'notice' && l.moveOut && l.moveOut <= today ? 'Finish the move-out' : 'They are moving out', 'Set the date, see what they still owe, and sort out the deposit', () => A.moveOut(id)]);
+  }
+  if (t.deposit && +t.deposit.amount > 0 && !t.deposit.returned && l.moveOut && (t.status === 'past' || l.moveOut <= today)) items.push(['settle', 'Give back the deposit', 'Work out what to keep and what to give back', () => A.settleDeposit(id)]);
+  items.push(['edit', 'Edit their details', 'Name, phone, unit, rent and more', () => A.editTenant(id)]);
+  items.push(['delete', 'Remove this tenant', 'Only if they were added by mistake — this deletes all their history', () => T.deleteTenant(id)]);
+  ui.sheet({
+    title: 'What would you like to do?', sub: t.name + ' — ' + T.place(t), cancel: 'Close', actions: [],
+    body: (el, sh) => {
+      el.innerHTML = String(h`<div class="tn-morelist">${items.map(([k, label, sub]) => h`<button type="button" class="tn-moreitem${k === 'delete' ? ' is-danger' : ''}" data-more="${k}"${k === 'stmt' ? '' : RB.raw(' data-write')}><span class="tn-moreitem-l">${label}</span><span class="tn-moreitem-s">${sub}</span>${ui.icon('chevron-right')}</button>`)}</div>`);
+      el.addEventListener('click', e => {
+        const b = e.target.closest('[data-more]'); if (!b) return;
+        const it = items.find(x => x[0] === b.dataset.more);
+        sh.close();
+        if (it) setTimeout(it[3], 0);
+      });
+    },
+  });
+};
 
 function handlers(el, id) {
   const A = RB.actions;
   return {
     step: b => T.step(+b.dataset.d),
-    pay: () => A.recordPayment(id),
+    pay: b => {
+      const lg = S().ledger(id); const p = T.payLabel(lg, S().today());
+      if (b.closest('.tn-dacts') && p.partial) A.recordPayment(id, { amount: p.amount });
+      else A.recordPayment(id);
+    },
     charge: () => A.addCharge(id),
     fee: () => A.addLateFee(id),
     settle: () => A.settleDeposit(id),
@@ -342,56 +528,36 @@ function handlers(el, id) {
     renew: () => A.renewLease(id),
     edit: b => A.editTenant(id, b.dataset.sec),
     stmt: () => A.copyStatement(id),
-    csv: () => A.downloadLedgerCsv(id),
-    more: b => T.overflowMenu(b, id),
+    csv: () => T.downloadHistory(id),
+    more: () => T.moreSheet(id),
+    note: () => T.noteSheet(id),
     earlier: () => { el._tnShowAll = !el._tnShowAll; renderDrawer(el, id); },
-    note: () => submitNote(el, id),
-    fudone: b => { const done = b.checked; A.followupDone(id, b.dataset.lid, done); },
+    fudone: b => { A.followupDone(id, b.dataset.lid, b.checked); },
     lmenu: b => {
       const e = S().entries(id)[b.dataset.eid];
       if (!e) return;
       const eid = b.dataset.eid;
-      const items = [{ label: 'Edit', icon: 'edit', write: true, onSelect: () => A.editEntry(id, eid) }];
-      if (e.void) items.push({ label: 'Restore', icon: 'undo', write: true, onSelect: () => { if (!T.guard()) return; S().unvoidEntry(id, eid).catch(() => {}); ui.toast('Restored ' + M.fmt(e.amount) + ' ' + (e.type === 'charge' ? 'charge' : e.type), { undo: () => S().voidEntry(id, eid) }); } });
-      else items.push({ label: 'Void', icon: 'x', write: true, onSelect: () => A.voidEntry(id, eid) });
-      if (e.type !== 'charge') items.push({ sep: true }, { label: e.type === 'payment' ? 'Copy receipt' : 'Copy credit note', icon: 'copy', onSelect: () => A.copyReceipt(id, eid) });
+      const w = entryWord(e);
+      const items = [];
+      if (e.void) items.push({ label: 'Put this ' + w + ' back', icon: 'undo', write: true, onSelect: () => T.putBack(id, eid) });
+      else items.push({ label: 'Remove this ' + w + ' — it was a mistake', icon: 'x', write: true, onSelect: () => T.removeEntry(id, eid) });
+      if (e.type === 'payment') items.push({ label: 'Copy a receipt', icon: 'copy', onSelect: () => A.copyReceipt(id, eid) });
+      items.push({ label: 'Change the details', icon: 'edit', write: true, onSelect: () => A.editEntry(id, eid) });
       ui.menu(b, items, { align: 'end' });
     },
     logmenu: b => {
       const lid = b.dataset.lid;
       ui.menu(b, [
-        { label: 'Edit note', icon: 'edit', write: true, onSelect: () => T.editNote(id, lid) },
-        { label: 'Delete note', icon: 'trash', danger: true, write: true, onSelect: () => {
+        { label: 'Change this note', icon: 'edit', write: true, onSelect: () => T.noteSheet(id, lid) },
+        { label: 'Delete this note', icon: 'trash', danger: true, write: true, onSelect: () => {
           if (!T.guard()) return;
           const t = S().tenant(id); const prev = t && t.log && t.log[lid] ? RB.clone(t.log[lid]) : null;
           if (!prev) return;
           S().deleteLog(id, lid).catch(() => {});
-          ui.toast('Note deleted', { undo: () => S().updateLog(id, lid, prev) });
+          ui.toast('Deleted the note.', { undo: () => S().updateLog(id, lid, prev), duration: 10000 });
         } },
       ], { align: 'end' });
     },
   };
 }
-
-/** The header's overflow menu. */
-T.overflowMenu = function overflowMenu(anchor, id) {
-  const A = RB.actions;
-  const t = S().tenant(id); if (!t) return;
-  const items = [
-    { label: 'Add charge', icon: 'plus', write: true, onSelect: () => A.addCharge(id) },
-    { label: 'Add credit', icon: 'undo', write: true, onSelect: () => A.addCredit(id) },
-    { label: 'Add note', icon: 'note', write: true, onSelect: () => { const ta = document.getElementById('tn-note-text'); if (ta) { ta.scrollIntoView({ block: 'center' }); ta.focus(); } else A.addNote(id); } },
-    { sep: true },
-    { label: 'Edit details', icon: 'edit', hint: 'e', write: true, onSelect: () => A.editTenant(id) },
-  ];
-  if (t.status !== 'past') {
-    items.push(
-      { label: 'Change rent', icon: 'cash', write: true, onSelect: () => A.changeRent(id) },
-      { label: 'Renew lease', icon: 'leases', write: true, onSelect: () => A.renewLease(id) });
-    if (t.status !== 'notice') items.push({ label: 'Give notice', icon: 'calendar', write: true, onSelect: () => A.giveNotice(id) });
-    items.push({ label: t.status === 'notice' && t.lease && t.lease.moveOut && t.lease.moveOut <= S().today() ? 'Complete move-out' : 'Move out', icon: 'door', write: true, onSelect: () => A.moveOut(id) });
-  }
-  if (t.deposit && +t.deposit.amount > 0 && !t.deposit.returned && t.lease && t.lease.moveOut) items.push({ label: 'Settle deposit', icon: 'key', write: true, onSelect: () => A.settleDeposit(id) });
-  items.push({ sep: true }, { label: 'Delete tenant', icon: 'trash', danger: true, write: true, onSelect: () => T.deleteTenant(id) });
-  ui.menu(anchor, items, { align: 'end' });
-};
+T.editNote = (id, lid) => T.noteSheet(id, lid);

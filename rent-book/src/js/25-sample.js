@@ -46,6 +46,56 @@ const UNITS = [
   ['Fenwick Row', 'No. 12', 'Priya Natarajan', 2300, { profile: 'early', method: 'ACH', co: [['Sunil Natarajan', true]] }],
 ];
 
+// Past repairs: [property, unit ('' = whole building), title, category, vendor, [cost lo, hi] dollars ([0,0] = no cost),
+// about how many days ago, notes, extra(doneDate) → more fields]. Alder Court 2B has a clear repeat plumbing problem.
+const PAST_REPAIRS = [
+  ['Alder Court', '2B', 'Kitchen sink leaking under the cabinet', 'plumbing', 'Rooter Bros. Plumbing', [160, 240], 48, 'Replaced the P-trap and both supply lines. Plumber says the pipes in this stack are old.'],
+  ['Alder Court', '2B', 'Bathroom tap dripping', 'plumbing', 'Rooter Bros. Plumbing', [110, 160], 165, 'New cartridge in the bath mixer tap.'],
+  ['Alder Court', '2B', 'Toilet running all night', 'plumbing', 'Owner', [25, 45], 290, 'Replaced the flapper and fill valve myself.'],
+  ['Alder Court', '2B', 'Leak into 1B ceiling from 2B bathroom', 'plumbing', 'Rooter Bros. Plumbing', [380, 520], 520, 'Failed wax seal under the toilet. Reset the toilet and patched the 1B ceiling.'],
+  ['Alder Court', '', 'Boiler yearly service', 'heating', 'Keller Heating & Air', [260, 320], 40, 'Cleaned burners, checked flue and pressure. All good.'],
+  ['Alder Court', '', 'Boiler yearly service', 'heating', 'Keller Heating & Air', [240, 300], 400, 'Replaced the pressure relief valve.'],
+  ['Alder Court', '', 'Boiler yearly service', 'heating', 'Keller Heating & Air', [230, 280], 770, ''],
+  ['Alder Court', '', 'Roof patch over the stairwell', 'roof', 'Summit Roofing', [650, 900], 610, 'Replaced the flashing around the vent stack.'],
+  ['Alder Court', '', 'Clean gutters and downspouts', 'roof', 'Clearline Gutters', [180, 220], 380, ''],
+  ['Alder Court', '', 'Hallway lights out on the second floor', 'electrical', 'Brightline Electric', [210, 260], 120, 'New LED fixtures on a shared switch.'],
+  ['Alder Court', '1C', 'New dishwasher installed', 'appliance', 'Halvorsen Appliance', [620, 700], 210, 'Bosch, 2-year parts and labor warranty. Receipt in the blue folder.', d => ({ warrantyUntil: D.addDays(D.addMonths(d, 24), -1) })],
+  ['Alder Court', '1C', 'Garbage disposal jammed', 'appliance', 'Owner', [0, 0], 700, 'Freed it with the hex key. No parts needed.'],
+  ['Alder Court', '3D', 'Bedroom window latch broken', 'doors', 'Northgate Locksmiths', [85, 120], 230, ''],
+  ['Alder Court', '2A', 'Rekey front door between tenants', 'doors', 'Northgate Locksmiths', [110, 140], 860, ''],
+  ['Alder Court', '3C', 'Mice in the kitchen cabinets', 'pest', 'Brightside Pest Control', [180, 240], 330, 'Sealed gaps behind the stove. Two follow-up visits included.'],
+  ['Alder Court', '1D', 'Repaint living room and hallway', 'painting', 'Novak Painting', [900, 1200], 900, 'Between tenants. Eggshell, color Swiss Coffee.'],
+  ['Alder Court', '2D', 'Refinish hardwood floors', 'painting', 'Oak & Grain Floors', [1400, 1800], 140, 'Between tenants. Two coats, satin.'],
+  ['Alder Court', '1B', 'Bathroom outlet not working', 'electrical', 'Brightline Electric', [140, 190], 260, 'Replaced with a GFCI outlet.'],
+  ['Alder Court', '3B', 'Thermostat not holding temperature', 'heating', 'Keller Heating & Air', [120, 160], 75, 'New programmable thermostat.'],
+  ['418 Marlow Street', '', 'Rear roof section replaced', 'roof', 'Summit Roofing', [8400, 9600], 980, '30-year shingles. Summit gives 10 years on their workmanship.'],
+  ['418 Marlow Street', '', 'Boiler yearly service', 'heating', 'Keller Heating & Air', [260, 320], 55, ''],
+  ['418 Marlow Street', '', 'Boiler yearly service', 'heating', 'Keller Heating & Air', [250, 300], 420, 'Circulator pump is getting noisy — keep an eye on it.'],
+  ['418 Marlow Street', '', 'Clean gutters', 'roof', 'Clearline Gutters', [160, 200], 395, ''],
+  ['418 Marlow Street', '', 'Front entry door closer replaced', 'doors', 'Northgate Locksmiths', [150, 190], 260, ''],
+  ['418 Marlow Street', '', 'Repaint stairwell and lobby', 'painting', 'Novak Painting', [2200, 2800], 880, ''],
+  ['418 Marlow Street', '202', 'Water heater replaced', 'plumbing', 'Rooter Bros. Plumbing', [1100, 1400], 610, '40-gallon gas heater.'],
+  ['418 Marlow Street', '101', 'Smoke detectors replaced', 'electrical', 'Brightline Electric', [180, 220], 450, '10-year sealed battery type, all rooms.'],
+  ['418 Marlow Street', '102', 'Fridge not cooling', 'appliance', 'Halvorsen Appliance', [210, 280], 190, 'Replaced the evaporator fan motor.'],
+  ['418 Marlow Street', '103', 'Kitchen window pane broken', 'doors', 'City Glass & Glazing', [240, 300], 95, 'A guest of the tenant broke it. Tenant agreed to pay.', () => ({ paidBy: 'tenant' })],
+  ['418 Marlow Street', '201', 'Bedroom ceiling repainted after a leak', 'painting', 'Novak Painting', [350, 450], 330, ''],
+  ['418 Marlow Street', '301', 'Dishwasher door seal', 'appliance', 'Halvorsen Appliance', [120, 160], 730, ''],
+  ['418 Marlow Street', '303', 'Bed bug treatment', 'pest', 'Brightside Pest Control', [700, 900], 1010, 'Heat treatment, whole unit. Checked 302 as well: clear.'],
+  ['418 Marlow Street', '302', 'Bathroom fan replaced', 'electrical', 'Brightline Electric', [160, 210], 520, ''],
+  ['Fenwick Row', 'No. 2', 'Furnace not starting', 'heating', 'Keller Heating & Air', [280, 380], 330, 'Replaced the flame sensor.'],
+  ['Fenwick Row', 'No. 2', 'Furnace tune-up', 'heating', 'Keller Heating & Air', [140, 180], 700, ''],
+  ['Fenwick Row', 'No. 4', 'Back fence panels blown down', 'roof', 'Ridgeway Fencing', [600, 800], 280, 'Three panels and one post.'],
+  ['Fenwick Row', 'No. 4', 'Roof shingles replaced after a storm', 'roof', 'Summit Roofing', [1800, 2400], 980, 'Insurance claim HL-22817. Cost shown is the $1,000 deductible plus extras.'],
+  ['Fenwick Row', 'No. 6', 'Clean gutters', 'roof', 'Clearline Gutters', [200, 240], 375, ''],
+  ['Fenwick Row', 'No. 6', 'Ants in the kitchen', 'pest', 'Brightside Pest Control', [120, 150], 545, ''],
+  ['Fenwick Row', 'No. 8', 'Washer drain hose split', 'appliance', 'Halvorsen Appliance', [90, 130], 150, ''],
+  ['Fenwick Row', 'No. 8', 'Outside tap froze and split', 'plumbing', 'Rooter Bros. Plumbing', [180, 240], 690, 'Fitted a frost-free spigot.'],
+  ['Fenwick Row', 'No. 10', 'Repaint after move-out', 'painting', 'Novak Painting', [1600, 2000], 22, ''],
+  ['Fenwick Row', 'No. 10', 'Deep clean carpets', 'other', 'FreshStep Carpet Care', [260, 320], 20, 'Move-out clean.'],
+  ['Fenwick Row', 'No. 12', 'Garage door spring snapped', 'doors', 'Overhead Door Pros', [240, 300], 600, ''],
+  ['Fenwick Row', 'No. 12', 'Sump pump replaced', 'plumbing', 'Rooter Bros. Plumbing', [480, 620], 900, ''],
+];
+
 const ABOUT = {
   '1A': 'Works nights at the hospital — text, don’t call before noon. Bike stored in the basement cage.',
   '1B': 'Cat (Pierogi). Hours cut at work in the spring; promised to catch up.',
@@ -224,12 +274,31 @@ function generate(today) {
       sample: true, createdAt: at(D.addDays(today, -reportedAgo)), updatedAt: at(D.addDays(today, -Math.max(0, reportedAgo - 1))),
     }, extra || {});
   };
-  tk('202', 'No hot water', 'Water heater pilot keeps going out. Tenant has been heating water on the stove.', 'urgent', 'open', 1, { vendor: '' });
-  tk('2B', 'Bathroom fan rattles', 'Loud rattle when the fan runs; probably a loose housing.', 'normal', 'open', 9);
-  tk('No. 6', 'Clean gutters before winter', 'Front and back gutters, downspout at the garage is clogged.', 'normal', 'scheduled', 12, { scheduled: D.addDays(today, 4), vendor: 'Clearline Gutters', cost: 22000 });
-  tk('3A', 'Replace dishwasher', 'Leaks from the door seal; unit is 14 years old.', 'normal', 'scheduled', 6, { scheduled: D.addDays(today, 2), vendor: 'Halvorsen Appliance', cost: 64900 });
-  tk('101', 'Smoke detector chirping', 'Hallway detector chirps at night.', 'low', 'done', 8, { completed: D.addDays(today, -6), vendor: 'Owner', cost: 1800 });
-  tk('1C', 'Kitchen sink clogged', 'Slow drain, then fully blocked. Grease buildup.', 'normal', 'done', 19, { completed: D.addDays(today, -17), vendor: 'Rooter Bros. Plumbing', cost: 18500, paidBy: 'tenant' });
+  tk('202', 'No hot water', 'Water heater pilot keeps going out. Tenant has been heating water on the stove.', 'urgent', 'open', 1, { vendor: '', category: 'plumbing' });
+  tk('2B', 'Bathroom fan rattles', 'Loud rattle when the fan runs; probably a loose housing.', 'normal', 'open', 9, { category: 'electrical' });
+  tk('No. 6', 'Clean gutters before winter', 'Front and back gutters, downspout at the garage is clogged.', 'normal', 'scheduled', 12, { scheduled: D.addDays(today, 4), vendor: 'Clearline Gutters', cost: 22000, category: 'roof' });
+  tk('3A', 'Replace dishwasher', 'Leaks from the door seal; unit is 14 years old.', 'normal', 'scheduled', 6, { scheduled: D.addDays(today, 2), vendor: 'Halvorsen Appliance', cost: 64900, category: 'appliance' });
+  tk('101', 'Smoke detector chirping', 'Hallway detector chirps at night.', 'low', 'done', 8, { completed: D.addDays(today, -6), vendor: 'Owner', cost: 1800, category: 'electrical' });
+  tk('1C', 'Kitchen sink clogged', 'Slow drain, then fully blocked. Grease buildup.', 'normal', 'done', 19, { completed: D.addDays(today, -17), vendor: 'Rooter Bros. Plumbing', cost: 18500, paidBy: 'tenant', category: 'plumbing' });
+
+  // ---- past repairs (SPEC §9): ~45 completed repairs over the last three years. A SEPARATE seeded PRNG, run after
+  // everything above, so the ids and contents of the tenants, ledgers and the six tickets above never change.
+  const prand = mulberry32(0x0b0e5ea1);
+  const pri = (a, b) => a + Math.floor(prand() * (b - a + 1));
+  const pid = () => { let id; do { id = Array.from({ length: 12 }, () => 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(prand() * 57)]).join(''); } while (ids[id]); ids[id] = 1; return id; };
+  PAST_REPAIRS.forEach(([property, unit, title, category, vendor, [lo, hi], daysAgo, notes, extra]) => {
+    const done = D.addDays(today, -(daysAgo + pri(0, 6)));
+    const cost = hi ? (lo + pri(0, hi - lo)) * 100 : null;
+    const tid = unit ? byUnit[unit] : null;
+    const tn = tid && tenants[tid];
+    const lived = tn && tn.lease.moveIn <= done && (!tn.lease.moveOut || tn.lease.moveOut >= done);
+    const id = pid();
+    tickets[id] = Object.assign({
+      tenantId: lived ? tid : null, property, unit, scope: unit ? 'unit' : 'building', title, detail: '', priority: 'normal', status: 'done',
+      reported: D.addDays(done, -pri(1, 9)), scheduled: null, completed: done, vendor, cost, paidBy: 'owner', category, notes: notes || '',
+      sample: true, createdAt: at(done), updatedAt: at(done),
+    }, extra ? extra(done) : {});
+  });
 
   return { settings, tenants, ledgers, tickets };
 }

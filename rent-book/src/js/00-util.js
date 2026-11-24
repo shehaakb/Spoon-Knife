@@ -149,19 +149,19 @@ const D = (RB.date = {
   monthName(k) { return MONTHS[+k.slice(5, 7) - 1]; },
   /**
    * Relative phrase for deadlines from today's point of view:
-   * "today", "tomorrow", "yesterday", "in 12 d", "9 d ago". {style:'late'} → "9 d late" for past dates.
+   * "today", "tomorrow", "yesterday", "in 12 days", "9 days ago". {style:'late'} → "9 days late" for past dates.
    */
   rel(s, today, opts) {
     if (!isDate(s)) return '';
     const n = D.diffDays(today || D.today(), s);
     if (n === 0) return 'today';
     if (n === 1) return 'tomorrow';
-    if (n === -1) return opts && opts.style === 'late' ? '1 d late' : 'yesterday';
-    if (n > 0) return 'in ' + n + ' d';
-    return -n + (opts && opts.style === 'late' ? ' d late' : ' d ago');
+    if (n === -1) return opts && opts.style === 'late' ? '1 day late' : 'yesterday';
+    if (n > 0) return 'in ' + D.days(n);
+    return D.days(-n) + (opts && opts.style === 'late' ? ' late' : ' ago');
   },
-  /** "9 d" style duration */
-  days(n) { return n + ' d'; },
+  /** "1 day" / "9 days" — never abbreviated (v2 glossary). */
+  days(n) { return n + (n === 1 ? ' day' : ' days'); },
   /** Parse loose user/CSV input into YYYY-MM-DD or null: 2026-11-03, 11/3/2026, 11/3/26, Nov 3 2026, 3 Nov 2026. */
   parseLoose(input, today) {
     const s = String(input || '').trim();
@@ -299,3 +299,12 @@ RB.emit = function emit(name, data) { (handlers[name] || []).slice().forEach(fn 
 /** querySelector shorthands */
 RB.$ = (sel, root) => (root || document).querySelector(sel);
 RB.$$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+/** Text size (per device): 'normal' | 'lg' | 'xl' → data-text on the root element. Every size token multiplies by --text-scale. */
+RB.textSize = {
+  OPTIONS: [{ value: 'normal', label: 'Normal', scale: 1 }, { value: 'lg', label: 'Large', scale: 1.12 }, { value: 'xl', label: 'Extra large', scale: 1.25 }],
+  get() { const v = RB.prefs.get('textSize', 'normal'); return RB.textSize.OPTIONS.some(o => o.value === v) ? v : 'normal'; },
+  apply(v) { try { const el = document.documentElement; if (v && v !== 'normal') el.setAttribute('data-text', v); else el.removeAttribute('data-text'); } catch (e) { /* node */ } },
+  set(v) { if (!RB.textSize.OPTIONS.some(o => o.value === v)) v = 'normal'; RB.prefs.set('textSize', v); RB.textSize.apply(v); RB.emit('textsize', v); },
+};
+if (globalThis.document) RB.textSize.apply(RB.textSize.get());

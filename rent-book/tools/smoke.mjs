@@ -38,11 +38,12 @@ await page.waitForTimeout(50);
 check('undo restores balance', await page.evaluate(id => RB.store.ledger(id).balance, tid) === before);
 check('undone entry hidden from ledger rows', await page.evaluate(id => !RB.store.ledger(id).rows.some(r => r.entry && r.entry.undone), tid));
 
-// payment sheet: type amount, submit with Enter
+// payment sheet: "Only part of it", type amount, submit with Enter
 await page.evaluate(id => { RB.actions.recordPayment(id); }, tid);
-await page.waitForSelector('#pay-amount');
+await page.waitForSelector('#pay-how-1');
+await page.click('label[for="pay-how-1"]');
 await page.fill('#pay-amount', '100');
-check('live balance-after note', (await page.textContent('.sheet-foot-note')).includes('Balance after'));
+check('live sentence says what is left', (await page.textContent('.sheet-foot-note')).startsWith('After this, '));
 check('button label says what happens', (await page.textContent('[data-action="save"]')).trim() === 'Record $100');
 await page.press('#pay-amount', 'Enter');
 await page.waitForTimeout(300);
@@ -72,8 +73,63 @@ await page.keyboard.press('Escape');
 await page.waitForTimeout(250);
 check('Esc closes drawer and returns to #tenants', await page.evaluate(() => location.hash === '#tenants') && await page.locator('.drawer').count() === 0);
 await page.keyboard.press('?');
-check('? opens shortcuts', (await page.textContent('.sheet-title')) === 'Keyboard shortcuts');
+check('? still opens keyboard shortcuts', (await page.textContent('.sheet-title')) === 'Keyboard shortcuts');
 await page.keyboard.press('Escape');
+await page.waitForTimeout(250);
+check('shortcuts are not advertised in the shell', !/shortcut/i.test(await page.evaluate(() => document.getElementById('rb-rail').innerText + document.getElementById('rb-topbar').innerText)));
+
+// words, not symbols: every button/link in the shell has visible text
+await page.evaluate(() => { location.hash = 'today'; });
+await page.waitForTimeout(150);
+const unnamed = await page.evaluate(() => Array.from(document.querySelectorAll('#rb-rail a, #rb-rail button, #rb-topbar a, #rb-topbar button, #rb-banner button, #rb-view button')).filter(e => e.offsetParent !== null && !(e.innerText || '').trim()).map(e => e.id || e.className));
+check('shell + Today: no button without visible words', !unnamed.length, unnamed.join(', '));
+check('nav labels', (await page.$$eval('.rail-link-label', els => els.map(e => e.textContent.trim()).join(' · '))) === 'Today · Rent · Tenants · Leases · Repairs · Reports · Settings');
+check('top bar says Add (and Find on phone)', (await page.textContent('#rb-add')).trim() === 'Add' && (await page.textContent('#rb-find')).trim() === 'Find');
+await page.evaluate(() => { location.hash = 'upkeep'; }); await page.waitForTimeout(120);
+check('#upkeep shows Repairs', await page.evaluate(() => document.querySelector('#rb-nav-repairs').getAttribute('aria-current') === 'page'));
+await page.evaluate(() => { location.hash = 'rent'; }); await page.waitForTimeout(120);
+await page.click('#rb-brand'); await page.waitForTimeout(120);
+check('app name returns to Today', await page.evaluate(() => location.hash === '#today'));
+
+// text size: changes computed size, persists across reload
+const fs = () => page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize));
+const f0 = await fs();
+await page.click('#rb-ts-xl');
+await page.waitForTimeout(100);
+const f1 = await fs();
+check('text size: Extra large makes body text 25% bigger', Math.abs(f1 - f0 * 1.25) < 0.05, f0 + ' → ' + f1);
+check('text size: control buttons have words', (await page.textContent('#rb-sync .textsize')).replace(/\s+/g, ' ').includes('Normal') && (await page.textContent('#rb-ts-xl')).trim() === 'Extra large');
+await page.reload(); await page.waitForFunction(() => RB.store.state.ready); await page.waitForTimeout(100);
+check('text size: remembered after reload', Math.abs(await fs() - f1) < 0.05 && await page.evaluate(() => document.querySelector('#rb-ts-xl').getAttribute('aria-pressed') === 'true'));
+await page.click('#rb-ts-lg');
+await page.waitForTimeout(100);
+check('text size: Large = 112%', Math.abs(await fs() - f0 * 1.12) < 0.05);
+await page.click('#rb-ts-normal');
+
+// toast stays at least 9 seconds
+await page.evaluate(() => { document.querySelectorAll('.toast').forEach(t => t.remove()); RB.ui.toast('Test message', { undo: () => {} }); });
+await page.waitForTimeout(9200);
+check('toast: still showing after 9 s, with a big Undo', await page.locator('.toast').count() === 1 && (await page.textContent('.toast-action')).trim() === 'Undo' && await page.evaluate(() => document.querySelector('.toast-action').getBoundingClientRect().height >= 40));
+await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
+
+// Help: "How do I…?" — every answer starts its task
+await page.click('#rb-help');
+await page.waitForSelector('.help-item');
+const helpIds = await page.$$eval('.help-item', els => els.map(e => e.id.replace('help-', '')));
+check('help: nine plain answers', helpIds.length === 9, helpIds.join(','));
+await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+for (const id of helpIds) {
+  await page.evaluate(() => { RB.ui.closeAll(); location.hash = 'today'; });
+  await page.waitForTimeout(120);
+  await page.evaluate(() => RB.shell.helpSheet());
+  await page.waitForSelector('#help-go-' + id);
+  await page.click('#help-go-' + id);
+  await page.waitForTimeout(300);
+  const r = await page.evaluate(() => ({ hash: location.hash, sheet: (document.querySelector('.sheet-title') || {}).textContent || '' }));
+  const ok = { owes: r.hash === '#rent', history: r.hash === '#repairs' }[id] ?? (r.sheet && r.sheet !== 'How do I…?');
+  check('help: "' + id + '" starts its task', !!ok, JSON.stringify(r));
+}
+await page.evaluate(() => RB.ui.closeAll());
 
 // re-render must not clobber a focused input: focus kit search, trigger a store change
 await page.evaluate(() => { location.hash = 'kit'; });
@@ -96,6 +152,8 @@ await page.waitForTimeout(100);
 await page.click('#setup-remove-sample');
 await page.waitForSelector('[data-action="confirm"]');
 check('confirm names what is removed', (await page.textContent('.sheet-body')).includes('27 sample tenants'));
+await page.waitForTimeout(100);
+check('confirm: big "Keep it" has focus, red worded button', await page.evaluate(() => document.activeElement.dataset.action === 'keep' && document.activeElement.textContent.trim() === 'Keep it') && (await page.textContent('[data-action="confirm"]')).trim() === 'Remove sample tenants');
 await page.click('[data-action="confirm"]');
 await page.waitForTimeout(200);
 check('sample removed, own tenant kept', await page.evaluate(() => RB.store.tenantsList().length === 1 && !RB.store.hasSample()));

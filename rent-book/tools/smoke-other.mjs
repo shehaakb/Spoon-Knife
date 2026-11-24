@@ -110,12 +110,16 @@ await step('month-to-month', async () => {
 let tkId = null, tkTenant = null;
 await step('upkeep flow', async () => {
   await go('upkeep');
+  if (await page.locator('#rp-tab-todo[aria-selected="false"]').count()) await page.click('#rp-tab-todo');
   tkTenant = await page.evaluate(() => RB.store.tenantsList().find(t => t.name === 'Maya Okafor').id);
   await page.evaluate(() => { RB.actions.addTicket(); });
   await page.waitForSelector('#uk-title');
   await page.fill('#uk-title', 'Broken blind');
-  await page.selectOption('#uk-tenant', tkTenant);
-  check('tenant picker fills property + unit', (await page.inputValue('#uk-property')) === 'Alder Court' && (await page.inputValue('#uk-unit')) === '1A');
+  check('category guessed from the title', (await page.inputValue('#uk-category')) === 'doors');
+  await page.selectOption('#uk-property', 'Alder Court');
+  await page.selectOption('#uk-unit', '1A');
+  check('unit fills in the tenant', (await page.inputValue('#uk-tenant')) === tkTenant);
+  await page.click('#uk-more-btn');
   await page.click('[data-seg-for="uk-paidby"] [data-value="tenant"]');
   await page.click('[data-action="save"]');
   await settle();
@@ -134,7 +138,7 @@ await step('upkeep flow', async () => {
   const bal0 = await page.evaluate(id => RB.store.ledger(id).balance, tkTenant);
   await page.click(`[data-ticket="${tkId}"] [data-act="done"]`);
   await page.fill('#uk-in-cost', '120');
-  check('offers tenant charge', (await page.textContent('#uk-in-charge-label')).includes('Add $120 charge to Maya Okafor'));
+  check('offers tenant charge', (await page.textContent('#uk-in-charge-label')).includes('Add a $120 charge to Maya Okafor'));
   await page.press('#uk-in-cost', 'Enter');
   await settle();
   const k = await page.evaluate(id => RB.store.ticket(id), tkId);
@@ -156,7 +160,8 @@ await step('upkeep flow', async () => {
   await settle();
   check('sheet: done + $99 charge', await page.evaluate(([id, t]) => { const k = RB.store.ticket(id); const e = k.chargeId && RB.store.entries(t)[k.chargeId]; return k.status === 'done' && e && e.amount === 9900; }, [tkId, tkTenant]));
   const count = await page.textContent('#uk-count');
-  check('count line', /\d+ open.*oldest \d+ d/.test(count), count);
+  check('count line', /\d+ repairs? to do.*waited \d+ days?/.test(count), count);
+  check('saved with category + tenant', await page.evaluate(id => { const k = RB.store.ticket(id); return k.category === 'doors' && k.property === 'Alder Court' && k.unit === '1A' && k.scope === 'unit'; }, tkId));
   // property filter
   await page.click('.uk-filter [data-prop="Fenwick Row"]');
   await settle();

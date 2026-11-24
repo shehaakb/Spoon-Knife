@@ -84,21 +84,58 @@ ui.attrs = function attrs(obj) {
 const STATUS_ICON = { paid: 'check', paid_late: 'check-late', partial: 'half', due: 'circle', late: 'triangle', none: 'dash' };
 ui.STATUS_ICON = STATUS_ICON;
 
+/** Glossary words for a month status (SPEC §8 rule 4). */
+const STATUS_WORD = { paid: 'Paid', paid_late: 'Paid late', partial: 'Part paid', due: 'Not paid yet', late: 'Late', none: 'No charge' };
+ui.STATUS_WORD = STATUS_WORD;
 /**
- * Status pill (SafeHTML). status: paid|paid_late|partial|due|late|none.
- * opts: {daysLate (late → "9 d late"), label (override text), size:'sm', title}
+ * Status pill (SafeHTML). status: paid|paid_late|partial|due|late|none, or 'partial_late' (some paid, rest past grace).
+ * opts: {daysLate (late → "22 days late"), paid (cents already paid that month: a late month with paid > 0 renders as
+ *        "Part paid — rest is 22 days late"), label (override text), size:'sm', title}
+ * Easiest: ui.monthPill(month) with a RB.model Month object.
  */
 ui.pill = function pill(status, opts) {
   const o = opts || {};
-  const st = STATUS_ICON[status] ? status : 'none';
+  let st = status === 'partial_late' ? 'partial_late' : STATUS_ICON[status] ? status : 'none';
+  if (st === 'late' && o.paid > 0) st = 'partial_late';
   let label = o.label;
   if (!label) {
-    if (st === 'late') label = o.daysLate ? o.daysLate + ' d late' : 'Late';
+    if (st === 'late') label = o.daysLate ? D.days(o.daysLate) + ' late' : 'Late';
+    else if (st === 'partial_late') label = 'Part paid — rest is ' + (o.daysLate ? D.days(o.daysLate) + ' late' : 'late');
     else if (st === 'none') label = null;
-    else label = RB.model.STATUS_LABEL[st];
+    else label = STATUS_WORD[st];
   }
-  if (label === null) return h`<span class="pill pill-none${o.size === 'sm' ? ' pill-sm' : ''}" title="${o.title || 'No charge this month'}">${ui.icon('dash', { size: 12 })}<span class="vh">No charge</span></span>`;
-  return h`<span class="pill pill-${st}${o.size === 'sm' ? ' pill-sm' : ''}"${o.title ? h` title="${o.title}"` : ''}>${ui.icon(STATUS_ICON[st], { size: 12 })}<span>${label}</span></span>`;
+  if (label === null) return h`<span class="pill pill-none${o.size === 'sm' ? ' pill-sm' : ''}" title="${o.title || 'No rent charged this month'}">${ui.icon('dash', { size: 12 })}<span>No rent this month</span></span>`;
+  const ico = st === 'partial_late' ? 'triangle' : STATUS_ICON[st];
+  return h`<span class="pill pill-${st}${o.size === 'sm' ? ' pill-sm' : ''}"${o.title ? h` title="${o.title}"` : ''}>${ui.icon(ico, { size: 12 })}<span>${label}</span></span>`;
+};
+/** Pill for a RB.model Month ({status, daysLate, rentPaid}). */
+ui.monthPill = (m, opts) => (m && m.scheduled !== false ? ui.pill(m.status, Object.assign({ daysLate: m.daysLate, paid: m.rentPaid }, opts)) : ui.pill('none', opts));
+
+/**
+ * Plain words for a month (no markup): "Paid Nov 3", "Paid late, Nov 12", "Part paid — $800 of $1,475",
+ * "Not paid yet — due Dec 1", "22 days late", "Part paid — rest is 22 days late", "No rent this month".
+ */
+ui.statusWords = function statusWords(m, today) {
+  if (!m || m.scheduled === false || m.status === 'none') return 'No rent this month';
+  const t = today || (RB.store ? RB.store.today() : D.today());
+  switch (m.status) {
+    case 'paid': return 'Paid' + (m.paidOn ? ' ' + D.fmt(m.paidOn, t) : '');
+    case 'paid_late': return 'Paid late' + (m.paidOn ? ', ' + D.fmt(m.paidOn, t) : '');
+    case 'partial': return 'Part paid — ' + M.fmt(m.rentPaid) + ' of ' + M.fmt(m.rentCharged);
+    case 'due': return 'Not paid yet' + (m.due ? ' — due ' + D.fmt(m.due, t) : '');
+    case 'late': return m.rentPaid > 0 ? 'Part paid — rest is ' + D.days(m.daysLate) + ' late' : D.days(m.daysLate) + ' late';
+    default: return STATUS_WORD[m.status] || '';
+  }
+};
+
+/** Money words (plain text): "Owes $1,225" · "All paid up" · "$250 paid ahead". */
+ui.balanceWords = c => (c > 0 ? 'Owes ' + M.fmt(c) : c < 0 ? M.fmt(-c) + ' paid ahead' : 'All paid up');
+
+/** Thin two-tone bar showing a paid share, drawn to scale (SafeHTML). opts: {label} */
+ui.splitBar = function splitBar(paid, total, opts) {
+  const pct = total > 0 ? Math.max(0, Math.min(100, (paid / total) * 100)) : 0;
+  const label = (opts && opts.label) || (M.fmt(paid) + ' of ' + M.fmt(total) + ' paid');
+  return h`<span class="splitbar" role="img" aria-label="${label}"><span class="splitbar-paid" style="width:${pct.toFixed(2)}%"></span></span>`;
 };
 
 /** Generic tag. tone: ''|'accent'|'ok'|'warn'|'bad'|'quiet' */
@@ -106,8 +143,8 @@ ui.tag = (text, tone, icon) => h`<span class="tag${tone ? ' tag-' + tone : ''}">
 
 /** Tenant status tag: active (no tag unless opts.all), notice, past. */
 ui.tenantTag = function tenantTag(status) {
-  if (status === 'notice') return ui.tag('Notice given', 'warn', 'door');
-  if (status === 'past') return ui.tag('Past', 'quiet');
+  if (status === 'notice') return ui.tag('Moving out', 'warn', 'door');
+  if (status === 'past') return ui.tag('Moved out', 'quiet');
   return ui.tag('Active', 'ok');
 };
 
@@ -128,7 +165,7 @@ ui.plate = function plate(unit, opts) {
   return h`<${raw(tag)} class="${cls}"${o.button ? raw(' type="button"') : ''}${title ? h` title="${title}"` : ''}${ui.attrs(o.attrs)}>${inner}</${raw(tag)}>`;
 };
 
-const STRIP_WORD = { paid: 'paid', paid_late: 'paid late', partial: 'partly paid', due: 'due', late: 'late', none: 'no charge' };
+const STRIP_WORD = { paid: 'paid', paid_late: 'paid late', partial: 'part paid', due: 'not paid yet', late: 'late', none: 'no rent' };
 /**
  * 12-month payment strip (SafeHTML). cells = RB.model.monthsBack(ledger, endKey, 12) (oldest → newest). opts: {lg:true, today}
  */
@@ -138,8 +175,8 @@ ui.strip = function strip(cells, opts) {
   const parts = (cells || []).map(c => {
     const mon = D.fmtMonthShort(c.period, today, { year: true });
     let t = mon + ' — ' + STRIP_WORD[c.status];
-    if ((c.status === 'paid' || c.status === 'paid_late') && c.paidOn) t += ' ' + D.fmt(c.paidOn, today) + (c.status === 'paid_late' ? ' (' + c.daysLate + ' d late)' : '');
-    else if (c.status === 'partial' || c.status === 'late') t += ': ' + M.fmt(c.open) + ' open' + (c.paid ? ', ' + M.fmt(c.paid) + ' paid' : '') + (c.status === 'late' ? ', ' + c.daysLate + ' d' : '');
+    if ((c.status === 'paid' || c.status === 'paid_late') && c.paidOn) t += ' ' + D.fmt(c.paidOn, today) + (c.status === 'paid_late' ? ' (' + D.days(c.daysLate) + ' late)' : '');
+    else if (c.status === 'partial' || c.status === 'late') t += ': still owes ' + M.fmt(c.open) + (c.paid ? ', ' + M.fmt(c.paid) + ' paid' : '') + (c.status === 'late' ? ', ' + D.days(c.daysLate) + ' late' : '');
     else if (c.status === 'due' && c.due) t += ' ' + D.fmt(c.due, today);
     return h`<i class="pc pc-${c.status}" title="${t}"></i>`;
   });
@@ -159,12 +196,19 @@ ui.money = function money(cents, opts) {
   return h`<span class="${cls}">${sign}<span class="cur">${M.symbol}</span>${M.digits(n, o)}</span>`;
 };
 
-/** Balance cell: owed → danger colour; credit → muted "$120 cr"; zero → em-rule (or opts.zero text). */
+/**
+ * Balance in words (v2 default): owed → "Owes $1,225" (danger colour) · zero → "All paid up" · credit → "$250 paid ahead".
+ * opts: {zero: text for zero (''→ renders nothing visible)}, {plain:true}: figures only — owed "$1,225", credit "$250 ahead", zero "—".
+ */
 ui.balance = function balance(cents, opts) {
   const o = opts || {};
-  if (!cents) return o.zero === undefined ? raw('<span class="amt-zero" aria-label="No balance">—</span>') : h`<span class="amt-zero">${o.zero}</span>`;
-  if (cents > 0) return ui.money(cents, { tone: 'owed' });
-  return h`<span class="money amt-credit"><span class="cur">${M.symbol}</span>${M.digits(-cents)}<span class="cr">cr</span></span>`;
+  const c = Math.round(cents || 0);
+  if (!c) {
+    if (o.zero !== undefined) return h`<span class="bal bal-zero amt-zero">${o.zero}</span>`;
+    return o.plain ? raw('<span class="amt-zero">—</span>') : raw('<span class="bal bal-zero amt-zero">All paid up</span>');
+  }
+  if (c > 0) return o.plain ? ui.money(c, { tone: 'owed' }) : h`<span class="bal bal-owed">Owes ${ui.money(c, { tone: 'owed' })}</span>`;
+  return h`<span class="bal bal-ahead amt-credit">${ui.money(-c, { cls: 'amt-credit' })} ${o.plain ? 'ahead' : 'paid ahead'}</span>`;
 };
 
 /** Plain date text: "Nov 3" / "Nov 3, 2025". opts.mono → mono class. */
@@ -173,11 +217,12 @@ ui.date = (d, opts) => h`<time class="${opts && opts.mono ? 'mono' : ''}" dateti
 /** <kbd> chip(s): ui.kbd('⌘K') or ui.kbd('g', 't') */
 ui.kbd = (...keys) => h`${keys.map(k => h`<kbd class="kbd">${k}</kbd>`)}`;
 
-/** Copyable value: text + copy button (data-copy holds the text; handled globally). */
+/** Copyable value: text + a worded "Copy" button (data-copy is handled globally) + optional link button ("Call"). */
 ui.copyline = function copyline(text, what, opts) {
-  if (!text) return h`<span class="faint">—</span>`;
-  const extra = opts && opts.href ? h` <a class="btn btn-ghost btn-icon btn-sm" href="${opts.href}" aria-label="${opts.hrefLabel || 'Open'}">${ui.icon(opts.hrefIcon || 'external')}</a>` : '';
-  return h`<span class="copyline"><span class="copyline-text">${text}</span><button type="button" class="btn btn-ghost btn-icon btn-sm" data-copy="${text}" data-copy-what="${what || 'text'}" aria-label="Copy ${what || 'text'}" title="Copy">${ui.icon('copy')}</button>${extra}</span>`;
+  if (!text) return h`<span class="muted">Not given</span>`;
+  const o = opts || {};
+  const extra = o.href ? h`<a class="btn btn-sm btn-worded" href="${o.href}">${ui.icon(o.hrefIcon || 'external')}<span class="btn-label">${o.hrefLabel || 'Open'}</span></a>` : '';
+  return h`<span class="copyline"><span class="copyline-text">${text}</span><button type="button" class="btn btn-sm btn-worded" data-copy="${text}" data-copy-what="${what || 'text'}" aria-label="Copy ${what || 'text'}">${ui.icon('copy')}<span class="btn-label">Copy</span></button>${extra}</span>`;
 };
 
 /**
@@ -198,10 +243,10 @@ ui.empty = function empty(opts) {
  * Button (SafeHTML). b: {label, kind:'primary'|'soft'|'ghost'|'danger'|'danger-soft'|'', size:'sm'|'lg', icon, iconOnly, cmd, act, id, attrs, disabled, write:true (marks data-write)}
  */
 ui.button = function button(b) {
-  const cls = 'btn' + (b.kind ? ' btn-' + b.kind : '') + (b.size ? ' btn-' + b.size : '') + (b.iconOnly ? ' btn-icon' : '') + (b.cls ? ' ' + b.cls : '');
-  const a = Object.assign({ type: 'button', class: cls, id: b.id, 'data-cmd': b.cmd, 'data-act': b.act, disabled: !!b.disabled, 'data-write': b.write ? '' : null,
-    'aria-label': b.iconOnly ? b.label : null, title: b.iconOnly ? b.label : b.title }, b.attrs || {});
-  return h`<button${ui.attrs(a)}>${b.icon ? ui.icon(b.icon) : ''}${b.iconOnly ? '' : h`<span>${b.label}</span>`}</button>`;
+  // v2: no icon-only buttons. `iconOnly` is accepted for compatibility but the label is always visible.
+  const cls = 'btn' + (b.kind ? ' btn-' + b.kind : '') + (b.size ? ' btn-' + b.size : '') + (b.iconOnly ? ' btn-worded' : '') + (b.cls ? ' ' + b.cls : '');
+  const a = Object.assign({ type: 'button', class: cls, id: b.id, 'data-cmd': b.cmd, 'data-act': b.act, disabled: !!b.disabled, 'data-write': b.write ? '' : null, title: b.title }, b.attrs || {});
+  return h`<button${ui.attrs(a)}>${b.icon ? ui.icon(b.icon) : ''}<span class="btn-label">${b.label}</span></button>`;
 };
 
 /** Loading skeleton. opts: {rows=6, title:true, plates:true} */
@@ -219,14 +264,14 @@ ui.firstRun = function firstRun() {
   const opt = (cmd, ico, title, sub) => h`<button type="button" class="firstrun-opt" data-cmd="${cmd}" data-write><span class="firstrun-ico">${ui.icon(ico)}</span><span><span class="firstrun-opt-title">${title}</span><span class="firstrun-opt-sub" style="display:block">${sub}</span></span><span class="chev">${ui.icon('chevron-right')}</span></button>`;
   return h`<section class="firstrun" aria-labelledby="fr-title">
     <div class="firstrun-head">
-      <div class="micro">Rent Book</div>
-      <h2 class="firstrun-title" id="fr-title">Start your rent book</h2>
-      <p class="firstrun-lede">One page for who owes what, whose lease is ending and what needs fixing. Add tenants one at a time, bring them in from a spreadsheet, or look around with sample data first.</p>
+      <div class="micro">Welcome to Rent Book</div>
+      <h2 class="firstrun-title" id="fr-title">Let’s set up your rent book</h2>
+      <p class="firstrun-lede">One place to write down who has paid, who still owes, and what needs fixing. Pick one way to start — you can’t break anything, and you can change your mind later.</p>
     </div>
     <div class="firstrun-opts">
-      ${opt('tenant:add', 'plus', 'Add your first tenant', 'Name, unit, rent and lease dates — the ledger builds itself from there.')}
-      ${opt('setup:import', 'upload', 'Import from a spreadsheet', 'Paste rows or choose a CSV. Columns are matched for you.')}
-      ${opt('sample:load', 'sample', 'Explore with sample data', '27 invented tenants across three buildings. Remove it with one click.')}
+      ${opt('tenant:add', 'plus', 'Add your first tenant', 'Their name, which unit, and the rent. Rent Book keeps track of each month from there.')}
+      ${opt('setup:import', 'upload', 'Bring in my tenants', 'Already have a list in Excel or another spreadsheet? Copy it in and we’ll sort out the columns.')}
+      ${opt('sample:load', 'sample', 'Try it with sample tenants first', '27 made-up tenants so you can look around safely. Remove them with one button when you’re ready.')}
     </div>
   </section>`;
 };
@@ -283,9 +328,10 @@ document.addEventListener('keydown', e => {
 // ================================================================= toast
 let toastBox = null;
 /**
- * Toast. opts: {undo: fn (adds "Undo"), action:{label, run}, tone:'bad', duration (ms, default 7000; 0 = sticky), icon}
+ * Toast. opts: {undo: fn (adds a big "Undo"), action:{label, run}, tone:'bad', duration (ms, default 10000; 0 = sticky), icon}
  * Returns {close}.
  */
+ui.TOAST_MS = 10000;
 ui.toast = function toast(message, opts) {
   const o = opts || {};
   if (!toastBox || !toastBox.isConnected) {
@@ -298,12 +344,12 @@ ui.toast = function toast(message, opts) {
   while (toastBox.children.length >= 3) toastBox.firstChild.remove();
   const el = document.createElement('div');
   el.className = 'toast' + (o.tone === 'bad' ? ' toast-bad' : '');
-  const act = o.undo ? { label: 'Undo', run: o.undo } : o.action;
-  el.innerHTML = String(h`${o.tone === 'bad' ? h`<span class="toast-ico">${ui.icon('alert')}</span>` : o.icon ? h`<span class="toast-ico">${ui.icon(o.icon)}</span>` : ''}<span class="toast-msg">${message}</span>${act ? h`<button type="button" class="toast-action">${act.label}</button>` : ''}<button type="button" class="toast-x" aria-label="Dismiss">${ui.icon('x', { size: 14 })}</button>`);
+  const act = o.undo ? { label: 'Undo', run: o.undo, undo: true } : o.action;
+  el.innerHTML = String(h`${o.tone === 'bad' ? h`<span class="toast-ico">${ui.icon('alert')}</span>` : o.icon ? h`<span class="toast-ico">${ui.icon(o.icon)}</span>` : ''}<span class="toast-msg">${message}</span>${act ? h`<button type="button" class="toast-action">${act.undo ? ui.icon('undo') : ''}${act.label}</button>` : ''}<button type="button" class="toast-x">Close</button>`);
   toastBox.appendChild(el);
   let timer = null;
   const close = () => { clearTimeout(timer); if (!el.isConnected) return; animateOut(el, () => el.remove()); };
-  const arm = () => { clearTimeout(timer); const d = o.duration === undefined ? 7000 : o.duration; if (d) timer = setTimeout(close, d); };
+  const arm = () => { clearTimeout(timer); const d = o.duration === undefined ? ui.TOAST_MS : o.duration; if (d) timer = setTimeout(close, d); };
   if (act) el.querySelector('.toast-action').addEventListener('click', () => { close(); try { act.run(); } catch (e) { console.error(e); } });
   el.querySelector('.toast-x').addEventListener('click', close);
   el.addEventListener('mouseenter', () => clearTimeout(timer));
@@ -336,11 +382,11 @@ ui.sheet = function sheet(opts) {
       <div class="sheet-grabber" aria-hidden="true"></div>
       <form class="sheet-form" novalidate autocomplete="off">
         <div class="sheet-head"><div class="grow"><h2 class="sheet-title" id="rb-sheet-${n}-t">${o.title || ''}</h2>${o.sub ? h`<div class="sheet-sub">${o.sub}</div>` : ''}</div>
-          <button type="button" class="btn btn-ghost btn-icon btn-sm sheet-close" data-close aria-label="Close">${ui.icon('x')}</button></div>
+          <button type="button" class="btn btn-ghost btn-sm sheet-close" data-close>${ui.icon('x')}<span>Close</span></button></div>
         <div class="sheet-body"></div>
         <div class="sheet-foot"><span class="sheet-foot-note">${o.note || ''}</span>
           ${cancel ? h`<button type="button" class="btn btn-ghost" data-close>${cancel}</button>` : ''}
-          ${actions.map((a, i) => h`<button type="${i === submitIdx ? 'submit' : 'button'}" class="btn${a.kind ? ' btn-' + a.kind : ''}" data-action="${a.id}"${a.disabled ? raw(' disabled') : ''}>${a.label}</button>`)}
+          ${actions.map((a, i) => h`<button type="${i === submitIdx ? 'submit' : 'button'}" class="btn${a.kind ? ' btn-' + a.kind : ''}" data-action="${a.id}"${a.disabled ? raw(' disabled') : ''}${a.hidden ? raw(' hidden') : ''}>${a.label}</button>`)}
         </div>
       </form>
     </div>`);
@@ -360,7 +406,8 @@ ui.sheet = function sheet(opts) {
       if (o.onClose) try { o.onClose(result); } catch (e) { console.error(e); }
     },
     action: id => wrap.querySelector('[data-action="' + id + '"]'),
-    setAction(id, p) { const b = handle.action(id); if (!b) return; if (p.label !== undefined) b.textContent = p.label; if (p.disabled !== undefined) b.disabled = !!p.disabled; },
+    setAction(id, p) { const b = handle.action(id); if (!b) return; if (p.label !== undefined) b.textContent = p.label; if (p.disabled !== undefined) b.disabled = !!p.disabled; if (p.hidden !== undefined) b.hidden = !!p.hidden; },
+    setSub(t) { let el = wrap.querySelector('.sheet-sub'); if (!el) { el = document.createElement('div'); el.className = 'sheet-sub'; wrap.querySelector('.sheet-title').after(el); } el.textContent = t || ''; },
     setNote(x) { wrap.querySelector('.sheet-foot-note').innerHTML = String(x && RB.isSafe(x) ? x : RB.esc(x || '')); },
     setTitle(t) { wrap.querySelector('.sheet-title').textContent = t; },
     get closed() { return closed; },
@@ -392,17 +439,24 @@ ui.sheet = function sheet(opts) {
   return handle;
 };
 
-/** In-page confirm (only for irreversible bulk actions). opts: {title, body (str|SafeHTML), confirmLabel, cancelLabel, danger} → Promise<boolean> */
+/**
+ * Confirm (SPEC §8 rule 8): a plain consequence sentence, a large "Keep it" and a red worded destructive button.
+ * opts: {title, body (str|SafeHTML — say what will happen), confirmLabel ("Remove this payment"), cancelLabel='Keep it', danger}
+ * → Promise<boolean>. Focus starts on "Keep it"; Enter does not confirm.
+ */
 ui.confirm = function confirm(opts) {
   const o = opts || {};
   return new Promise(resolve => {
     let ok = false;
     ui.sheet({
       title: o.title || 'Are you sure?',
-      body: o.body ? (RB.isSafe(o.body) ? o.body : h`<p class="muted">${o.body}</p>`) : '',
-      cancel: o.cancelLabel || 'Cancel',
-      actions: [{ id: 'confirm', label: o.confirmLabel || 'Confirm', kind: o.danger ? 'danger' : 'primary', onClick: () => { ok = true; } }],
-      initialFocus: '[data-action="confirm"]',
+      body: o.body ? (RB.isSafe(o.body) ? o.body : h`<p class="say">${o.body}</p>`) : '',
+      cancel: false,
+      actions: [
+        { id: 'confirm', label: o.confirmLabel || 'Yes, do it', kind: o.danger ? 'danger' : 'primary', onClick: () => { ok = true; } },
+        { id: 'keep', label: o.cancelLabel || 'Keep it', kind: 'keep' },
+      ],
+      initialFocus: '[data-action="keep"]',
       onClose: () => resolve(ok),
     });
   });
@@ -516,8 +570,8 @@ ui.drawer = function drawer(opts) {
   return handle;
 };
 ui.currentDrawer = () => (drawerHandle && drawerHandle.isOpen() ? drawerHandle : null);
-/** Standard drawer close button (SafeHTML). */
-ui.drawerClose = () => h`<button type="button" class="btn btn-ghost btn-icon drawer-close" data-drawer-close aria-label="Close">${ui.icon('x')}</button>`;
+/** Standard drawer close button (SafeHTML): reads "Close" on desktop, "Back" on phone (full-screen page). */
+ui.drawerClose = () => h`<button type="button" class="btn btn-ghost drawer-close" data-drawer-close><span class="close-desk">${ui.icon('x')}</span><span class="close-phone">${ui.icon('chevron-left')}</span><span class="close-desk">Close</span><span class="close-phone">Back</span></button>`;
 
 // ================================================================= palette (generic)
 /** Highlight query tokens inside text (SafeHTML, escaped). */
@@ -560,9 +614,9 @@ ui.palette = function palette(opts) {
   wrap.className = 'palette-wrap';
   wrap.innerHTML = String(h`<div class="scrim" data-close></div>
     <div class="palette" role="dialog" aria-modal="true" aria-label="${o.label || 'Search'}">
-      <div class="palette-head">${ui.icon('search')}<input class="palette-input" id="rb-palette-input" type="text" role="combobox" aria-expanded="true" aria-controls="rb-palette-list" aria-autocomplete="list" placeholder="${o.placeholder || 'Search…'}" autocomplete="off" spellcheck="false"><kbd class="kbd">esc</kbd></div>
+      <div class="palette-head">${ui.icon('search')}<input class="palette-input" id="rb-palette-input" type="text" role="combobox" aria-expanded="true" aria-controls="rb-palette-list" aria-autocomplete="list" aria-label="${o.label || 'Find'}" placeholder="${o.placeholder || 'Find…'}" autocomplete="off" spellcheck="false"></div>
       <div class="palette-list" id="rb-palette-list" role="listbox"></div>
-      <div class="palette-foot"><span>${ui.kbd('↑', '↓')} move</span><span>${ui.kbd('↵')} open</span><span>${ui.kbd('esc')} close</span></div>
+      <div class="palette-foot"><button type="button" class="btn btn-ghost btn-sm" data-close>${ui.icon('x')}<span>Close</span></button></div>
     </div>`);
   layerRoot().appendChild(wrap);
   const input = wrap.querySelector('input');
@@ -572,7 +626,7 @@ ui.palette = function palette(opts) {
     const groups = (o.source(input.value) || []).filter(g => g.items && g.items.length);
     flat = [];
     list.innerHTML = groups.length ? String(h`${groups.map(g => h`${g.group ? h`<div class="palette-group">${g.group}</div>` : ''}${g.items.map(it => { const i = flat.push(it) - 1; return h`<button type="button" class="palette-item" role="option" id="rb-pal-${i}" data-i="${i}" aria-selected="${i === sel ? 'true' : 'false'}">${it.plate ? ui.plate(it.plate) : ui.icon(it.icon || 'arrow-right')}<span class="palette-item-main">${ui.highlight(it.label, input.value)}${it.sub ? h`<span class="palette-item-sub">${ui.highlight(it.sub, input.value)}</span>` : ''}</span>${it.hint ? h`<span class="palette-item-hint">${it.hint}</span>` : ''}</button>`; })}`)}`)
-      : String(h`<div class="palette-empty">${o.emptyText || 'Nothing matches'} “${input.value}”</div>`);
+      : String(h`<div class="palette-empty">${o.emptyText || 'Nothing matches'} “${input.value}”. Check the spelling, or try part of a name or a unit number.</div>`);
     if (sel >= flat.length) sel = Math.max(0, flat.length - 1);
     mark();
   };
@@ -598,7 +652,7 @@ ui.palette = function palette(opts) {
   });
   list.addEventListener('mousemove', e => { const b = e.target.closest('.palette-item'); if (b && +b.dataset.i !== sel) { sel = +b.dataset.i; mark(); } });
   list.addEventListener('click', e => { const b = e.target.closest('.palette-item'); if (b) pick(+b.dataset.i); });
-  wrap.addEventListener('click', e => { if (e.target.matches('[data-close]')) close(); });
+  wrap.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
   input.value = o.query || '';
   render();
   input.focus();
@@ -606,20 +660,52 @@ ui.palette = function palette(opts) {
   return { el: wrap, close, setQuery(q) { input.value = q; sel = 0; render(); } };
 };
 
-/** Tenant picker built on the palette → Promise<tenantId|null>. opts: {title(placeholder), filter(tenant) → bool, includePast:false} */
+/**
+ * "Which tenant?" chooser (v2): a sheet with a big find box and large rows — door plate, name, property, what they owe.
+ * opts: {title='Which tenant?', sub, filter(tenant) → bool, includePast:false, prefer:'owes'|null (owing tenants first,
+ *        most owed first — use for payments), skip: label of an extra button that resolves '' (e.g. "It's for a whole building")}
+ * → Promise<id | '' (skip) | null (cancelled)>. Enter in the find box picks the first row.
+ */
 ui.pickTenant = function pickTenant(opts) {
   const o = opts || {};
   return new Promise(resolve => {
-    ui.palette({
-      placeholder: o.title || 'Choose a tenant…', label: o.title || 'Choose a tenant', emptyText: 'No tenant matches',
-      source: q => {
-        const list = RB.store.tenantsList({ includePast: !!o.includePast }).filter(t => !o.filter || o.filter(t));
-        const items = list.map(t => ({ t, s: ui.match([t.name, t.unit, t.property, (t.coTenants || []).map(c => c.name).join(' ')].join(' '), q) }))
-          .filter(x => x.s >= 0).sort((a, b) => a.s - b.s).slice(0, 50)
-          .map(({ t }) => { const lg = RB.store.ledger(t.id); return { id: t.id, label: t.name, sub: t.property, plate: t.unit, hint: lg && lg.balance > 0 ? M.fmt(lg.balance) + ' owed' : '' }; });
-        return [{ items }];
+    let picked = null;
+    const today = RB.store.today();
+    const all = RB.store.tenantsList({ includePast: !!o.includePast }).filter(t => !o.filter || o.filter(t));
+    const bal = t => { const lg = RB.store.ledger(t.id); return lg ? lg.balance : 0; };
+    const base = all.map((t, i) => ({ t, i, b: bal(t) }));
+    if (o.prefer === 'owes') base.sort((a, b) => (b.b > 0) - (a.b > 0) || (a.b > 0 && b.b > 0 ? b.b - a.b : a.i - b.i));
+    const rows = q => base.map((x, k) => ({ x, k, s: ui.match([x.t.name, x.t.unit, x.t.property, (x.t.coTenants || []).map(c => c.name).join(' ')].join(' '), q) }))
+      .filter(r => r.s >= 0).sort((a, b) => (q ? a.s - b.s : 0) || a.k - b.k).map(r => r.x);
+    const rowHtml = x => {
+      const lg = RB.store.ledger(x.t.id);
+      const m = lg && lg.months[D.monthKey(today)];
+      const late = m && m.status === 'late';
+      return h`<li><button type="button" class="pick-row" data-pick="${x.t.id}" id="pick-${x.t.id}">
+        ${ui.plate(x.t.unit, { property: x.t.property })}
+        <span class="pick-main"><span class="pick-name">${x.t.name}</span><span class="pick-sub">${x.t.property}${x.t.status === 'past' ? ' · moved out' : x.t.status === 'notice' ? ' · moving out' : ''}</span></span>
+        <span class="pick-owes${x.b > 0 ? ' is-owed' : ''}">${ui.balanceWords(x.b)}${late ? h`<span class="pick-late">${D.days(m.daysLate)} late</span>` : ''}</span>
+      </button></li>`;
+    };
+    ui.sheet({
+      title: o.title || 'Which tenant?', sub: o.sub || (o.prefer === 'owes' ? 'People who still owe are at the top.' : ''), size: 'wide',
+      cancel: 'Cancel', actions: [],
+      body: (el, sh) => {
+        el.innerHTML = String(h`<label class="search pick-find" for="pick-q"><span class="search-icon">${ui.icon('search')}</span><input class="input" id="pick-q" type="search" placeholder="Type a name or unit, like “Maya” or “2B”" autocomplete="off" spellcheck="false" aria-label="Find a tenant"></label>
+          ${o.skip ? h`<button type="button" class="btn btn-block pick-skip" id="pick-skip" data-pick="">${o.skip}</button>` : ''}
+          <ul class="pick-list" id="pick-list" aria-label="Tenants"></ul>`);
+        const list = el.querySelector('#pick-list'), q = el.querySelector('#pick-q');
+        const draw = () => {
+          const r = rows(q.value);
+          list.innerHTML = r.length ? String(h`${r.map(rowHtml)}`) : String(h`<li class="pick-empty">No tenant matches “${q.value}”. Check the spelling, or try a unit number.</li>`);
+        };
+        q.addEventListener('input', draw);
+        q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const f = list.querySelector('[data-pick]'); if (f) f.click(); } });
+        el.addEventListener('click', e => { const b = e.target.closest('[data-pick]'); if (b) { picked = b.dataset.pick; sh.close('pick'); } });
+        draw();
       },
-      onClose: picked => resolve(picked ? picked.id : null),
+      initialFocus: ui.isPhone() ? '.sheet-close' : '#pick-q',
+      onClose: () => resolve(picked),
     });
   });
 };
@@ -628,7 +714,9 @@ ui.pickTenant = function pickTenant(opts) {
 let fieldSeq = 0;
 /**
  * Field (SafeHTML): label + control + hint + error slot. Every control gets a stable id (opts.id || 'f-' + name).
- * opts: {name (required), id, label, type:'text'|'email'|'tel'|'number'|'money'|'date'|'select'|'textarea'|'checkbox'|'seg'|'search',
+ * opts: {name (required), id, label, type:'text'|'email'|'tel'|'number'|'money'|'date'|'select'|'textarea'|'checkbox'|'seg'|'choice'|'search',
+ *        (choice = large radio cards, preferred over select for ≤6 options; options may carry {sub, icon}; cols:2 → two per row)
+ *        big:true (money: larger input),
  *        value, options:[{value,label}|string] (select/seg), placeholder, hint, required, optional:true (adds "optional"),
  *        span:2, attrs:{...} (extra attributes on the control), rows (textarea), min, max, step, autocomplete, write:true,
  *        requiredMsg: what readForm says when a required field is empty (default is built from the label — see readForm)}
@@ -643,7 +731,7 @@ ui.field = function field(opts) {
   let control;
   const t = o.type || 'text';
   if (t === 'money') {
-    control = h`<span class="money-input"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input"${ui.attrs(Object.assign({ type: 'text', inputmode: 'decimal', 'data-kind': 'money', autocomplete: 'off', value: val === '' ? '' : M.input(val), placeholder: o.placeholder || '0.00' }, common))}></span>`;
+    control = h`<span class="money-input${o.big ? ' money-input-lg' : ''}"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input"${ui.attrs(Object.assign({ type: 'text', inputmode: 'decimal', 'data-kind': 'money', autocomplete: 'off', value: val === '' ? '' : M.input(val), placeholder: o.placeholder || '0.00' }, common))}></span>`;
   } else if (t === 'date') {
     control = h`<input class="input"${ui.attrs(Object.assign({ type: 'date', 'data-kind': 'date', value: val, min: o.min, max: o.max }, common))}>`;
   } else if (t === 'select') {
@@ -653,6 +741,13 @@ ui.field = function field(opts) {
     control = h`<textarea class="input textarea"${ui.attrs(Object.assign({ rows: o.rows || 3, placeholder: o.placeholder }, common))}>${val}</textarea>`;
   } else if (t === 'checkbox') {
     return h`<div class="field${o.span === 2 ? ' span-2' : ''}" data-field="${name}"><label class="check"><input${ui.attrs(Object.assign({ type: 'checkbox', checked: !!o.value }, common))}><span>${o.label}</span></label>${o.hint ? h`<div class="field-hint" id="${id}-hint">${o.hint}</div>` : ''}<div class="field-error" id="${id}-err"></div></div>`;
+  } else if (t === 'choice') {
+    // large tappable choices (radio cards). Options [{value, label, sub?, icon?}] or strings. Read back like any field.
+    const opt = (o.options || []).map(x => (typeof x === 'object' ? x : { value: x, label: x }));
+    control = h`<div class="choices${o.cols ? ' choices-' + o.cols : ''}" data-choice-for="${name}">${opt.map((x, i) => h`<label class="choice" for="${id}-${i}"><input${ui.attrs(Object.assign({ type: 'radio', id: id + '-' + i, name, value: x.value, checked: String(x.value) === String(val), 'data-kind': 'choice', 'data-write': o.write ? '' : null }, o.attrs || {}))}><span class="choice-body">${x.icon ? ui.icon(x.icon) : ''}<span class="choice-text"><span class="choice-label">${x.label}</span>${x.sub ? h`<span class="choice-sub">${x.sub}</span>` : ''}</span></span></label>`)}</div>`;
+    return h`<div class="field${o.span === 2 ? ' span-2' : ''}" data-field="${name}" role="radiogroup" aria-labelledby="${id}-label">
+      ${o.label ? h`<div class="field-label" id="${id}-label">${o.label}${o.optional ? h` <span class="opt">optional</span>` : ''}</div>` : ''}
+      ${control}${o.hint ? h`<div class="field-hint" id="${id}-hint">${o.hint}</div>` : ''}<div class="field-error" id="${id}-err" aria-live="polite"></div></div>`;
   } else if (t === 'seg') {
     const opt = (o.options || []).map(x => (typeof x === 'object' ? x : { value: x, label: x }));
     control = h`<input type="hidden"${ui.attrs({ id, name, value: val, 'data-kind': 'seg' })}><div class="seg" role="radiogroup" aria-labelledby="${id}-label" data-seg-for="${id}">${opt.map(x => h`<button type="button" role="radio" data-value="${x.value}" aria-checked="${String(x.value) === String(val) ? 'true' : 'false'}" aria-pressed="${String(x.value) === String(val) ? 'true' : 'false'}">${x.icon ? ui.icon(x.icon, { size: 14 }) : ''}${x.label}</button>`)}</div>`;
@@ -734,10 +829,95 @@ ui.showErrors = function showErrors(root, errors, opts) {
 };
 /** readForm + showErrors in one go → values or null. */
 ui.form = function form(root, opts) { const r = ui.readForm(root, opts); return ui.showErrors(root, r.errors) ? r.values : null; };
+/**
+ * "Add more details (optional)" disclosure (SafeHTML). opts: {id, label, open} ; body SafeHTML.
+ * Optional fields go inside so a form shows at most ~5 questions.
+ */
+ui.moreDetails = function moreDetails(body, opts) {
+  const o = opts || {};
+  return h`<details class="more-details"${o.id ? h` id="${o.id}"` : ''}${o.open ? raw(' open') : ''}><summary class="more-details-sum">${ui.icon('chevron-right', { cls: 'more-details-chev' })}<span>${o.label || 'Add more details (optional)'}</span></summary><div class="more-details-body">${body}</div></details>`;
+};
+
+/**
+ * Text size control (SafeHTML): "Text size: Normal · Large · Extra large", remembered per device (RB.textSize).
+ * opts: {id (prefix, unique on the page), compact:true (label visually hidden)}. Place anywhere; every copy stays in sync.
+ */
+ui.textSizeControl = function textSizeControl(opts) {
+  const o = opts || {};
+  const id = o.id || 'ts';
+  const cur = RB.textSize.get();
+  return h`<div class="textsize" role="group" aria-labelledby="${id}-l"><span class="textsize-label${o.compact ? ' vh' : ''}" id="${id}-l">Text size</span><div class="seg textsize-seg">${RB.textSize.OPTIONS.map(x => h`<button type="button" id="${id}-${x.value}" data-textsize="${x.value}" aria-pressed="${x.value === cur ? 'true' : 'false'}" class="textsize-${x.value}">${x.label}</button>`)}</div></div>`;
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-textsize]');
+  if (b) RB.textSize.set(b.dataset.textsize);
+});
+RB.on('textsize', v => document.querySelectorAll('[data-textsize]').forEach(b => b.setAttribute('aria-pressed', b.dataset.textsize === v ? 'true' : 'false')));
+
+/**
+ * Step-by-step guide in a sheet ("Step 2 of 3", Back / Next, then a summary sentence before saving).
+ * opts: {title, steps:[{title, body(el, data) (render fields; values are read by name), validate(values, data) → {name: msg}}],
+ *        summary(data) → SafeHTML|string (last screen, "Is this right?"), onDone(data) → false|Promise<false> keeps it open,
+ *        doneLabel='Save', data:{} initial values, size}
+ * Values from each step's named controls are merged into `data` (same types as ui.readForm). Returns the sheet handle
+ * (handle.steps = {data, go(i), index}).
+ */
+ui.steps = function steps(opts) {
+  const o = opts || {};
+  const data = Object.assign({}, o.data || {});
+  const list = o.steps || [];
+  const n = list.length;
+  let i = 0;
+  const atSummary = () => i >= n;
+  let sh = null;
+  const draw = () => {
+    const body = sh.body;
+    if (atSummary()) {
+      const sum = o.summary ? o.summary(data) : '';
+      body.innerHTML = String(h`<div class="steps-head"><div class="steps-count">Last check</div><h3 class="steps-title">Is this right?</h3></div><div class="steps-summary say">${RB.isSafe(sum) ? sum : h`${sum}`}</div><p class="caption mt-4">Press Back to change anything.</p>`);
+      sh.setAction('next', { label: o.doneLabel || 'Save' });
+    } else {
+      const st = list[i];
+      body.innerHTML = String(h`<div class="steps-head"><div class="steps-count">Step ${i + 1} of ${n}</div><h3 class="steps-title">${st.title || ''}</h3></div><div class="steps-body form-col"></div>`);
+      const el = body.querySelector('.steps-body');
+      const r = st.body ? st.body(el, data) : null;
+      if (r !== undefined && r !== null) el.innerHTML = String(RB.isSafe(r) ? r : RB.esc(r));
+      sh.setAction('next', { label: i === n - 1 && !o.summary ? (o.doneLabel || 'Save') : 'Next' });
+      requestAnimationFrame(() => { const f = el.querySelector('input:not([type=hidden]):not([type=radio]), select, textarea'); if (f) try { f.focus({ preventScroll: true }); } catch (e) { /* ignore */ } });
+    }
+    sh.setAction('back', { hidden: i === 0 });
+    body.scrollTop = 0;
+  };
+  const finish = async () => { const r = o.onDone ? await o.onDone(data) : undefined; return r === false ? false : undefined; };
+  sh = ui.sheet({
+    title: o.title || '', size: o.size,
+    cancel: 'Cancel',
+    actions: [
+      { id: 'next', label: 'Next', kind: 'primary', onClick: async () => {
+        if (!atSummary()) {
+          const st = list[i];
+          const el = sh.body.querySelector('.steps-body');
+          const v = ui.form(el, { validate: vals => (st.validate ? st.validate(vals, data) : {}) });
+          if (!v) return false;
+          Object.assign(data, v);
+          if (i === n - 1 && !o.summary) return finish();
+          i++; draw(); return false;
+        }
+        return finish();
+      } },
+      { id: 'back', label: 'Back', kind: '', onClick: () => { if (i > 0) { i--; draw(); } return false; } },
+    ],
+  });
+  sh.steps = { data, go(k) { i = Math.max(0, Math.min(n, k)); draw(); }, get index() { return i; } };
+  draw();
+  return sh;
+};
+
 /** Set a control's value by name (money in cents, seg updates pressed state). */
 ui.setValue = function setValue(root, name, value) {
   const el = root.querySelector('[name="' + CSS.escape(name) + '"]');
   if (!el) return;
+  if (el.type === 'radio') { root.querySelectorAll('[name="' + CSS.escape(name) + '"]').forEach(r => { r.checked = r.value === String(value); }); return; }
   if (el.type === 'checkbox') el.checked = !!value;
   else if (el.dataset.kind === 'money') el.value = value == null ? '' : M.input(value);
   else el.value = value == null ? '' : value;
@@ -765,8 +945,8 @@ document.addEventListener('focusout', e => {
 /** Copy with a toast; if the clipboard is refused, show the text selectable in a sheet. Call inside a click handler. */
 ui.copy = function copy(text, what) {
   return RB.copyText(text).then(ok => {
-    if (ok) ui.toast('Copied ' + (what || 'to clipboard'), { icon: 'check', duration: 2500 });
-    else ui.showText({ title: 'Copy ' + (what || 'text'), text, note: 'Your browser blocked the clipboard — select the text and copy it.' });
+    if (ok) ui.toast('Copied the ' + (what || 'text') + '. You can paste it into a text message or email.', { icon: 'check', duration: 5000 });
+    else ui.showText({ title: 'Copy the ' + (what || 'text'), text, note: 'This browser would not copy it for us. Press and hold (or select) the text below, then choose Copy.' });
     return ok;
   });
 };
@@ -777,7 +957,7 @@ ui.showText = function showText(opts) {
     title: o.title || 'Text', size: 'wide', sub: o.filename || '',
     body: el => { el.innerHTML = String(h`${o.note ? h`<p class="muted mb-4">${o.note}</p>` : ''}<textarea class="code-block" id="rb-showtext" readonly rows="14" aria-label="${o.title || 'Text'}">${o.text}</textarea>`); },
     cancel: 'Close',
-    actions: [{ id: 'copy', label: 'Copy', kind: 'primary', onClick: () => { const ta = document.getElementById('rb-showtext'); ta.select(); RB.copyText(o.text).then(ok => ui.toast(ok ? 'Copied' : 'Select the text and press Ctrl/⌘-C', { icon: ok ? 'check' : null, duration: 2500 })); return false; } }],
+    actions: [{ id: 'copy', label: 'Copy', kind: 'primary', onClick: () => { const ta = document.getElementById('rb-showtext'); ta.select(); RB.copyText(o.text).then(ok => ui.toast(ok ? 'Copied.' : 'Select the text, then choose Copy.', { icon: ok ? 'check' : null, duration: 5000 })); return false; } }],
     initialFocus: '#rb-showtext',
   });
 };

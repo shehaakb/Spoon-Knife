@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Screenshots of every route (and a few interaction scenarios) at desktop + phone, light + dark.
-// Usage: node tools/shots.mjs [--only rent,kit] [--no-build] [--size desktop|phone|rail|wide] [--theme light|dark]
+// Usage: node tools/shots.mjs [--only rent,kit] [--no-build] [--size desktop|phone|rail|wide] [--theme light|dark] [--text normal|lg|xl]
+// --text sets the Text size preference before load; lg/xl files get a -lg/-xl suffix (e.g. rent-phone-light-xl.png).
 // Default sizes: desktop (1360) and phone (390). `rail` (900, icon rail) and `wide` (1600) run only when asked for.
 // Writes rent-book/shots/<scenario>-<size>-<theme>.png. Exits 1 on console errors or horizontal overflow at phone width.
 import { createRequire } from 'node:module';
@@ -21,6 +22,8 @@ const arg = name => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] 
 const only = (arg('--only') || '').split(',').map(s => s.trim()).filter(Boolean);
 const sizesArg = arg('--size');
 const themesArg = arg('--theme');
+const textArg = arg('--text') || 'normal';
+const textSuffix = textArg === 'normal' ? '' : '-' + textArg;
 
 if (!args.includes('--no-build')) execFileSync(process.execPath, [join(ROOT, 'build.mjs')], { stdio: 'inherit' });
 mkdirSync(FONT_CACHE, { recursive: true });
@@ -36,7 +39,10 @@ const SCENARIOS = [
   { name: 'tenants', route: 'tenants', full: true },
   { name: 'tenant-detail', route: ids => 't-' + ids.delinquent },
   { name: 'leases', route: 'leases', full: true },
-  { name: 'upkeep', route: 'upkeep', full: true },
+  { name: 'upkeep', route: 'upkeep', full: true, setup: p => p.click('#rp-tab-todo') },
+  { name: 'repairs-history', route: 'repairs', full: true, setup: p => p.click('#rp-tab-history') },
+  { name: 'property-history', route: 'p-alder-court', full: true },
+  { name: 'past-repair-form', route: 'p-alder-court', setup: async p => { await p.click('#pp-past'); await p.waitForSelector('#pr-title'); await p.fill('#pr-title', 'Leaking kitchen tap'); } },
   { name: 'reports', route: 'reports', full: true, setup: p => p.evaluate(() => { RB.prefs.set('reports:tab', 'roll'); document.getElementById('rp-tab-roll').click(); }) },
   { name: 'reports-aging', route: 'reports', full: true, setup: p => p.click('#rp-tab-aging') },
   { name: 'reports-collection', route: 'reports', full: true, setup: p => p.click('#rp-tab-collection') },
@@ -49,7 +55,11 @@ const SCENARIOS = [
   { name: 'palette', route: 'today', setup: p => p.evaluate(() => { RB.shell.openPalette('al'); }) },
   { name: 'quick-add', route: 'today', setup: p => p.click('#rb-add') },
   { name: 'more', route: 'today', sizes: ['phone'], setup: p => p.click('#rb-more') },
-  { name: 'help', route: 'today', sizes: ['desktop'], setup: p => p.keyboard.press('?') },
+  { name: 'help', route: 'today', setup: p => p.click(p.viewportSize().width < 760 ? '#rb-more' : '#rb-help').then(() => p.viewportSize().width < 760 ? p.click('#more-help') : null) },
+  { name: 'keys', route: 'rent', sizes: ['desktop'], setup: p => p.keyboard.press('?') },
+  { name: 'payment-part', route: 'rent', setup: async (p, ids) => { await p.evaluate(id => { RB.actions.recordPayment(id); }, ids.unpaid); await p.waitForSelector('#pay-how-1'); await p.click('label[for="pay-how-1"]'); await p.fill('#pay-amount', '1000'); } },
+  { name: 'pick-tenant', route: 'today', setup: p => p.click('#td-task-pay') },
+  { name: 'confirm', route: 'today', sizes: ['phone'], setup: p => p.evaluate(() => { RB.actions.removeSample(); }) },
   { name: 'toast', route: 'rent', setup: (p, ids) => p.evaluate(id => { RB.actions.recordPayment(id, { quick: true }); }, ids.late) },
   { name: 'first-run', route: 'today', empty: true, full: true },
 ];
@@ -79,6 +89,7 @@ for (const sizeName of Object.keys(SIZES)) {
       const list = SCENARIOS.filter(s => !!s.empty === empty && want(s) && (!s.sizes || s.sizes.includes(sizeName)));
       if (!list.length) continue;
       const context = await browser.newContext({ viewport: SIZES[sizeName], colorScheme: theme, reducedMotion: 'reduce', deviceScaleFactor: sizeName === 'phone' ? 2 : 1 });
+      if (textArg !== 'normal') await context.addInitScript(v => { try { localStorage.setItem('rb:textSize', JSON.stringify(v)); } catch (e) { /* ignore */ } }, textArg);
       await context.route(/https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/, async route => {
         const u = route.request().url();
         const body = fetchCached(u);
@@ -102,6 +113,7 @@ for (const sizeName of Object.keys(SIZES)) {
             delinquent: (list.find(t => lg(t.id).delinquent) || list[0]).id,
             notice: (list.find(t => t.status === 'notice') || list[0]).id,
             late: (list.find(t => lg(t.id).current.status === 'late' && !lg(t.id).delinquent) || list.find(t => lg(t.id).balance > 0) || list[0]).id,
+            unpaid: (list.find(t => lg(t.id).current.status === 'late' && !lg(t.id).delinquent && !lg(t.id).current.paid) || list.find(t => lg(t.id).balance > 0) || list[0]).id,
           };
         });
       }
@@ -113,10 +125,10 @@ for (const sizeName of Object.keys(SIZES)) {
         await page.evaluate(() => document.fonts && document.fonts.ready);
         await page.waitForTimeout(80);
         if (sizeName !== 'desktop') {
-          const ov = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, win: window.innerWidth, wide: Array.from(document.querySelectorAll('#rb-view *')).filter(e => e.getBoundingClientRect().right > window.innerWidth + 1 && !e.closest('.chips-scroll, .seg, .tbl-wrap.hide-phone, .tbl-scroll, .tbl-scroll-phone')).slice(0, 3).map(e => e.tagName.toLowerCase() + '.' + String(e.className).split(' ').join('.')) }));
-          if (ov.doc > ov.win) problems.push(`[${tag}] ${s.name}: horizontal overflow ${ov.doc}px > ${ov.win}px ${ov.wide.join(' ')}`);
+          const ov = await page.evaluate(() => ({ doc: document.documentElement.scrollWidth, win: window.innerWidth, wide: Array.from(document.querySelectorAll('#rb-view *, #rb-layer *, #rb-topbar *, #rb-tabbar *, #rb-banner *')).filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.right > window.innerWidth + 1 && !e.closest('.chips-scroll, .seg, .tbl-wrap.hide-phone, .tbl-scroll, .tbl-scroll-phone, .palette-list, .menu'); }).slice(0, 3).map(e => e.tagName.toLowerCase() + '.' + String(e.className).split(' ').join('.') + (e.id ? '#' + e.id : '')) }));
+          if (ov.doc > ov.win || ov.wide.length) problems.push(`[${tag}] ${s.name}: horizontal overflow ${ov.doc}px > ${ov.win}px ${ov.wide.join(' ')}`);
         }
-        const file = join(OUT, `${s.name}-${sizeName}-${theme}.png`);
+        const file = join(OUT, `${s.name}-${sizeName}-${theme}${textSuffix}.png`);
         await page.screenshot({ path: file, fullPage: !!s.full });
         console.log('shot', file.replace(ROOT + '/', ''));
       }
