@@ -1,6 +1,7 @@
 /* Leases: sentence, rows (shared .rows/.row), Later folded, calendar behind a switch (desktop). Tokens only. */
 .view-leases { --lz-name-w: calc(240px * var(--text-scale)); --lz-row-h: var(--row-h); max-width: 960px; }
 .lz-top { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3) var(--s5); margin-bottom: var(--s6); }
+.lz-summary .t-display { display: block; margin-bottom: var(--s1); }
 .lz-summary { flex: 1 1 360px; font-size: var(--t-lead); line-height: var(--lh); color: var(--ink); }
 .lz-calswitch { min-height: var(--ctl-h); }
 .lz-sec + .lz-sec { margin-top: var(--s6); }

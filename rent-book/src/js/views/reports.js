@@ -19,6 +19,9 @@ if (!TABS.some(t => t[0] === tab)) tab = 'roll';
 let year = null; // income year (null → current year)
 const openGroups = new Set(); // rent roll on phone: properties opened in place
 let groupNames = [];
+let allRows = false;           // phone: the whole list on long reports (collection, income)
+const more = (n, shown) => (n > shown + 1 ? h`<button type="button" class="rows-more" id="rp-more" data-act="allRows" aria-expanded="${String(allRows)}">${allRows ? 'Show fewer' : 'Show all ' + n}</button>` : '');
+const cut = (list, shown) => (allRows || list.length <= shown + 1 ? list : list.slice(0, shown));
 
 const pctTxt = r => (r == null ? '—' : Math.round(r * 100) + '%');
 /** CSV → tab-separated text that pastes straight into spreadsheet cells. */
@@ -205,7 +208,8 @@ function collection(today) {
       <tfoot><tr><td>12 months</td><td class="num" data-total="charged">${$(tot.charged)}</td><td class="num" data-total="collected">${$(tot.collected)}</td><td class="num">${$(tot.outstanding)}</td><td class="num">${pctTxt(rate)}</td></tr></tfoot>
     </table></div>
     <div class="show-phone">
-      ${ui.rows(rows.slice().reverse().map(r => ({ title: monthLabel(r.period) + (r.period === curKey ? ' (so far)' : ''), sub: 'of ' + $(r.charged) + ' charged — ' + pctTxt(r.rate), amt: $(r.collected) })), { inset: true })}
+      ${ui.rows(cut(rows.slice().reverse(), 6).map(r => ({ title: monthLabel(r.period) + (r.period === curKey ? ' (so far)' : ''), sub: 'of ' + $(r.charged) + ' charged — ' + pctTxt(r.rate), amt: $(r.collected) })), { inset: true })}
+      ${more(rows.length, 6)}
       <p class="rp-total-line">12 months: <span data-total="collected">${$(tot.collected)}</span> of <span data-total="charged">${$(tot.charged)}</span> — ${pctTxt(rate)}.</p>
     </div>`;
   const csv = () => RB.model.csv(rows, [
@@ -239,7 +243,8 @@ function income(today) {
       <tfoot><tr><td>Everyone</td><td></td><td class="num">${inc.rows.reduce((s, r) => s + r.count, 0)}</td><td class="num" data-total="payments">${$(inc.totals.payments)}</td><td class="num" data-total="credits">${$(inc.totals.credits)}</td></tr></tfoot>
     </table></div>
     <div class="show-phone">
-      ${ui.rows(inc.rows.map(r => ({ lead: ui.plate(r.unit), title: r.name, sub: r.credits ? $(r.credits) + ' taken off' : '', amt: $(r.payments), href: '#t-' + r.tenantId })), { inset: true })}
+      ${ui.rows(cut(inc.rows, 10).map(r => ({ lead: ui.plate(r.unit), title: r.name, sub: r.credits ? $(r.credits) + ' taken off' : '', amt: $(r.payments), href: '#t-' + r.tenantId })), { inset: true })}
+      ${more(inc.rows.length, 10)}
       <p class="rp-total-line">Everyone: <span data-total="payments">${$(inc.totals.payments)}</span>.</p>
     </div>`
     : ui.empty({ quiet: true, title: 'No payments in ' + yr + '. Payments you record with a date in ' + yr + ' add up here.' });
@@ -274,7 +279,8 @@ RB.views.register('reports', {
       </section>`);
     ui.bind(el, {
       jump: (a, e) => { if (e) e.preventDefault(); const t = el.querySelector('#rp-choose-h'); if (t) t.scrollIntoView({ block: 'start' }); const f = el.querySelector('.rp-choice'); if (f) f.focus({ preventScroll: true }); },
-      tab: b => { tab = b.dataset.tab; RB.prefs.set('reports:tab', tab); RB.shell.refresh(); const t = el.querySelector('#rp-title'); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({ block: 'start' }); },
+      allRows: () => { allRows = !allRows; RB.shell.refresh(); },
+      tab: b => { allRows = false; tab = b.dataset.tab; RB.prefs.set('reports:tab', tab); RB.shell.refresh(); const t = el.querySelector('#rp-title'); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({ block: 'start' }); },
       csv: () => RB.actions.downloadFile(rep.file + '-' + ctx.today + '.csv', rep.csv(), 'text/csv'),
       copy: () => ui.copy(csvToTsv(rep.csv()), 'report'),
       group: b => { const g = b.dataset.group; if (openGroups.has(g)) openGroups.delete(g); else openGroups.add(g); RB.shell.refresh(); },

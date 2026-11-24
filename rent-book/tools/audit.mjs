@@ -13,11 +13,14 @@
 //   radii    border radii ⊆ {0, 6, 10, 16, round} (law 6)
 //   overflow horizontal overflow (none)       trunc  truncated titles / ellipsis (none, law 12)
 //   wrap     controls whose label wraps onto two lines (none, law 12)
+//   verbs    pay verb “Record a payment” / “Record the rest ($675)” (part paid), edit verb “Change” (law 7)
 // Plus, once per run: a toast is gone the moment a sheet opens and never overlaps an open sheet (law 10); sheets never
 // stack; and the owed sentence is identical on Today, Rent, Tenants and the two reports that state it (law 7).
 // Failure lines name the offending element: tag#id.class “text”.
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -32,6 +35,14 @@ const sizeName = arg('--size') || 'phone';
 const theme = arg('--theme') || 'light';
 const verbose = args.includes('--verbose');
 if (!args.includes('--no-build')) execFileSync(process.execPath, [join(ROOT, 'build.mjs')], { stdio: 'inherit' });
+// Real fonts (sizes and line breaks depend on them): fetched once through curl and cached in shots/.fonts, shared with shots.mjs.
+const FONT_CACHE = join(ROOT, 'shots', '.fonts');
+mkdirSync(FONT_CACHE, { recursive: true });
+function fetchCached(u) {
+  const file = join(FONT_CACHE, createHash('sha1').update(u).digest('hex'));
+  if (existsSync(file)) return readFileSync(file);
+  try { const buf = execFileSync('curl', ['-sSfL', '--max-time', '20', '-A', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', u], { maxBuffer: 20 * 1024 * 1024 }); writeFileSync(file, buf); return buf; } catch (e) { return null; }
+}
 const SIZES = { phone: { width: 390, height: 844 }, desktop: { width: 1360, height: 900 } };
 const VP = SIZES[sizeName] || SIZES.phone;
 
@@ -94,9 +105,10 @@ function probe(opts) {
   const root = getComputedStyle(document.documentElement);
   const toRgb = c => { const d = document.createElement('span'); d.style.color = c; document.body.appendChild(d); const v = getComputedStyle(d).color; d.remove(); return v; };
   const ACC = toRgb(root.getPropertyValue('--accent').trim()), BAD = toRgb(root.getPropertyValue('--bad').trim());
+  const ACCH = toRgb(root.getPropertyValue('--accent-hover').trim());
   const OK = toRgb(root.getPropertyValue('--ok').trim()), WARN = toRgb(root.getPropertyValue('--warn').trim());
   const filledScope = sheet ? shown : pageEls;
-  const filled = filledScope.filter(el => el.matches('button, a, [role="button"], label') && !el.closest('.toast') && [ACC, BAD].includes(getComputedStyle(el).backgroundColor));
+  const filled = filledScope.filter(el => el.matches('button, a, [role="button"], label') && !el.closest('.toast') && [ACC, ACCH, BAD].includes(getComputedStyle(el).backgroundColor));
   out.info.filled = filled.length;
   if (filled.length > 1) fail('filled', filled.length + ' filled buttons: ' + filled.map(desc).join(' · '));
 
@@ -188,6 +200,21 @@ function probe(opts) {
   out.info.wrap = wraps.length;
   for (const el of wraps.slice(0, 4)) fail('wrap', 'label wraps inside the control: ' + desc(el));
 
+  // law 7 verbs: the pay verb is "Record a payment" — or "Record the rest ($675)" when the month is part paid; the edit verb
+  // is "Change". Other Record… labels that are not the pay verb are listed (Today's action, a sheet's "Record $1,550", bulk).
+  const PAY_OK = [/^Record a payment$/, /^Record the rest \(\$[\d,]+(\.\d\d)?\)$/, /^Record a rent payment$/, /^Record \$[\d,]+(\.\d\d)?$/,
+    /^Record \d+ payments? — \$[\d,]+(\.\d\d)?$/, /^Record several at once$/, /^Stop recording several$/];
+  const verbEls = (sheet ? shown : pageEls).filter(el => el.matches('button, a, [role="button"]') && !el.closest('.toast'));
+  const verbBad = verbEls.filter(el => {
+    const t = (el.innerText || '').replace(/\s+/g, ' ').trim();
+    if (/^(Edit|Modify|Update)\b/i.test(t)) return true;
+    if (/^(Mark (it )?paid|Pay|Record payment|Record the rest)\b/i.test(t) && !PAY_OK.some(re => re.test(t))) return true;
+    if (/^Record\b/.test(t) && !PAY_OK.some(re => re.test(t)) && !/^Record (a|the|several|\$|\d)/.test(t)) return true;
+    return false;
+  });
+  out.info.verbs = verbBad.length;
+  for (const el of verbBad.slice(0, 4)) fail('verbs', 'say “Record a payment”, “Record the rest ($X)” or “Change”: ' + desc(el));
+
   // sheets never stack
   const openSheets = document.querySelectorAll('.sheet-wrap:not(.is-closing)').length;
   if (openSheets > 1) fail('stack', openSheets + ' sheets open at once');
@@ -196,7 +223,7 @@ function probe(opts) {
 }
 
 // ------------------------------------------------------------------ run
-const COLS = ['height', 'filled', 'rowbtn', 'sizes', 'display', 'weights', 'min', 'colour', 'radii', 'overflow', 'trunc', 'wrap'];
+const COLS = ['height', 'filled', 'rowbtn', 'sizes', 'display', 'weights', 'min', 'colour', 'radii', 'overflow', 'trunc', 'wrap', 'verbs'];
 const results = [];
 const details = [];
 const browser = await chromium.launch();
@@ -207,7 +234,10 @@ let consoleErrors = [];
 for (const text of texts) {
   const ctx = await browser.newContext({ viewport: VP, colorScheme: theme, reducedMotion: 'reduce', deviceScaleFactor: 1 });
   await ctx.addInitScript(v => { try { localStorage.setItem('rb:textSize', JSON.stringify(v)); } catch (e) { /* ignore */ } }, text);
-  await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.fulfill({ status: 200, body: '' }));
+  await ctx.route(/https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/, async route => {
+    const u = route.request().url(); const body = fetchCached(u);
+    return route.fulfill({ status: 200, contentType: u.includes('googleapis') ? 'text/css; charset=utf-8' : 'font/woff2', body: body || '' });
+  });
   const page = await ctx.newPage();
   page.on('pageerror', e => consoleErrors.push(`[${text}] ${e.message}`));
   page.on('console', m => { if (m.type() === 'error') consoleErrors.push(`[${text}] ${m.text()}`); });
@@ -215,6 +245,7 @@ for (const text of texts) {
   await page.waitForFunction(() => window.RB && RB.store.state.ready);
   await page.evaluate(() => RB.actions.loadSample({ quiet: true }));
   await page.waitForFunction(() => RB.store.tenantsList().length > 0);
+  await page.evaluate(() => document.fonts && document.fonts.ready);
   const ids = await page.evaluate(() => {
     const list = RB.store.tenantsList(); const lg = id => RB.store.ledger(id);
     return {
@@ -239,6 +270,7 @@ for (const text of texts) {
         if (s.sheet) await page.waitForSelector('.sheet-wrap:not(.is-closing) .sheet', { timeout: 3000 });
         await page.waitForTimeout(s.sheet ? 420 : 260);
       }
+      await page.mouse.move(1, 1);   // nothing hovered: a hovered button changes colour
       const r = await page.evaluate(probe, { rowBtn: !!s.rowBtn, sheet: !!s.sheet, desktop: sizeName === 'desktop', drawer: !!s.drawer });
       const row = { screen: s.name, text, info: r.info, fails: r.fails };
       if (s.budget && r.info.height > s.budget + 0.005) (row.fails.height = row.fails.height || []).push(r.info.height.toFixed(2) + ' screens tall (budget ' + s.budget + ')');

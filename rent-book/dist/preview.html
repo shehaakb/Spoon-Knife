@@ -576,7 +576,7 @@ button.plate:focus-visible { outline: 2px solid var(--accent); outline-offset: 2
 .rows-inset { border-top: 0; }
 .rows-inset > li { border-bottom: 0; }
 .rows-inset > li::after { content: ""; position: absolute; left: calc(var(--row-lead-w) + var(--s3)); right: 0; bottom: 0; border-bottom: 1px solid var(--line); }
-.rows-inset > li.row-nolead::after, .rows-inset.rows-nolead > li::after { left: 0; }
+.rows-inset > li.row-nolead::after, .rows-inset.rows-nolead > li::after, .rows-inset > li:has(> .row-nolead)::after { left: 0; }
 .row {
   --row-lead-w: calc(64px * var(--text-scale));
   position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--s3);
@@ -592,6 +592,11 @@ a.row:focus-visible, button.row:focus-visible, .row-hit:focus-visible { outline:
 @media (hover: hover) { a.row:hover, button.row:hover, .row-act:has(.row-hit:hover) { background: var(--hover); } }
 .row-lead { grid-column: 1; width: var(--row-lead-w); display: flex; align-items: center; }
 .row-nolead .row-lead, .row-lead:empty { display: none; }
+/* no door plate: no empty first column (and no gap) — the text sits flush with the group heading */
+.row-nolead { grid-template-columns: minmax(0, 1fr) auto auto; }
+.row-nolead > .row-main { grid-column: 1; }
+.row-nolead > .row-end { grid-column: 2; }
+.row-nolead > .row-chev { grid-column: 3; }
 .row-main { grid-column: 2; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .row-title { font-size: var(--t-body); font-weight: var(--w-strong); line-height: var(--lh-title); color: var(--ink); overflow-wrap: anywhere; }
 .row-sub { font-size: var(--t-cap); color: var(--ink-2); line-height: var(--lh); overflow-wrap: anywhere; }
@@ -608,6 +613,7 @@ a.row:focus-visible, button.row:focus-visible, .row-hit:focus-visible { outline:
 .row.is-focused { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--r-ctl); }
 /* the row with its one soft button: status marker and button share a line on phone */
 .row-act { grid-template-columns: auto minmax(0, 1fr) auto auto auto; grid-template-areas: "lead main end btn chev" "lead st end btn chev"; row-gap: 2px; }
+.row-act.row-nolead { grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: "main end btn chev" "st end btn chev"; }
 .row-act > .row-lead { grid-area: lead; }
 .row-act > .row-main { grid-area: main; }
 .row-act-foot { display: contents; }
@@ -623,9 +629,10 @@ a.row:focus-visible, button.row:focus-visible, .row-hit:focus-visible { outline:
   .row { --row-lead-w: calc(56px * var(--text-scale)); }
   .rows-inset { --row-lead-w: calc(56px * var(--text-scale)); }
   .row-act { grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: "lead main end chev" "foot foot foot foot"; row-gap: var(--s2); }
-  .row-act > .row-act-foot { grid-area: foot; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); }
-  .row-act-foot > .row-act-status { flex: 1 1 10ch; min-width: 10ch; }
-  .row-act-foot > .row-btn { position: relative; z-index: 1; margin-left: auto; min-height: var(--ctl-h); padding: 0 var(--s3); }
+  .row-act.row-nolead { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "main end chev" "foot foot foot"; }
+  .row-act > .row-act-foot { grid-area: foot; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
+  .row-act-foot > .row-act-status { flex: 1 1 auto; max-width: 100%; white-space: nowrap; }   /* the marker stays whole; the button drops below when they cannot share the line */
+  .row-act-foot > .row-btn { position: relative; z-index: 1; margin-left: auto; min-height: var(--ctl-h); padding: 0 var(--s2); }
 }
 /* group heading, count, and the quiet "Show all 14" */
 .rows-head { display: flex; align-items: baseline; gap: var(--s2); margin: var(--s5) 0 var(--s2); font-size: var(--t-cap); font-weight: var(--w-strong); color: var(--ink-2); line-height: var(--lh-title); }
@@ -807,7 +814,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 
 /* ================= Banner strip: one line, one link, never taller than 96px ================= */
 .banner {
-  display: flex; align-items: center; gap: 0 var(--s2); flex-wrap: nowrap; min-height: var(--ctl-h-sm); max-height: 96px; overflow: hidden;
+  display: flex; align-items: center; gap: 0 var(--s2); flex-wrap: nowrap; min-height: 48px; max-height: 96px; overflow: hidden;
   padding: 0 var(--gutter); background: var(--tint); color: var(--ink); border-bottom: 1px solid var(--line);
   font-size: var(--t-cap);
 }
@@ -815,7 +822,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .banner-text strong { font-weight: var(--w-strong); }
 .banner-actions { display: flex; gap: var(--s1); flex: none; }
 .banner .btn-link { white-space: nowrap; padding: 0; }
-.banner .btn-link { font-size: var(--t-cap); min-height: var(--ctl-h-sm); }
+.banner .btn-link { font-size: var(--t-cap); min-height: 48px; }
 .banner-warn { background: var(--tint); }
 
 /* ================= Floating layers ================= */
@@ -1202,7 +1209,7 @@ th.num .th-sort { flex-direction: row-reverse; }
   .topbar-brand .rail-mark { width: var(--ctl-h); height: var(--ctl-h); }
   .topbar-search { display: none; }
   .topbar-findbtn { display: inline-flex; flex: none; padding: 0 var(--s3); }
-  .view { padding: var(--s5) max(16px, env(safe-area-inset-right, 0px)) var(--s5) max(16px, env(safe-area-inset-left, 0px)); }
+  .view { padding: var(--s4) max(16px, env(safe-area-inset-right, 0px)) var(--s5) max(16px, env(safe-area-inset-left, 0px)); }
   .banner { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .tabbar {
     position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;
@@ -1283,11 +1290,11 @@ th.num .th-sort { flex-direction: row-reverse; }
 .td-money:hover { text-decoration: none; }
 .td-money:active { transform: scale(.98); }
 .td-money:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.td-money-label { display: flex; align-self: stretch; justify-content: space-between; align-items: baseline; gap: var(--s3); font-size: var(--t-cap); color: var(--ink-2); }
+.td-money-label { display: flex; flex-wrap: wrap; align-self: stretch; justify-content: space-between; align-items: baseline; gap: 0 var(--s3); font-size: var(--t-cap); color: var(--ink-2); white-space: nowrap; }
 .td-fig { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s2); }
 .td-figure { color: var(--ink); }
 .td-of { font-size: var(--t-body); color: var(--ink); }
-.td-bar { width: 100%; margin: var(--s1) 0; }
+.td-bar { width: 100%; margin: 0; }
 .td-bar > .bar-seg { background: var(--accent); }
 .td-owed { font-size: var(--t-body); color: var(--ink); max-width: 46ch; }
 .td-money-go { display: inline-flex; align-items: center; gap: 2px; color: var(--accent); font-weight: var(--w-strong); font-size: var(--t-cap); white-space: nowrap; }
@@ -1304,7 +1311,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .td-needs-t { display: flex; align-items: baseline; gap: var(--s2); margin-bottom: var(--s2); }
 .td-needs-t .rows-count { font-size: var(--t-lead); color: var(--ink-2); }
 .td-lead-ico { display: grid; place-items: center; width: calc(48px * var(--text-scale)); height: calc(32px * var(--text-scale)); color: var(--ink-2); }
-.td-recent { margin-top: var(--s2); }
+.td-recent { margin-top: 0; }
 
 /* desktop: at ≥1200px "Needs you" sits in a second column beside the money block and actions */
 @media (min-width: 1200px) {
@@ -1500,6 +1507,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 /* Leases: sentence, rows (shared .rows/.row), Later folded, calendar behind a switch (desktop). Tokens only. */
 .view-leases { --lz-name-w: calc(240px * var(--text-scale)); --lz-row-h: var(--row-h); max-width: 960px; }
 .lz-top { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3) var(--s5); margin-bottom: var(--s6); }
+.lz-summary .t-display { display: block; margin-bottom: var(--s1); }
 .lz-summary { flex: 1 1 360px; font-size: var(--t-lead); line-height: var(--lh); color: var(--ink); }
 .lz-calswitch { min-height: var(--ctl-h); }
 .lz-sec + .lz-sec { margin-top: var(--s6); }
@@ -1545,17 +1553,17 @@ th.num .th-sort { flex-direction: row-reverse; }
    select, then sections of shared rows. History: property rows. Forms: "For Unit 2B at Alder Court — Change", the
    saved line in "Add a past repair", and the tenant page's "Repairs in this unit". Tokens only. */
 .view-repairs:not(.is-property) { max-width: 760px; }
-.rp-switch { display: inline-flex; margin-bottom: var(--s5); }
+.rp-switch { display: inline-flex; margin-bottom: var(--s4); }
 .rp-switch > button { min-height: var(--ctl-h); padding-inline: var(--s5); white-space: nowrap; }
+.rp-display .t-display { display: block; }
 .rp-sum { font-size: var(--t-lead); line-height: var(--lh); color: var(--ink); max-width: 60ch; margin: 0 0 var(--s4); }
-.rp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-bottom: var(--s6); }
+.rp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-bottom: var(--s5); }
 .rp-prop-sel { flex: 0 1 auto; min-width: 0; }
-.rp-sec + .rp-sec { margin-top: var(--s6); }
+.rp-sec + .rp-sec, .rp-sec + .rp-done-more { margin-top: var(--s5); }
 .rp-empty { color: var(--ink-2); padding: var(--s2) 0 0; }
 .rp-older { margin-top: var(--s4); }
 .rp-caption { margin-top: var(--s3); font-size: var(--t-cap); color: var(--ink-2); }
 .rp-whole { display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
-.view-repairs .plate { max-width: 10em; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 759.98px) {
   .rp-bar > .btn { flex: 1 1 auto; }
   .rp-prop-sel { flex: 1 1 9em; }
@@ -1645,7 +1653,6 @@ th.num .th-sort { flex-direction: row-reverse; }
 .view-reports .rp-key::before { content: ""; width: calc(12px * var(--text-scale)); height: calc(12px * var(--text-scale)); }
 .view-reports .rp-key-charged::before { background: var(--sunk); }
 .view-reports .rp-key-collected::before { background: var(--accent); }
-.view-reports .plate { max-width: 9em; overflow: hidden; text-overflow: ellipsis; }
 
 @media (max-width: 759.98px) {
   .view-reports .rp-choose-rows { grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--line); }
@@ -1665,6 +1672,9 @@ th.num .th-sort { flex-direction: row-reverse; }
    ways to pay, three rows that open their own flows; plus the "Bring in my tenants" guide, the restore and the
    ways-to-pay sheets. Tokens only. */
 .st-main { min-width: 0; max-width: 720px; }
+.st-head { margin-bottom: var(--s6); }
+.st-name { overflow-wrap: anywhere; }
+.st-sheet { display: flex; flex-direction: column; }
 .st-sec { padding: 0 0 var(--s6); scroll-margin-top: calc(var(--sticky-top) + var(--s3)); }
 .st-sec + .st-sec { padding-top: var(--s5); border-top: 1px solid var(--line); }
 .st-sec-title { margin: 0 0 var(--s2); font-size: var(--t-lead); font-weight: var(--w-strong); line-height: var(--lh-title); }
@@ -1715,19 +1725,20 @@ th.num .th-sort { flex-direction: row-reverse; }
    from --p = total / largest (columns on desktop, rows on phone), "Keep an eye on" rows, the list (this year open,
    earlier years folded), filters behind one control, text links to download/copy. Tokens only. */
 .pp { --pp-h: calc(140px * var(--text-scale)); max-width: 820px; }
-.pp-head { margin-bottom: var(--s7); }
-.pp-back { margin-bottom: var(--s3); }
+.pp-head { margin-bottom: var(--s5); }
+.pp-back { margin-bottom: var(--s2); }
 .pp-title { margin: 0; font-size: var(--t-title); line-height: var(--lh-title); font-weight: var(--w-strong); overflow-wrap: anywhere; }
 .pp-display { margin: var(--s3) 0 0; font-size: var(--t-lead); color: var(--ink); line-height: var(--lh-title); }
 .pp-fig { display: block; font-variant-numeric: tabular-nums; }
-.pp-sum, .pp-sub { margin: var(--s2) 0 0; color: var(--ink-2); }
-.pp-actions { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s5); }
+.pp-sum { margin: var(--s2) 0 0; color: var(--ink-2); }
+.pp-sub::before { content: " "; }
+.pp-actions { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s4); }
 
-.pp-charts { display: flex; flex-direction: column; gap: var(--s7); }
-.pp-sec { margin-top: var(--s7); }
+.pp-charts { display: flex; flex-direction: column; gap: var(--s6); }
+.pp-sec { margin-top: var(--s6); }
 .pp-charts .pp-sec { margin-top: 0; }
-.pp-sec-title { margin: 0 0 var(--s4); font-size: var(--t-lead); font-weight: var(--w-strong); line-height: var(--lh-title); }
-.pp-caption { margin: var(--s3) 0 0; max-width: 62ch; color: var(--ink-2); font-size: var(--t-cap); }
+.pp-sec-title { margin: 0 0 var(--s3); font-size: var(--t-lead); font-weight: var(--w-strong); line-height: var(--lh-title); }
+.pp-caption { margin: var(--s2) 0 0; max-width: 62ch; color: var(--ink-2); font-size: var(--t-cap); }
 
 /* ---- Spending by year: columns (desktop) */
 .pp-years { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: var(--s2); max-width: calc(var(--n) * 8em); }
@@ -1761,7 +1772,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .pp-yrows + .pp-yrows { border-top: 0; }
 .pp-yfold { margin-left: var(--s2); font-weight: var(--w-regular); }
 .pp-none { padding: var(--s3) 0; color: var(--ink-2); }
-.pp-tools { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); margin-top: var(--s5); }
+.pp-tools { display: flex; flex-wrap: wrap; gap: 0 var(--s4); margin-top: var(--s4); }
 .pp-empty { max-width: 640px; }
 
 @media (max-width: 759.98px) {
@@ -4781,7 +4792,7 @@ ui.choices = function choices(opts) {
   const o = opts || {};
   const items = (o.items || []).filter(Boolean);
   return ui.sheet({
-    title: o.title || 'What would you like to do?', sub: o.sub, cancel: false, actions: [{ id: 'close', label: 'Close', kind: '' }],
+    title: o.title || 'What would you like to do?', sub: o.sub, cancel: false, actions: [],   // the head's "Close" is the one way out
     body: (el, sh) => {
       el.innerHTML = String(h`${o.body || ''}<ul class="rows choices-list">${items.map((x, i) => ui.row({
         title: x.label, sub: x.hint || x.sub, act: 'choice',
@@ -6161,7 +6172,7 @@ RB.views.register('kit', {
         ${ui.rowsHead('Still owes', 2)}
         <ul class="rows rows-inset">
           ${ui.row({ lead: ui.plate('202'), title: 'Imogen Hart', sub: 'Owes $1,550 for November', status: ui.status('late', 'Late — 23 days'), statusPos: 'main', act: 'noop', attrs: { id: 'kit-row-1' }, btn: { label: 'Record a payment', act: 'noop', id: 'kit-row-btn' } })}
-          ${ui.row({ lead: ui.plate('103'), title: 'Nadia Haddad', sub: 'Owes $675 of November’s $1,475', status: ui.status('partial', 'Part paid — $800 of $1,475'), statusPos: 'main', bar: ui.splitBar(80000, 147500), act: 'noop', btn: { label: 'Record the rest', act: 'noop' } })}
+          ${ui.row({ lead: ui.plate('103'), title: 'Nadia Haddad', sub: 'Owes $675 of November’s $1,475', status: ui.status('partial', 'Part paid — $800 of $1,475'), statusPos: 'main', bar: ui.splitBar(80000, 147500), act: 'noop', btn: { label: 'Record the rest ($675)', act: 'noop' } })}
         </ul>
         ${ui.rowsHead('Tenants', 3)}
         <ul class="rows rows-inset">
@@ -6463,7 +6474,7 @@ RB.views.register('leases', {
     const n = (c, one, many) => (c === 1 ? '1 ' + one : c + ' ' + many);
     el.innerHTML = String(h`
       <div class="lz-top">
-        <p class="lz-summary" id="lz-summary">${g.soon.length ? n(g.soon.length, 'lease ends', 'leases end') : 'No lease ends'} in the next ${nd} days. ${n(g.mtm.length, 'tenant is', 'tenants are')} month-to-month. ${n(g.moving.length, 'tenant is', 'tenants are')} moving out.</p>
+        <p class="lz-summary" id="lz-summary"><span class="t-display">${g.soon.length ? n(g.soon.length, 'lease ends', 'leases end') : 'No lease ends'}</span> in the next ${nd} days. ${n(g.mtm.length, 'tenant is', 'tenants are')} month-to-month. ${n(g.moving.length, 'tenant is', 'tenants are')} moving out.</p>
         <label class="check lz-calswitch hide-phone"><input type="checkbox" id="lz-cal" data-change="cal"${cal ? RB.raw(' checked') : ''}><span>Show as a calendar</span></label>
       </div>
       ${rows.length ? (showCal ? h`<div class="hide-phone">${timeline(rows, ctx.today, nd)}</div>` : list(g, ctx.today, nd))
@@ -6499,7 +6510,9 @@ let mode = 'date';                     // date | unit
 let filterOpen = false;
 let openYears = new Set();             // earlier years expanded in place
 let allCur = false;                    // this year's list beyond the first few
-const CUR_SHOWN = 6;
+const CUR_SHOWN = 3;
+const CATS_SHOWN = 4;
+let allCats = false;                   // "What the money went on" beyond the biggest few
 
 const unitText = key => (key === BUILDING ? 'Whole building' : Mo.unitWords(key));
 const pct = (v, max) => (max > 0 ? v / max : 0);
@@ -6516,10 +6529,10 @@ function header(p, hist, today) {
     <button type="button" class="btn-link pp-back" data-act="back">${ui.icon('chevron-left')}<span>All properties</span></button>
     <h1 class="pp-title" id="pp-title">${p.name}</h1>
     <p class="pp-display" id="pp-yearcost"><span class="pp-fig t-display">${M.fmt(yTotal)}</span> spent on repairs in ${year}${yr.length ? h`, on ${RB.plural(yr.length, 'repair')}` : ''}.</p>
-    <p class="pp-sum" id="pp-sum">${hist.all.length
+    <p class="pp-sum"><span id="pp-sum">${hist.all.length
       ? h`${RB.plural(hist.all.length, 'repair')} since ${hist.firstDate.slice(0, 4)} · ${M.fmt(total)} spent${tenantPaid ? h` (${M.fmt(tenantPaid)} of it paid by tenants)` : ''}`
-      : 'No repairs written down yet'}.</p>
-    <p class="pp-sub">${p.unitCount ? RB.plural(p.unitCount, 'unit') : 'No units written down yet'}${open.length ? h` · ${RB.plural(open.length, 'repair')} still to do — <button type="button" class="linkbtn" data-act="todo" id="pp-todo">See them</button>` : ''}</p>
+      : 'No repairs written down yet'}.</span>
+      <span class="pp-sub">${p.unitCount ? RB.plural(p.unitCount, 'unit') : 'No units written down yet'}${open.length ? h` · ${RB.plural(open.length, 'repair')} still to do — <button type="button" class="linkbtn" data-act="todo" id="pp-todo">See them</button>` : ''}</span></p>
     ${hist.all.length ? h`<div class="pp-actions">
       <button type="button" class="btn btn-primary" data-act="past" id="pp-past" data-write>${ui.icon('plus')}<span>Add a past repair</span></button>
       <button type="button" class="btn btn-outline" data-act="log" id="pp-log" data-write>Log a repair</button>
@@ -6538,7 +6551,7 @@ function yearsChart(tot, today, p) {
         <span class="pp-yr-plot"><span class="pp-yr-amt">${M.fmt(y.total)}</span><span class="pp-yr-bar" data-total="${y.total}" style="--p:${pct(y.total, max).toFixed(5)}"></span></span>
         <span class="pp-yr-label">${y.year}${y.year === curYear ? ' so far' : ''}</span>
       </button></li>`)}</ol>
-    <p class="pp-caption">Bigger bar, more money. Choose a year to list only its repairs.</p>
+    <p class="pp-caption">Choose a year to list its repairs.</p>
   </section>`;
 }
 
@@ -6546,12 +6559,13 @@ function categoryChart(tot) {
   const max = tot.max.category;
   return h`<section class="pp-sec" aria-labelledby="pp-cats-title">
     <h2 class="pp-sec-title" id="pp-cats-title">What the money went on</h2>
-    <ul class="pp-cats">${tot.byCategory.map(c => h`<li>
+    <ul class="pp-cats">${(allCats || tot.byCategory.length <= CATS_SHOWN + 1 ? tot.byCategory : tot.byCategory.slice(0, CATS_SHOWN)).map(c => h`<li>
       <button type="button" class="pp-cat" data-act="pickCat" data-cat="${c.key}" aria-pressed="${String(f.category === c.key)}">
         <span class="pp-cat-top"><span class="pp-cat-label">${c.label}</span><span class="pp-cat-amt">${M.fmt(c.total)} · ${RB.plural(c.count, 'repair')}</span></span>
         <span class="pp-cat-track"><span class="pp-cat-bar" data-total="${c.total}" style="--p:${pct(c.total, max).toFixed(5)}"></span></span>
       </button></li>`)}</ul>
-    <p class="pp-caption">Biggest cost first. Choose one to list only those repairs.</p>
+    ${tot.byCategory.length > CATS_SHOWN + 1 ? h`<button type="button" class="rows-more" id="pp-cats-more" data-act="allCats" aria-expanded="${String(allCats)}">${allCats ? 'Show only the biggest' : 'Show all ' + tot.byCategory.length + ' kinds'}</button>` : ''}
+    <p class="pp-caption">Biggest first. Choose one to list those repairs.</p>
   </section>`;
 }
 
@@ -6563,7 +6577,7 @@ function watchList(found) {
       title: x.text + '.', status: x.kind === 'repeat' ? ui.status('warn', 'Repeat') : ui.status('ok', 'Warranty'),
       act: x.kind === 'repeat' ? 'watch' : 'open', attrs: x.kind === 'repeat' ? { 'data-i': i, 'data-kind': 'repeat' } : { 'data-id': x.id, 'data-kind': 'warranty' },
     }))}</ul>
-    <p class="pp-caption">A unit is flagged when the same kind of repair happens 3 times in a year, or twice in 90 days.</p>
+    <p class="pp-caption">Same repair 3 times in a year, or twice in 90 days.</p>
   </section>`;
 }
 
@@ -6629,7 +6643,7 @@ RB.repairs = RB.repairs || {};
 RB.repairs.renderProperty = function renderProperty(el, ctx) {
   const today = ctx.today;
   const slug = ctx.param;
-  if (slug !== slugNow) { slugNow = slug; f = Object.assign({}, NOF); mode = 'date'; filterOpen = false; openYears = new Set(); allCur = false; if (ctx.reason !== 'store') window.scrollTo(0, 0); }
+  if (slug !== slugNow) { slugNow = slug; f = Object.assign({}, NOF); mode = 'date'; filterOpen = false; openYears = new Set(); allCur = false; allCats = false; if (ctx.reason !== 'store') window.scrollTo(0, 0); }
   if (ctx.intent && typeof ctx.intent === 'object') { f = Object.assign({}, NOF, ctx.intent); mode = 'date'; }
   const p = Mo.propertyBySlug(ctx.state, slug, today);
   if (!p) {
@@ -6670,6 +6684,7 @@ RB.repairs.renderProperty = function renderProperty(el, ctx) {
     log: () => R().logRepair({ property: p.name, fixedProperty: true, unit: f.unit && f.unit !== BUILDING ? f.unit : '', scope: f.unit === BUILDING ? 'building' : '' }),
     past: () => R().addPastRepair({ property: p.name, unit: f.unit && f.unit !== BUILDING ? f.unit : '', scope: f.unit === BUILDING ? 'building' : '' }),
     open: b => R().openRepair(b.dataset.id),
+    allCats: () => { allCats = !allCats; RB.shell.refresh(); },
     allCur: () => { allCur = true; RB.shell.refresh(); },
     filters: () => { filterOpen = !filterOpen; RB.shell.refresh(); },
     filter: s => set({ [s.name]: s.value }),
@@ -6798,7 +6813,7 @@ function row(r, today) {
       lead, title: r.t.name, sub: owesSub(r), status: owesStatus(r, today), statusPos: 'main',
       bar: r.part ? ui.splitBar(r.m.rentPaid, r.m.rentCharged, { label: M.fmt(r.m.rentPaid) + ' of ' + M.fmt(r.m.rentCharged) + ' paid' }) : '',
       act: 'row', cls, attrs: { id: 'rent-row-' + id, 'data-id': id, 'aria-haspopup': 'dialog' },
-      btn: { label: r.part ? 'Record the rest' : 'Record a payment', act: 'pay', id: 'rent-pay-' + id, attrs: { 'data-id': id } },
+      btn: { label: r.part ? 'Record the rest (' + M.fmt(r.payAmount) + ')' : 'Record a payment', act: 'pay', id: 'rent-pay-' + id, attrs: { 'data-id': id } },
       liAttrs: { 'data-row': id, class: 'is-owing' },
     });
   }
@@ -7008,7 +7023,6 @@ const OTHER_UNIT = '*other';
 let tab = RB.prefs.get('repairs:tab', 'todo');          // todo | history
 let propFilter = RB.prefs.get('upkeep:prop', '');
 let doneAll = false;                                    // "Done lately" expanded in place
-const DONE_SHOWN = 3;
 
 function guard() {
   if (!S().canWrite()) { ui.toast('This rent book is view only — you can look, but not change anything.', { tone: 'bad' }); return false; }
@@ -7486,7 +7500,7 @@ function repairRow(k, today, o) {
   const where = o.where === false ? '' : isBuilding(k) ? 'Whole building' + (k.property ? ' at ' + k.property : '') : (k.property || 'No property');
   let when;
   if (k.status === 'done') when = 'done ' + shortDay(k.completed || k.reported, today);
-  else if (k.status === 'scheduled') when = k.scheduled ? (k.scheduled < today ? 'was booked for ' : 'booked for ') + longDay(k.scheduled, today) : 'booked — no day set';
+  else if (k.status === 'scheduled') when = k.scheduled ? (k.scheduled < today ? 'was booked for ' : 'booked for ') + shortDay(k.scheduled, today) : 'booked — no day set';
   else when = age === 0 ? 'reported today' : 'waiting ' + D.days(age);
   const sub = [where, when].filter(Boolean).join(' · ');
   return ui.row({
@@ -7494,6 +7508,7 @@ function repairRow(k, today, o) {
     title: k.title || 'Repair', sub,
     amt: k.status === 'done' && k.cost != null ? M.fmt(k.cost) : '',
     status: k.priority === 'urgent' && k.status !== 'done' ? ui.status('urgent', 'Urgent') : '',
+    statusPos: 'main',
     act: o.act, attrs: Object.assign({ 'data-ticket': k.id }, o.attrs || {}),
   });
 }
@@ -7553,17 +7568,16 @@ function todoTab(today) {
   const doneRecent = sorted(by.done.filter(k => (k.completed || k.reported) >= cutoff), 'done');
   const notDone = by.open.concat(by.scheduled);
   const urgent = notDone.filter(k => k.priority === 'urgent').length;
-  const oldest = notDone.reduce((m, k) => Math.max(m, k.reported ? D.diffDays(k.reported, today) : 0), 0);
   const sentence = notDone.length
-    ? h`${RB.plural(notDone.length, 'repair')} to do${by.scheduled.length || urgent ? h` — ${[by.scheduled.length ? by.scheduled.length + ' booked in' : '', urgent ? urgent + ' urgent' : ''].filter(Boolean).join(', ')}` : ''}.${oldest ? h` The oldest has waited ${D.days(oldest)}.` : ''}`
-    : h`Nothing to do — every repair is done.`;
+    ? h`<span class="t-display">${RB.plural(notDone.length, 'repair')} to do</span> ${[urgent ? urgent + ' urgent' : '', by.scheduled.length ? by.scheduled.length + ' booked in' : ''].filter(Boolean).join(', ').replace(/^./, c => c.toUpperCase())}${urgent || by.scheduled.length ? '.' : ''}`
+    : h`<span class="t-display">Nothing to do</span> Every repair is done.`;
   const sec = (key, title, items, empty, more) => h`<section class="rp-sec" aria-labelledby="uk-col-${key}">
     <h2 class="rows-head" id="uk-col-${key}">${title} <span class="rows-count">${items.length}</span></h2>
     ${items.length ? h`<ul class="rows rows-inset">${(more ? items.slice(0, more) : items).map(k => repairRow(k, today, { act: 'open', attrs: { 'data-id': k.id } }))}</ul>` : h`<p class="rp-empty">${empty}</p>`}
   </section>`;
-  const doneShown = doneAll ? doneRecent.length : DONE_SHOWN;
+
   return h`
-    <p class="rp-sum" id="uk-count">${sentence}</p>
+    <p class="rp-sum rp-display" id="uk-count">${sentence}</p>
     <div class="rp-bar">
       <button type="button" class="btn btn-primary" data-act="add" id="uk-add" data-write>${ui.icon('plus')}<span>Log a repair</span></button>
       ${props.length > 1 ? h`<label class="vh" for="uk-prop">Which property?</label><span class="select rp-prop-sel"><select class="input" id="uk-prop" data-change="prop">
@@ -7572,9 +7586,8 @@ function todoTab(today) {
     ${all.length ? h`
       ${sec('open', 'Needs doing', sorted(by.open, 'open'), 'Nothing waiting.')}
       ${sec('scheduled', 'Booked in', sorted(by.scheduled, 'scheduled'), 'Nothing booked in.')}
-      ${sec('done', 'Done lately', doneRecent, 'Nothing finished in the last 30 days.', doneShown)}
-      ${doneRecent.length > DONE_SHOWN ? h`<button type="button" class="rows-more" id="uk-done-more" data-act="doneMore" aria-expanded="${String(doneAll)}">${doneAll ? 'Show fewer' : 'Show all ' + doneRecent.length}</button>` : ''}
-      <button type="button" class="btn-link rp-older" data-act="tabHistory">See older repairs in History</button>`
+      ${doneAll ? sec('done', 'Done lately', doneRecent, 'Nothing finished in the last 30 days.') : ''}
+      ${doneRecent.length ? h`<button type="button" class="rows-more rp-done-more" id="uk-done-more" data-act="doneMore" aria-expanded="${String(doneAll)}">${doneAll ? 'Hide the ones done lately' : 'Done lately (' + doneRecent.length + ') — Show them'}</button>` : ''}`
       : ui.empty({ title: 'No repairs yet', body: 'Write repairs down here so nothing slips: what needs fixing, who is doing it and what it cost.', actions: [{ label: 'Add a past repair', act: 'past', write: true }] })}`;
 }
 
@@ -7589,7 +7602,8 @@ function historyTab(today) {
   const first = props.map(p => p.firstDate).filter(Boolean).sort()[0];
   const year = today.slice(0, 4);
   return h`
-    <p class="rp-sum" id="rp-hist-sum">${count ? h`${RB.plural(count, 'repair')} written down at ${RB.plural(props.length, 'property', 'properties')} — ${M.fmt(total)} spent${first ? ' since ' + first.slice(0, 4) : ''}. Choose a property to see its history.` : h`No past repairs written down yet. Add old invoices to build each property’s history.`}</p>
+    <p class="rp-sum rp-display" id="rp-hist-sum"><span class="t-display">${M.fmt(props.reduce((s, p) => s + p.thisYear.total, 0))}</span> spent on repairs in ${year}.
+      ${count ? h`${RB.plural(count, 'repair')} written down since ${first ? first.slice(0, 4) : year}, ${M.fmt(total)} in all.` : h`Add old invoices to build each property’s history.`}</p>
     <div class="rp-bar">
       <button type="button" class="btn btn-primary" data-act="add" id="uk-add" data-write>${ui.icon('plus')}<span>Log a repair</span></button>
       <button type="button" class="btn btn-outline" data-act="past" id="rp-past" data-write>Add a past repair</button>
@@ -7659,6 +7673,9 @@ if (!TABS.some(t => t[0] === tab)) tab = 'roll';
 let year = null; // income year (null → current year)
 const openGroups = new Set(); // rent roll on phone: properties opened in place
 let groupNames = [];
+let allRows = false;           // phone: the whole list on long reports (collection, income)
+const more = (n, shown) => (n > shown + 1 ? h`<button type="button" class="rows-more" id="rp-more" data-act="allRows" aria-expanded="${String(allRows)}">${allRows ? 'Show fewer' : 'Show all ' + n}</button>` : '');
+const cut = (list, shown) => (allRows || list.length <= shown + 1 ? list : list.slice(0, shown));
 
 const pctTxt = r => (r == null ? '—' : Math.round(r * 100) + '%');
 /** CSV → tab-separated text that pastes straight into spreadsheet cells. */
@@ -7845,7 +7862,8 @@ function collection(today) {
       <tfoot><tr><td>12 months</td><td class="num" data-total="charged">${$(tot.charged)}</td><td class="num" data-total="collected">${$(tot.collected)}</td><td class="num">${$(tot.outstanding)}</td><td class="num">${pctTxt(rate)}</td></tr></tfoot>
     </table></div>
     <div class="show-phone">
-      ${ui.rows(rows.slice().reverse().map(r => ({ title: monthLabel(r.period) + (r.period === curKey ? ' (so far)' : ''), sub: 'of ' + $(r.charged) + ' charged — ' + pctTxt(r.rate), amt: $(r.collected) })), { inset: true })}
+      ${ui.rows(cut(rows.slice().reverse(), 6).map(r => ({ title: monthLabel(r.period) + (r.period === curKey ? ' (so far)' : ''), sub: 'of ' + $(r.charged) + ' charged — ' + pctTxt(r.rate), amt: $(r.collected) })), { inset: true })}
+      ${more(rows.length, 6)}
       <p class="rp-total-line">12 months: <span data-total="collected">${$(tot.collected)}</span> of <span data-total="charged">${$(tot.charged)}</span> — ${pctTxt(rate)}.</p>
     </div>`;
   const csv = () => RB.model.csv(rows, [
@@ -7879,7 +7897,8 @@ function income(today) {
       <tfoot><tr><td>Everyone</td><td></td><td class="num">${inc.rows.reduce((s, r) => s + r.count, 0)}</td><td class="num" data-total="payments">${$(inc.totals.payments)}</td><td class="num" data-total="credits">${$(inc.totals.credits)}</td></tr></tfoot>
     </table></div>
     <div class="show-phone">
-      ${ui.rows(inc.rows.map(r => ({ lead: ui.plate(r.unit), title: r.name, sub: r.credits ? $(r.credits) + ' taken off' : '', amt: $(r.payments), href: '#t-' + r.tenantId })), { inset: true })}
+      ${ui.rows(cut(inc.rows, 10).map(r => ({ lead: ui.plate(r.unit), title: r.name, sub: r.credits ? $(r.credits) + ' taken off' : '', amt: $(r.payments), href: '#t-' + r.tenantId })), { inset: true })}
+      ${more(inc.rows.length, 10)}
       <p class="rp-total-line">Everyone: <span data-total="payments">${$(inc.totals.payments)}</span>.</p>
     </div>`
     : ui.empty({ quiet: true, title: 'No payments in ' + yr + '. Payments you record with a date in ' + yr + ' add up here.' });
@@ -7914,7 +7933,8 @@ RB.views.register('reports', {
       </section>`);
     ui.bind(el, {
       jump: (a, e) => { if (e) e.preventDefault(); const t = el.querySelector('#rp-choose-h'); if (t) t.scrollIntoView({ block: 'start' }); const f = el.querySelector('.rp-choice'); if (f) f.focus({ preventScroll: true }); },
-      tab: b => { tab = b.dataset.tab; RB.prefs.set('reports:tab', tab); RB.shell.refresh(); const t = el.querySelector('#rp-title'); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({ block: 'start' }); },
+      allRows: () => { allRows = !allRows; RB.shell.refresh(); },
+      tab: b => { allRows = false; tab = b.dataset.tab; RB.prefs.set('reports:tab', tab); RB.shell.refresh(); const t = el.querySelector('#rp-title'); if (t && t.getBoundingClientRect().top < 0) t.scrollIntoView({ block: 'start' }); },
       csv: () => RB.actions.downloadFile(rep.file + '-' + ctx.today + '.csv', rep.csv(), 'text/csv'),
       copy: () => ui.copy(csvToTsv(rep.csv()), 'report'),
       group: b => { const g = b.dataset.group; if (openGroups.has(g)) openGroups.delete(g); else openGroups.add(g); RB.shell.refresh(); },
@@ -8350,6 +8370,54 @@ function readFile(input, cb) {
   fr.readAsText(f);
 }
 
+// ------------------------------------------------------------------ the rules, changed in short sheets (sentences that save on change)
+const lfChoice = lf => ui.field({ name: 'lfType', id: 'st-lf', label: h`When rent is late:${savedTag('lateFeeType')}`, type: 'choice', value: lf.type, write: true, attrs: { 'data-change': 'lfType' },
+  options: [{ value: 'none', label: 'Don’t suggest a late fee' }, { value: 'flat', label: 'Suggest a set amount' }, { value: 'percent', label: 'Suggest a percent of the rent' }] });
+function rulesBody(s) {
+  const lf = s.lateFee;
+  return h`
+    ${sentence('dueDay', h`Rent is due on the <span class="select st-inline-sel"><select class="input" id="st-dueDay" data-key="dueDay" data-change="save" aria-label="Day rent is due" data-write>${Array.from({ length: 28 }, (_, i) => h`<option value="${i + 1}"${+val('dueDay', s.dueDay) === i + 1 ? RB.raw(' selected') : ''}>${ord(i + 1)}</option>`)}</select></span> of the month.`)}
+    ${sentence('graceDays', h`Give tenants ${numInput('graceDays', s.graceDays, 'Days before rent counts as late', { maxlength: 2 })} days before it counts as late.`)}
+    <div class="st-sentence-row" data-row="lateFeeType">${lfChoice(lf)}</div>
+    ${lf.type === 'flat' ? sentence('lateFeeAmount', h`Suggest a late fee of <span class="money-input st-money"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input" type="text" inputmode="decimal" id="st-lateFeeAmount" data-key="lateFeeAmount" data-change="save" data-input="draft" value="${val('lateFeeAmount', M.input(lf.amount))}" aria-label="Late fee amount" autocomplete="off" data-write></span>.`)
+      : lf.type === 'percent' ? sentence('lateFeeAmount', h`Suggest a late fee of ${numInput('lateFeeAmount', lf.amount, 'Late fee percent', { inputmode: 'decimal' })} percent of that month’s rent.`) : ''}
+    <p class="st-rules" id="st-rule-sentence" aria-live="polite">${ruleSentence(previewSettings())}</p>`;
+}
+function leasesBody(s) {
+  return h`${sentence('depositReturnDays', h`Give back deposits within ${numInput('depositReturnDays', s.depositReturnDays, 'Days to give back a deposit', { maxlength: 3 })} days after a tenant moves out.`)}
+    ${sentence('leaseNoticeDays', h`Remind me about leases ${numInput('leaseNoticeDays', s.leaseNoticeDays, 'Days before a lease ends', { maxlength: 3 })} days before they end.`)}`;
+}
+function nameBody(s) {
+  return sentence('portfolioName', h`<label for="st-portfolioName">What do you call your rentals?</label> <input class="input st-wide" type="text" id="st-portfolioName" data-key="portfolioName" data-change="save" data-input="draft" value="${val('portfolioName', s.portfolioName)}" placeholder="For example: Calder Rentals" maxlength="80" autocomplete="off" data-write>`, 'It is printed on receipts and statements you copy for tenants.');
+}
+/** A short sheet of sentences; each control saves when you leave it ("Saved" shows beside it). */
+function rulesSheet(title, body) {
+  if (!canWrite()) return;
+  ui.sheet({
+    title, cancel: 'Done', actions: [],
+    body: (el) => {
+      const draw = () => { el.innerHTML = String(h`<div class="st-sheet">${body(S().settings())}</div>`); };
+      draw();
+      const patchPreview = () => { const x = el.querySelector('#st-rule-sentence'); if (x) x.textContent = ruleSentence(previewSettings()); };
+      ui.bind(el, {
+        draft: i => { drafts[i.dataset.key] = i.value; if (errs[i.dataset.key]) setErr(el, i.dataset.key, null); patchPreview(); },
+        save: i => { saveSetting(el, i.dataset.key, i.value); patchPreview(); },
+        lfType: r => {
+          if (!canWrite()) return;
+          const v = r.value; const cur = S().settings().lateFee;
+          if (cur.type === v) return;
+          const amount = v === 'none' ? cur.amount : v === 'flat' ? 5000 : 5;
+          delete drafts.lateFeeAmount; delete errs.lateFeeAmount;
+          S().saveSettings({ lateFee: { type: v, amount } }).catch(() => {});
+          draw();
+          showFlash(el, 'lateFeeType');
+          const again = el.querySelector('input[name="lfType"][value="' + v + '"]'); if (again) again.focus();
+        },
+      });
+    },
+  });
+}
+
 // ------------------------------------------------------------------ view
 RB.views.register('setup', {
   title: 'Settings',
@@ -8358,26 +8426,18 @@ RB.views.register('setup', {
     const s = ctx.state.settings;
     const today = ctx.today;
     const hasSample = ctx.store.hasSample();
-    const lf = s.lateFee;
     const sec = (id, title, body) => h`<section class="st-sec" id="st-sec-${id}" aria-labelledby="st-h-${id}"><h2 class="st-sec-title" id="st-h-${id}">${title}</h2>${body}</section>`;
     const d = imp.done;
+    const name = String(s.portfolioName || '').trim();
     el.innerHTML = String(h`
       <div class="st-main">
+        <header class="st-head">
+          <p class="t-display st-name" id="st-name">${name || 'Your rent book'}</p>
+          <p class="st-hint">${name ? 'Your name on receipts' : 'Give it the name you want on receipts'} — <button type="button" class="linkbtn" id="st-name-change" data-act="name" data-write>Change</button></p>
+        </header>
         ${sec('text', 'Text size', h`${ui.textSizeControl({ id: 'st-ts', compact: true })}<p class="st-hint">Makes all the words and buttons bigger on this device.</p>`)}
-        ${sec('rules', 'Your rent rules', h`
-          ${sentence('dueDay', h`Rent is due on the <span class="select st-inline-sel"><select class="input" id="st-dueDay" data-key="dueDay" data-change="save" aria-label="Day rent is due" data-write>${Array.from({ length: 28 }, (_, i) => h`<option value="${i + 1}"${+val('dueDay', s.dueDay) === i + 1 ? RB.raw(' selected') : ''}>${ord(i + 1)}</option>`)}</select></span> of the month.`)}
-          ${sentence('graceDays', h`Give tenants ${numInput('graceDays', s.graceDays, 'Days before rent counts as late', { maxlength: 2 })} days before it counts as late.`)}
-          <div class="st-sentence-row" data-row="lateFeeType">
-            ${ui.field({ name: 'lfType', id: 'st-lf', label: h`When rent is late:${savedTag('lateFeeType')}`, type: 'choice', value: lf.type, write: true, attrs: { 'data-change': 'lfType' },
-              options: [{ value: 'none', label: 'Don’t suggest a late fee' }, { value: 'flat', label: 'Suggest a set amount' }, { value: 'percent', label: 'Suggest a percent of the rent' }] })}
-          </div>
-          ${lf.type === 'flat' ? sentence('lateFeeAmount', h`Suggest a late fee of <span class="money-input st-money"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input" type="text" inputmode="decimal" id="st-lateFeeAmount" data-key="lateFeeAmount" data-change="save" data-input="draft" value="${val('lateFeeAmount', M.input(lf.amount))}" aria-label="Late fee amount" autocomplete="off" data-write></span>.`)
-            : lf.type === 'percent' ? sentence('lateFeeAmount', h`Suggest a late fee of ${numInput('lateFeeAmount', lf.amount, 'Late fee percent', { inputmode: 'decimal' })} percent of that month’s rent.`) : ''}
-          <p class="st-rules" id="st-rule-sentence">${ruleSentence(previewSettings())}</p>`)}
-        ${sec('leases', 'Deposits and leases', h`
-          ${sentence('depositReturnDays', h`Give back deposits within ${numInput('depositReturnDays', s.depositReturnDays, 'Days to give back a deposit', { maxlength: 3 })} days after a tenant moves out.`)}
-          ${sentence('leaseNoticeDays', h`Remind me about leases ${numInput('leaseNoticeDays', s.leaseNoticeDays, 'Days before a lease ends', { maxlength: 3 })} days before they end.`)}`)}
-        ${sec('portfolio', 'Your name on receipts', sentence('portfolioName', h`<label for="st-portfolioName">What do you call your rentals?</label> <input class="input st-wide" type="text" id="st-portfolioName" data-key="portfolioName" data-change="save" data-input="draft" value="${val('portfolioName', s.portfolioName)}" placeholder="For example: Calder Rentals" maxlength="80" autocomplete="off" data-write>`))}
+        ${sec('rules', 'Your rent rules', h`<p><span id="st-rules-now">${ruleSentence(s)}</span> <button type="button" class="linkbtn" id="st-rules-change" data-act="rules" data-write>Change</button></p>`)}
+        ${sec('leases', 'Deposits and leases', h`<p><span id="st-leases-now">Deposits go back within ${RB.plural(+s.depositReturnDays, 'day')} of a move-out. You are reminded ${RB.plural(+s.leaseNoticeDays, 'day')} before a lease ends.</span> <button type="button" class="linkbtn" id="st-leases-change" data-act="leases" data-write>Change</button></p>`)}
         ${sec('methods', 'Ways tenants pay you', h`<p class="st-methods-line"><span id="st-methods-list">${s.methods.join(' · ')}</span>. <button type="button" class="linkbtn" id="st-methods-change" data-act="methods" data-write>Change</button></p>`)}
         ${sec('copies', 'Your tenants and copies', h`
           ${d ? h`<p class="st-done" role="status">${ui.status('paid', 'Brought in ' + RB.plural(d.count, 'tenant') + '.')} ${d.skipped ? (d.skipped === 1 ? '1 row with a problem was left out. ' : d.skipped + ' rows with problems were left out. ') : ''}Their rent is counted from ${ui.dateWords(D.monthStart(D.monthKey(today)), today)}. <a class="linkbtn" href="#tenants">See your tenants</a></p>` : ''}
@@ -8393,24 +8453,14 @@ RB.views.register('setup', {
             : h`<button type="button" class="linkbtn" id="setup-load-sample" data-cmd="sample:load" data-write>Show example tenants</button>`}</p>`)}
         ${sec('about', 'Who can see this?', h`
           <p>Anyone you share this page with can see every tenant, phone number and payment — and change them if you let them edit. Nobody else can.</p>
-          ${ui.syncNote ? ui.syncNote() : ctx.state.mode === 'local' ? h`<p class="st-hint">Right now it is saved on this device only.</p>` : ''}`)}
+          ${ui.syncNote()}`)}
         ${sec('keys', 'Keyboard shortcuts', h`<p>For people who like the keyboard. You never need them. <button type="button" class="linkbtn" id="st-keys" data-cmd="help:keys">Show the shortcuts</button></p>`)}
       </div>`);
 
-    const patchPreview = () => { const x = el.querySelector('#st-rule-sentence'); if (x) x.textContent = ruleSentence(previewSettings()); };
     ui.bind(el, {
-      draft: i => { drafts[i.dataset.key] = i.value; if (errs[i.dataset.key]) setErr(el, i.dataset.key, null); patchPreview(); },
-      save: i => saveSetting(el, i.dataset.key, i.value),
-      lfType: r => {
-        if (!canWrite()) return;
-        const v = r.value; const cur = S().settings().lateFee;
-        if (cur.type === v) return;
-        const amount = v === 'none' ? cur.amount : v === 'flat' ? 5000 : 5;
-        delete drafts.lateFeeAmount; delete errs.lateFeeAmount;
-        flash = { key: 'lateFeeType', until: Date.now() + 3000 };
-        S().saveSettings({ lateFee: { type: v, amount } }).catch(() => {});
-        setTimeout(() => { if (flash && flash.key === 'lateFeeType') { flash = null; const x = document.getElementById('st-saved-lateFeeType'); if (x) x.classList.remove('is-on'); } }, 3000);
-      },
+      name: () => rulesSheet('Your name on receipts', nameBody),
+      rules: () => rulesSheet('Your rent rules', rulesBody),
+      leases: () => rulesSheet('Deposits and leases', leasesBody),
       methods: () => openMethods(),
       import: () => openImport(),
       backup: () => RB.actions.backup(),
@@ -9984,7 +10034,8 @@ function itemRow(S, a, today) {
     case 'late': {
       const m = lg.current.status === 'late' ? lg.months[lg.current.period] : Object.values(lg.months).filter(x => x.status === 'late').pop();
       return { lead, title: name, sub: m.rentPaid > 0 ? 'Owes ' + M.fmt(m.open) + ' of ' + D.monthName(m.period) + '’s ' + M.fmt(m.rentCharged) : 'Owes ' + M.fmt(m.open) + ' for ' + D.monthName(m.period),
-        status: m.rentPaid > 0 ? ui.status('partial_late', 'Part paid — rest is ' + D.days(m.daysLate) + ' late') : ui.status('late', 'Late — ' + D.days(m.daysLate)) };
+        // the button already says "Record the rest ($675)", so the marker stays short
+        status: ui.status('late', 'Late — ' + D.days(m.daysLate)) };
     }
     case 'partial': {
       const m = lg.months[lg.current.period];
@@ -10037,7 +10088,7 @@ function attRow(S, a, today) {
   return ui.row(Object.assign(r, {
     act: 'item', attrs: { id: 'td-row-' + a.id, 'data-id': a.id, 'aria-haspopup': pay || a.kind === 'followup' ? 'dialog' : null },
     statusPos: 'main',
-    btn: pay ? { label: partPaid ? 'Record the rest' : 'Record a payment', act: 'pay', id: 'td-pay-' + a.id, attrs: { 'data-id': a.id } } : null,
+    btn: pay ? { label: partPaid ? 'Record the rest (' + M.fmt(lg.balance) + ')' : 'Record a payment', act: 'pay', id: 'td-pay-' + a.id, attrs: { 'data-id': a.id } } : null,
     liAttrs: { 'data-item': a.id },
   }));
 }

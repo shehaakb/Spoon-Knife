@@ -233,7 +233,7 @@ RB.views.register('leases', {
     const n = (c, one, many) => (c === 1 ? '1 ' + one : c + ' ' + many);
     el.innerHTML = String(h`
       <div class="lz-top">
-        <p class="lz-summary" id="lz-summary">${g.soon.length ? n(g.soon.length, 'lease ends', 'leases end') : 'No lease ends'} in the next ${nd} days. ${n(g.mtm.length, 'tenant is', 'tenants are')} month-to-month. ${n(g.moving.length, 'tenant is', 'tenants are')} moving out.</p>
+        <p class="lz-summary" id="lz-summary"><span class="t-display">${g.soon.length ? n(g.soon.length, 'lease ends', 'leases end') : 'No lease ends'}</span> in the next ${nd} days. ${n(g.mtm.length, 'tenant is', 'tenants are')} month-to-month. ${n(g.moving.length, 'tenant is', 'tenants are')} moving out.</p>
         <label class="check lz-calswitch hide-phone"><input type="checkbox" id="lz-cal" data-change="cal"${cal ? RB.raw(' checked') : ''}><span>Show as a calendar</span></label>
       </div>
       ${rows.length ? (showCal ? h`<div class="hide-phone">${timeline(rows, ctx.today, nd)}</div>` : list(g, ctx.today, nd))

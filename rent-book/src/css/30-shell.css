@@ -99,7 +99,7 @@
   .topbar-brand .rail-mark { width: var(--ctl-h); height: var(--ctl-h); }
   .topbar-search { display: none; }
   .topbar-findbtn { display: inline-flex; flex: none; padding: 0 var(--s3); }
-  .view { padding: var(--s5) max(16px, env(safe-area-inset-right, 0px)) var(--s5) max(16px, env(safe-area-inset-left, 0px)); }
+  .view { padding: var(--s4) max(16px, env(safe-area-inset-right, 0px)) var(--s5) max(16px, env(safe-area-inset-left, 0px)); }
   .banner { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .tabbar {
     position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;

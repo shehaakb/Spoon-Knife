@@ -39,7 +39,7 @@ RB.views.register('kit', {
         ${ui.rowsHead('Still owes', 2)}
         <ul class="rows rows-inset">
           ${ui.row({ lead: ui.plate('202'), title: 'Imogen Hart', sub: 'Owes $1,550 for November', status: ui.status('late', 'Late — 23 days'), statusPos: 'main', act: 'noop', attrs: { id: 'kit-row-1' }, btn: { label: 'Record a payment', act: 'noop', id: 'kit-row-btn' } })}
-          ${ui.row({ lead: ui.plate('103'), title: 'Nadia Haddad', sub: 'Owes $675 of November’s $1,475', status: ui.status('partial', 'Part paid — $800 of $1,475'), statusPos: 'main', bar: ui.splitBar(80000, 147500), act: 'noop', btn: { label: 'Record the rest', act: 'noop' } })}
+          ${ui.row({ lead: ui.plate('103'), title: 'Nadia Haddad', sub: 'Owes $675 of November’s $1,475', status: ui.status('partial', 'Part paid — $800 of $1,475'), statusPos: 'main', bar: ui.splitBar(80000, 147500), act: 'noop', btn: { label: 'Record the rest ($675)', act: 'noop' } })}
         </ul>
         ${ui.rowsHead('Tenants', 3)}
         <ul class="rows rows-inset">

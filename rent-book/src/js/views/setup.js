@@ -422,6 +422,54 @@ function readFile(input, cb) {
   fr.readAsText(f);
 }
 
+// ------------------------------------------------------------------ the rules, changed in short sheets (sentences that save on change)
+const lfChoice = lf => ui.field({ name: 'lfType', id: 'st-lf', label: h`When rent is late:${savedTag('lateFeeType')}`, type: 'choice', value: lf.type, write: true, attrs: { 'data-change': 'lfType' },
+  options: [{ value: 'none', label: 'Don’t suggest a late fee' }, { value: 'flat', label: 'Suggest a set amount' }, { value: 'percent', label: 'Suggest a percent of the rent' }] });
+function rulesBody(s) {
+  const lf = s.lateFee;
+  return h`
+    ${sentence('dueDay', h`Rent is due on the <span class="select st-inline-sel"><select class="input" id="st-dueDay" data-key="dueDay" data-change="save" aria-label="Day rent is due" data-write>${Array.from({ length: 28 }, (_, i) => h`<option value="${i + 1}"${+val('dueDay', s.dueDay) === i + 1 ? RB.raw(' selected') : ''}>${ord(i + 1)}</option>`)}</select></span> of the month.`)}
+    ${sentence('graceDays', h`Give tenants ${numInput('graceDays', s.graceDays, 'Days before rent counts as late', { maxlength: 2 })} days before it counts as late.`)}
+    <div class="st-sentence-row" data-row="lateFeeType">${lfChoice(lf)}</div>
+    ${lf.type === 'flat' ? sentence('lateFeeAmount', h`Suggest a late fee of <span class="money-input st-money"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input" type="text" inputmode="decimal" id="st-lateFeeAmount" data-key="lateFeeAmount" data-change="save" data-input="draft" value="${val('lateFeeAmount', M.input(lf.amount))}" aria-label="Late fee amount" autocomplete="off" data-write></span>.`)
+      : lf.type === 'percent' ? sentence('lateFeeAmount', h`Suggest a late fee of ${numInput('lateFeeAmount', lf.amount, 'Late fee percent', { inputmode: 'decimal' })} percent of that month’s rent.`) : ''}
+    <p class="st-rules" id="st-rule-sentence" aria-live="polite">${ruleSentence(previewSettings())}</p>`;
+}
+function leasesBody(s) {
+  return h`${sentence('depositReturnDays', h`Give back deposits within ${numInput('depositReturnDays', s.depositReturnDays, 'Days to give back a deposit', { maxlength: 3 })} days after a tenant moves out.`)}
+    ${sentence('leaseNoticeDays', h`Remind me about leases ${numInput('leaseNoticeDays', s.leaseNoticeDays, 'Days before a lease ends', { maxlength: 3 })} days before they end.`)}`;
+}
+function nameBody(s) {
+  return sentence('portfolioName', h`<label for="st-portfolioName">What do you call your rentals?</label> <input class="input st-wide" type="text" id="st-portfolioName" data-key="portfolioName" data-change="save" data-input="draft" value="${val('portfolioName', s.portfolioName)}" placeholder="For example: Calder Rentals" maxlength="80" autocomplete="off" data-write>`, 'It is printed on receipts and statements you copy for tenants.');
+}
+/** A short sheet of sentences; each control saves when you leave it ("Saved" shows beside it). */
+function rulesSheet(title, body) {
+  if (!canWrite()) return;
+  ui.sheet({
+    title, cancel: 'Done', actions: [],
+    body: (el) => {
+      const draw = () => { el.innerHTML = String(h`<div class="st-sheet">${body(S().settings())}</div>`); };
+      draw();
+      const patchPreview = () => { const x = el.querySelector('#st-rule-sentence'); if (x) x.textContent = ruleSentence(previewSettings()); };
+      ui.bind(el, {
+        draft: i => { drafts[i.dataset.key] = i.value; if (errs[i.dataset.key]) setErr(el, i.dataset.key, null); patchPreview(); },
+        save: i => { saveSetting(el, i.dataset.key, i.value); patchPreview(); },
+        lfType: r => {
+          if (!canWrite()) return;
+          const v = r.value; const cur = S().settings().lateFee;
+          if (cur.type === v) return;
+          const amount = v === 'none' ? cur.amount : v === 'flat' ? 5000 : 5;
+          delete drafts.lateFeeAmount; delete errs.lateFeeAmount;
+          S().saveSettings({ lateFee: { type: v, amount } }).catch(() => {});
+          draw();
+          showFlash(el, 'lateFeeType');
+          const again = el.querySelector('input[name="lfType"][value="' + v + '"]'); if (again) again.focus();
+        },
+      });
+    },
+  });
+}
+
 // ------------------------------------------------------------------ view
 RB.views.register('setup', {
   title: 'Settings',
@@ -430,26 +478,18 @@ RB.views.register('setup', {
     const s = ctx.state.settings;
     const today = ctx.today;
     const hasSample = ctx.store.hasSample();
-    const lf = s.lateFee;
     const sec = (id, title, body) => h`<section class="st-sec" id="st-sec-${id}" aria-labelledby="st-h-${id}"><h2 class="st-sec-title" id="st-h-${id}">${title}</h2>${body}</section>`;
     const d = imp.done;
+    const name = String(s.portfolioName || '').trim();
     el.innerHTML = String(h`
       <div class="st-main">
+        <header class="st-head">
+          <p class="t-display st-name" id="st-name">${name || 'Your rent book'}</p>
+          <p class="st-hint">${name ? 'Your name on receipts' : 'Give it the name you want on receipts'} — <button type="button" class="linkbtn" id="st-name-change" data-act="name" data-write>Change</button></p>
+        </header>
         ${sec('text', 'Text size', h`${ui.textSizeControl({ id: 'st-ts', compact: true })}<p class="st-hint">Makes all the words and buttons bigger on this device.</p>`)}
-        ${sec('rules', 'Your rent rules', h`
-          ${sentence('dueDay', h`Rent is due on the <span class="select st-inline-sel"><select class="input" id="st-dueDay" data-key="dueDay" data-change="save" aria-label="Day rent is due" data-write>${Array.from({ length: 28 }, (_, i) => h`<option value="${i + 1}"${+val('dueDay', s.dueDay) === i + 1 ? RB.raw(' selected') : ''}>${ord(i + 1)}</option>`)}</select></span> of the month.`)}
-          ${sentence('graceDays', h`Give tenants ${numInput('graceDays', s.graceDays, 'Days before rent counts as late', { maxlength: 2 })} days before it counts as late.`)}
-          <div class="st-sentence-row" data-row="lateFeeType">
-            ${ui.field({ name: 'lfType', id: 'st-lf', label: h`When rent is late:${savedTag('lateFeeType')}`, type: 'choice', value: lf.type, write: true, attrs: { 'data-change': 'lfType' },
-              options: [{ value: 'none', label: 'Don’t suggest a late fee' }, { value: 'flat', label: 'Suggest a set amount' }, { value: 'percent', label: 'Suggest a percent of the rent' }] })}
-          </div>
-          ${lf.type === 'flat' ? sentence('lateFeeAmount', h`Suggest a late fee of <span class="money-input st-money"><span class="money-sym" aria-hidden="true">${M.symbol}</span><input class="input" type="text" inputmode="decimal" id="st-lateFeeAmount" data-key="lateFeeAmount" data-change="save" data-input="draft" value="${val('lateFeeAmount', M.input(lf.amount))}" aria-label="Late fee amount" autocomplete="off" data-write></span>.`)
-            : lf.type === 'percent' ? sentence('lateFeeAmount', h`Suggest a late fee of ${numInput('lateFeeAmount', lf.amount, 'Late fee percent', { inputmode: 'decimal' })} percent of that month’s rent.`) : ''}
-          <p class="st-rules" id="st-rule-sentence">${ruleSentence(previewSettings())}</p>`)}
-        ${sec('leases', 'Deposits and leases', h`
-          ${sentence('depositReturnDays', h`Give back deposits within ${numInput('depositReturnDays', s.depositReturnDays, 'Days to give back a deposit', { maxlength: 3 })} days after a tenant moves out.`)}
-          ${sentence('leaseNoticeDays', h`Remind me about leases ${numInput('leaseNoticeDays', s.leaseNoticeDays, 'Days before a lease ends', { maxlength: 3 })} days before they end.`)}`)}
-        ${sec('portfolio', 'Your name on receipts', sentence('portfolioName', h`<label for="st-portfolioName">What do you call your rentals?</label> <input class="input st-wide" type="text" id="st-portfolioName" data-key="portfolioName" data-change="save" data-input="draft" value="${val('portfolioName', s.portfolioName)}" placeholder="For example: Calder Rentals" maxlength="80" autocomplete="off" data-write>`))}
+        ${sec('rules', 'Your rent rules', h`<p><span id="st-rules-now">${ruleSentence(s)}</span> <button type="button" class="linkbtn" id="st-rules-change" data-act="rules" data-write>Change</button></p>`)}
+        ${sec('leases', 'Deposits and leases', h`<p><span id="st-leases-now">Deposits go back within ${RB.plural(+s.depositReturnDays, 'day')} of a move-out. You are reminded ${RB.plural(+s.leaseNoticeDays, 'day')} before a lease ends.</span> <button type="button" class="linkbtn" id="st-leases-change" data-act="leases" data-write>Change</button></p>`)}
         ${sec('methods', 'Ways tenants pay you', h`<p class="st-methods-line"><span id="st-methods-list">${s.methods.join(' · ')}</span>. <button type="button" class="linkbtn" id="st-methods-change" data-act="methods" data-write>Change</button></p>`)}
         ${sec('copies', 'Your tenants and copies', h`
           ${d ? h`<p class="st-done" role="status">${ui.status('paid', 'Brought in ' + RB.plural(d.count, 'tenant') + '.')} ${d.skipped ? (d.skipped === 1 ? '1 row with a problem was left out. ' : d.skipped + ' rows with problems were left out. ') : ''}Their rent is counted from ${ui.dateWords(D.monthStart(D.monthKey(today)), today)}. <a class="linkbtn" href="#tenants">See your tenants</a></p>` : ''}
@@ -465,24 +505,14 @@ RB.views.register('setup', {
             : h`<button type="button" class="linkbtn" id="setup-load-sample" data-cmd="sample:load" data-write>Show example tenants</button>`}</p>`)}
         ${sec('about', 'Who can see this?', h`
           <p>Anyone you share this page with can see every tenant, phone number and payment — and change them if you let them edit. Nobody else can.</p>
-          ${ui.syncNote ? ui.syncNote() : ctx.state.mode === 'local' ? h`<p class="st-hint">Right now it is saved on this device only.</p>` : ''}`)}
+          ${ui.syncNote()}`)}
         ${sec('keys', 'Keyboard shortcuts', h`<p>For people who like the keyboard. You never need them. <button type="button" class="linkbtn" id="st-keys" data-cmd="help:keys">Show the shortcuts</button></p>`)}
       </div>`);
 
-    const patchPreview = () => { const x = el.querySelector('#st-rule-sentence'); if (x) x.textContent = ruleSentence(previewSettings()); };
     ui.bind(el, {
-      draft: i => { drafts[i.dataset.key] = i.value; if (errs[i.dataset.key]) setErr(el, i.dataset.key, null); patchPreview(); },
-      save: i => saveSetting(el, i.dataset.key, i.value),
-      lfType: r => {
-        if (!canWrite()) return;
-        const v = r.value; const cur = S().settings().lateFee;
-        if (cur.type === v) return;
-        const amount = v === 'none' ? cur.amount : v === 'flat' ? 5000 : 5;
-        delete drafts.lateFeeAmount; delete errs.lateFeeAmount;
-        flash = { key: 'lateFeeType', until: Date.now() + 3000 };
-        S().saveSettings({ lateFee: { type: v, amount } }).catch(() => {});
-        setTimeout(() => { if (flash && flash.key === 'lateFeeType') { flash = null; const x = document.getElementById('st-saved-lateFeeType'); if (x) x.classList.remove('is-on'); } }, 3000);
-      },
+      name: () => rulesSheet('Your name on receipts', nameBody),
+      rules: () => rulesSheet('Your rent rules', rulesBody),
+      leases: () => rulesSheet('Deposits and leases', leasesBody),
       methods: () => openMethods(),
       import: () => openImport(),
       backup: () => RB.actions.backup(),

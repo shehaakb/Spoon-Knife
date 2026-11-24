@@ -18,7 +18,9 @@ let mode = 'date';                     // date | unit
 let filterOpen = false;
 let openYears = new Set();             // earlier years expanded in place
 let allCur = false;                    // this year's list beyond the first few
-const CUR_SHOWN = 6;
+const CUR_SHOWN = 3;
+const CATS_SHOWN = 4;
+let allCats = false;                   // "What the money went on" beyond the biggest few
 
 const unitText = key => (key === BUILDING ? 'Whole building' : Mo.unitWords(key));
 const pct = (v, max) => (max > 0 ? v / max : 0);
@@ -35,10 +37,10 @@ function header(p, hist, today) {
     <button type="button" class="btn-link pp-back" data-act="back">${ui.icon('chevron-left')}<span>All properties</span></button>
     <h1 class="pp-title" id="pp-title">${p.name}</h1>
     <p class="pp-display" id="pp-yearcost"><span class="pp-fig t-display">${M.fmt(yTotal)}</span> spent on repairs in ${year}${yr.length ? h`, on ${RB.plural(yr.length, 'repair')}` : ''}.</p>
-    <p class="pp-sum" id="pp-sum">${hist.all.length
+    <p class="pp-sum"><span id="pp-sum">${hist.all.length
       ? h`${RB.plural(hist.all.length, 'repair')} since ${hist.firstDate.slice(0, 4)} · ${M.fmt(total)} spent${tenantPaid ? h` (${M.fmt(tenantPaid)} of it paid by tenants)` : ''}`
-      : 'No repairs written down yet'}.</p>
-    <p class="pp-sub">${p.unitCount ? RB.plural(p.unitCount, 'unit') : 'No units written down yet'}${open.length ? h` · ${RB.plural(open.length, 'repair')} still to do — <button type="button" class="linkbtn" data-act="todo" id="pp-todo">See them</button>` : ''}</p>
+      : 'No repairs written down yet'}.</span>
+      <span class="pp-sub">${p.unitCount ? RB.plural(p.unitCount, 'unit') : 'No units written down yet'}${open.length ? h` · ${RB.plural(open.length, 'repair')} still to do — <button type="button" class="linkbtn" data-act="todo" id="pp-todo">See them</button>` : ''}</span></p>
     ${hist.all.length ? h`<div class="pp-actions">
       <button type="button" class="btn btn-primary" data-act="past" id="pp-past" data-write>${ui.icon('plus')}<span>Add a past repair</span></button>
       <button type="button" class="btn btn-outline" data-act="log" id="pp-log" data-write>Log a repair</button>
@@ -57,7 +59,7 @@ function yearsChart(tot, today, p) {
         <span class="pp-yr-plot"><span class="pp-yr-amt">${M.fmt(y.total)}</span><span class="pp-yr-bar" data-total="${y.total}" style="--p:${pct(y.total, max).toFixed(5)}"></span></span>
         <span class="pp-yr-label">${y.year}${y.year === curYear ? ' so far' : ''}</span>
       </button></li>`)}</ol>
-    <p class="pp-caption">Bigger bar, more money. Choose a year to list only its repairs.</p>
+    <p class="pp-caption">Choose a year to list its repairs.</p>
   </section>`;
 }
 
@@ -65,12 +67,13 @@ function categoryChart(tot) {
   const max = tot.max.category;
   return h`<section class="pp-sec" aria-labelledby="pp-cats-title">
     <h2 class="pp-sec-title" id="pp-cats-title">What the money went on</h2>
-    <ul class="pp-cats">${tot.byCategory.map(c => h`<li>
+    <ul class="pp-cats">${(allCats || tot.byCategory.length <= CATS_SHOWN + 1 ? tot.byCategory : tot.byCategory.slice(0, CATS_SHOWN)).map(c => h`<li>
       <button type="button" class="pp-cat" data-act="pickCat" data-cat="${c.key}" aria-pressed="${String(f.category === c.key)}">
         <span class="pp-cat-top"><span class="pp-cat-label">${c.label}</span><span class="pp-cat-amt">${M.fmt(c.total)} · ${RB.plural(c.count, 'repair')}</span></span>
         <span class="pp-cat-track"><span class="pp-cat-bar" data-total="${c.total}" style="--p:${pct(c.total, max).toFixed(5)}"></span></span>
       </button></li>`)}</ul>
-    <p class="pp-caption">Biggest cost first. Choose one to list only those repairs.</p>
+    ${tot.byCategory.length > CATS_SHOWN + 1 ? h`<button type="button" class="rows-more" id="pp-cats-more" data-act="allCats" aria-expanded="${String(allCats)}">${allCats ? 'Show only the biggest' : 'Show all ' + tot.byCategory.length + ' kinds'}</button>` : ''}
+    <p class="pp-caption">Biggest first. Choose one to list those repairs.</p>
   </section>`;
 }
 
@@ -82,7 +85,7 @@ function watchList(found) {
       title: x.text + '.', status: x.kind === 'repeat' ? ui.status('warn', 'Repeat') : ui.status('ok', 'Warranty'),
       act: x.kind === 'repeat' ? 'watch' : 'open', attrs: x.kind === 'repeat' ? { 'data-i': i, 'data-kind': 'repeat' } : { 'data-id': x.id, 'data-kind': 'warranty' },
     }))}</ul>
-    <p class="pp-caption">A unit is flagged when the same kind of repair happens 3 times in a year, or twice in 90 days.</p>
+    <p class="pp-caption">Same repair 3 times in a year, or twice in 90 days.</p>
   </section>`;
 }
 
@@ -148,7 +151,7 @@ RB.repairs = RB.repairs || {};
 RB.repairs.renderProperty = function renderProperty(el, ctx) {
   const today = ctx.today;
   const slug = ctx.param;
-  if (slug !== slugNow) { slugNow = slug; f = Object.assign({}, NOF); mode = 'date'; filterOpen = false; openYears = new Set(); allCur = false; if (ctx.reason !== 'store') window.scrollTo(0, 0); }
+  if (slug !== slugNow) { slugNow = slug; f = Object.assign({}, NOF); mode = 'date'; filterOpen = false; openYears = new Set(); allCur = false; allCats = false; if (ctx.reason !== 'store') window.scrollTo(0, 0); }
   if (ctx.intent && typeof ctx.intent === 'object') { f = Object.assign({}, NOF, ctx.intent); mode = 'date'; }
   const p = Mo.propertyBySlug(ctx.state, slug, today);
   if (!p) {
@@ -189,6 +192,7 @@ RB.repairs.renderProperty = function renderProperty(el, ctx) {
     log: () => R().logRepair({ property: p.name, fixedProperty: true, unit: f.unit && f.unit !== BUILDING ? f.unit : '', scope: f.unit === BUILDING ? 'building' : '' }),
     past: () => R().addPastRepair({ property: p.name, unit: f.unit && f.unit !== BUILDING ? f.unit : '', scope: f.unit === BUILDING ? 'building' : '' }),
     open: b => R().openRepair(b.dataset.id),
+    allCats: () => { allCats = !allCats; RB.shell.refresh(); },
     allCur: () => { allCur = true; RB.shell.refresh(); },
     filters: () => { filterOpen = !filterOpen; RB.shell.refresh(); },
     filter: s => set({ [s.name]: s.value }),

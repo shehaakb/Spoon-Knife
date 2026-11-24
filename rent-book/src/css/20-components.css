@@ -262,7 +262,7 @@ button.plate:focus-visible { outline: 2px solid var(--accent); outline-offset: 2
 .rows-inset { border-top: 0; }
 .rows-inset > li { border-bottom: 0; }
 .rows-inset > li::after { content: ""; position: absolute; left: calc(var(--row-lead-w) + var(--s3)); right: 0; bottom: 0; border-bottom: 1px solid var(--line); }
-.rows-inset > li.row-nolead::after, .rows-inset.rows-nolead > li::after { left: 0; }
+.rows-inset > li.row-nolead::after, .rows-inset.rows-nolead > li::after, .rows-inset > li:has(> .row-nolead)::after { left: 0; }
 .row {
   --row-lead-w: calc(64px * var(--text-scale));
   position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--s3);
@@ -278,6 +278,11 @@ a.row:focus-visible, button.row:focus-visible, .row-hit:focus-visible { outline:
 @media (hover: hover) { a.row:hover, button.row:hover, .row-act:has(.row-hit:hover) { background: var(--hover); } }
 .row-lead { grid-column: 1; width: var(--row-lead-w); display: flex; align-items: center; }
 .row-nolead .row-lead, .row-lead:empty { display: none; }
+/* no door plate: no empty first column (and no gap) — the text sits flush with the group heading */
+.row-nolead { grid-template-columns: minmax(0, 1fr) auto auto; }
+.row-nolead > .row-main { grid-column: 1; }
+.row-nolead > .row-end { grid-column: 2; }
+.row-nolead > .row-chev { grid-column: 3; }
 .row-main { grid-column: 2; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .row-title { font-size: var(--t-body); font-weight: var(--w-strong); line-height: var(--lh-title); color: var(--ink); overflow-wrap: anywhere; }
 .row-sub { font-size: var(--t-cap); color: var(--ink-2); line-height: var(--lh); overflow-wrap: anywhere; }
@@ -294,6 +299,7 @@ a.row:focus-visible, button.row:focus-visible, .row-hit:focus-visible { outline:
 .row.is-focused { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--r-ctl); }
 /* the row with its one soft button: status marker and button share a line on phone */
 .row-act { grid-template-columns: auto minmax(0, 1fr) auto auto auto; grid-template-areas: "lead main end btn chev" "lead st end btn chev"; row-gap: 2px; }
+.row-act.row-nolead { grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: "main end btn chev" "st end btn chev"; }
 .row-act > .row-lead { grid-area: lead; }
 .row-act > .row-main { grid-area: main; }
 .row-act-foot { display: contents; }
@@ -309,9 +315,10 @@ a.row:focus-visible, button.row:focus-visible, .row-hit:focus-visible { outline:
   .row { --row-lead-w: calc(56px * var(--text-scale)); }
   .rows-inset { --row-lead-w: calc(56px * var(--text-scale)); }
   .row-act { grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: "lead main end chev" "foot foot foot foot"; row-gap: var(--s2); }
-  .row-act > .row-act-foot { grid-area: foot; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); }
-  .row-act-foot > .row-act-status { flex: 1 1 10ch; min-width: 10ch; }
-  .row-act-foot > .row-btn { position: relative; z-index: 1; margin-left: auto; min-height: var(--ctl-h); padding: 0 var(--s3); }
+  .row-act.row-nolead { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "main end chev" "foot foot foot"; }
+  .row-act > .row-act-foot { grid-area: foot; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2); }
+  .row-act-foot > .row-act-status { flex: 1 1 auto; max-width: 100%; white-space: nowrap; }   /* the marker stays whole; the button drops below when they cannot share the line */
+  .row-act-foot > .row-btn { position: relative; z-index: 1; margin-left: auto; min-height: var(--ctl-h); padding: 0 var(--s2); }
 }
 /* group heading, count, and the quiet "Show all 14" */
 .rows-head { display: flex; align-items: baseline; gap: var(--s2); margin: var(--s5) 0 var(--s2); font-size: var(--t-cap); font-weight: var(--w-strong); color: var(--ink-2); line-height: var(--lh-title); }
@@ -493,7 +500,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 
 /* ================= Banner strip: one line, one link, never taller than 96px ================= */
 .banner {
-  display: flex; align-items: center; gap: 0 var(--s2); flex-wrap: nowrap; min-height: var(--ctl-h-sm); max-height: 96px; overflow: hidden;
+  display: flex; align-items: center; gap: 0 var(--s2); flex-wrap: nowrap; min-height: 48px; max-height: 96px; overflow: hidden;
   padding: 0 var(--gutter); background: var(--tint); color: var(--ink); border-bottom: 1px solid var(--line);
   font-size: var(--t-cap);
 }
@@ -501,7 +508,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .banner-text strong { font-weight: var(--w-strong); }
 .banner-actions { display: flex; gap: var(--s1); flex: none; }
 .banner .btn-link { white-space: nowrap; padding: 0; }
-.banner .btn-link { font-size: var(--t-cap); min-height: var(--ctl-h-sm); }
+.banner .btn-link { font-size: var(--t-cap); min-height: 48px; }
 .banner-warn { background: var(--tint); }
 
 /* ================= Floating layers ================= */

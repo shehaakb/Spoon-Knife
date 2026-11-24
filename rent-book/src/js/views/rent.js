@@ -103,7 +103,7 @@ function row(r, today) {
       lead, title: r.t.name, sub: owesSub(r), status: owesStatus(r, today), statusPos: 'main',
       bar: r.part ? ui.splitBar(r.m.rentPaid, r.m.rentCharged, { label: M.fmt(r.m.rentPaid) + ' of ' + M.fmt(r.m.rentCharged) + ' paid' }) : '',
       act: 'row', cls, attrs: { id: 'rent-row-' + id, 'data-id': id, 'aria-haspopup': 'dialog' },
-      btn: { label: r.part ? 'Record the rest' : 'Record a payment', act: 'pay', id: 'rent-pay-' + id, attrs: { 'data-id': id } },
+      btn: { label: r.part ? 'Record the rest (' + M.fmt(r.payAmount) + ')' : 'Record a payment', act: 'pay', id: 'rent-pay-' + id, attrs: { 'data-id': id } },
       liAttrs: { 'data-row': id, class: 'is-owing' },
     });
   }

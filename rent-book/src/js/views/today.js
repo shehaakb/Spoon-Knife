@@ -69,7 +69,8 @@ function itemRow(S, a, today) {
     case 'late': {
       const m = lg.current.status === 'late' ? lg.months[lg.current.period] : Object.values(lg.months).filter(x => x.status === 'late').pop();
       return { lead, title: name, sub: m.rentPaid > 0 ? 'Owes ' + M.fmt(m.open) + ' of ' + D.monthName(m.period) + '’s ' + M.fmt(m.rentCharged) : 'Owes ' + M.fmt(m.open) + ' for ' + D.monthName(m.period),
-        status: m.rentPaid > 0 ? ui.status('partial_late', 'Part paid — rest is ' + D.days(m.daysLate) + ' late') : ui.status('late', 'Late — ' + D.days(m.daysLate)) };
+        // the button already says "Record the rest ($675)", so the marker stays short
+        status: ui.status('late', 'Late — ' + D.days(m.daysLate)) };
     }
     case 'partial': {
       const m = lg.months[lg.current.period];
@@ -122,7 +123,7 @@ function attRow(S, a, today) {
   return ui.row(Object.assign(r, {
     act: 'item', attrs: { id: 'td-row-' + a.id, 'data-id': a.id, 'aria-haspopup': pay || a.kind === 'followup' ? 'dialog' : null },
     statusPos: 'main',
-    btn: pay ? { label: partPaid ? 'Record the rest' : 'Record a payment', act: 'pay', id: 'td-pay-' + a.id, attrs: { 'data-id': a.id } } : null,
+    btn: pay ? { label: partPaid ? 'Record the rest (' + M.fmt(lg.balance) + ')' : 'Record a payment', act: 'pay', id: 'td-pay-' + a.id, attrs: { 'data-id': a.id } } : null,
     liAttrs: { 'data-item': a.id },
   }));
 }

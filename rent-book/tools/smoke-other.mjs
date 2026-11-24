@@ -231,14 +231,20 @@ await step('repairs flow', async () => {
   await settle();
   check('form: done + $99 charge', await page.evaluate(([id, t]) => { const k = RB.store.ticket(id); const e = k.chargeId && RB.store.entries(t)[k.chargeId]; return k.status === 'done' && e && e.amount === 9900; }, [tkId, tkTenant]));
   const count = await page.textContent('#uk-count');
-  check('count sentence', /\d+ repairs? to do.*waited \d+ days?/.test(count), count);
+  check('count sentence', /^\d+ repairs? to do/.test(count.trim()), count);
   check('saved with category + tenant', await page.evaluate(id => { const k = RB.store.ticket(id); return k.category === 'doors' && k.property === 'Alder Court' && k.unit === '1A' && k.scope === 'unit'; }, tkId));
+  // "Done lately" is one control that expands in place
+  check('done lately folded away', await page.locator(`#rb-view .row[data-ticket="${tkId}"]`).count() === 0 && /^Done lately \(\d+\) — Show them$/.test((await page.textContent('#uk-done-more')).trim()));
+  await page.click('#uk-done-more'); await settle();
+  check('…expands in place', await page.locator(`section[aria-labelledby="uk-col-done"] [data-ticket="${tkId}"]`).count() === 1);
   // delete + undo from the choices
   await page.click(`#rb-view .row[data-ticket="${tkId}"]`); await page.waitForSelector('#rp-c-delete');
   await page.click('#rp-c-delete'); await settle();
   check('Delete removes it', await page.evaluate(id => !RB.store.ticket(id), tkId));
   await toastUndo();
   check('Undo puts it back', await page.evaluate(id => !!RB.store.ticket(id), tkId));
+  await page.click('#uk-done-more'); await settle();
+  check('…and folds away again', await page.locator('section[aria-labelledby="uk-col-done"]').count() === 0);
   // property select (not chips)
   await page.selectOption('#uk-prop', 'Fenwick Row');
   await settle();
@@ -335,8 +341,11 @@ await step('reports', async () => {
 await step('settings', async () => {
   await go('setup');
   check('Text size is at the very top', await page.evaluate(() => { const s = document.querySelector('.st-sec'); return s && s.id === 'st-sec-text' && !!s.querySelector('[data-textsize]'); }));
-  check('rules read as sentences', /Give tenants\s+days before it counts as late\./.test((await page.textContent('[data-row="graceDays"] .st-sentence-text')).replace(/Saved/, '')) && /Rent is due on the/.test(await page.textContent('[data-row="dueDay"]')));
   await lawCheck('settings', false);
+  check('the one display element is your rentals’ name', await page.locator('#rb-view .t-display').count() === 1 && (await page.textContent('#st-name')).trim() === await page.evaluate(() => RB.store.settings().portfolioName || 'Your rent book'));
+  check('rules stated in one sentence on the page', (await page.textContent('#st-rules-now')).startsWith('Rent is due on the'));
+  await page.click('#st-rules-change'); await page.waitForSelector('#st-graceDays');
+  check('rules read as sentences', /Give tenants\s+days before it counts as late\./.test((await page.textContent('[data-row="graceDays"] .st-sentence-text')).replace(/Saved/, '')) && /Rent is due on the/.test(await page.textContent('[data-row="dueDay"]')));
   check('three rows open their own flows', (await page.locator('#st-copies .row-title').allTextContents()).join('|') === 'Bring in my tenants|Save a copy|Restore from a copy' && await page.locator('#st-import-text').count() === 0);
   await page.fill('#st-graceDays', '7');
   await page.press('#st-graceDays', 'Tab');
@@ -350,18 +359,28 @@ await step('settings', async () => {
   await page.click('label[for="st-lf-2"]'); await settle();
   check('late fee rule switched to percent', await page.evaluate(() => { const l = RB.store.settings().lateFee; return l.type === 'percent' && l.amount === 5; }));
   check('late fee sentence', /Suggest a late fee of\s+percent of that month’s rent\./.test((await page.textContent('[data-row="lateFeeAmount"] .st-sentence-text')).replace(/Saved/, '')));
+  await sheetFilled('rules sheet');
+  await page.click('.sheet [data-close]:not(.sheet-close)'); await settle();
+  check('the page sentence follows the change', /counts as late after the 8th\./.test(await page.textContent('#st-rules-now')) && /5%/.test(await page.textContent('#st-rules-now')), await page.textContent('#st-rules-now'));
+  await page.click('#st-name-change'); await page.waitForSelector('#st-portfolioName');
   await page.fill('#st-portfolioName', 'Harbour Lane Homes'); await page.press('#st-portfolioName', 'Tab'); await settle();
+  await page.click('.sheet [data-close]:not(.sheet-close)'); await settle();
+  check('your name shows as the page’s display element', (await page.textContent('#st-name')).trim() === 'Harbour Lane Homes');
   await page.click('#st-methods-change'); await page.waitForSelector('#st-method-new');
   await page.fill('#st-method-new', 'PayPal'); await page.press('#st-method-new', 'Enter'); await settle();
   check('payment way added', await page.evaluate(() => RB.store.settings().methods.includes('PayPal')) && /PayPal/.test(await page.textContent('#st-methods')));
   check('ways have worded Remove links', (await page.locator('#st-methods [data-rm]').first().textContent()).trim() === 'Remove');
   await page.click('.sheet [data-close]:not(.sheet-close)'); await settle();
   check('compact list on the page', /PayPal/.test(await page.textContent('#st-methods-list')));
+  await page.click('#st-leases-change'); await page.waitForSelector('#st-leaseNoticeDays');
   await page.focus('#st-leaseNoticeDays'); await page.fill('#st-leaseNoticeDays', '9');
   await page.evaluate(() => RB.store.addLog(RB.store.tenantsList()[0].id, { text: 'store change' }));
   await page.waitForTimeout(120);
   check('half-typed field survives a store change', await page.inputValue('#st-leaseNoticeDays') === '9' && await page.evaluate(() => document.activeElement.id === 'st-leaseNoticeDays'));
   await page.fill('#st-leaseNoticeDays', '60'); await page.press('#st-leaseNoticeDays', 'Tab'); await settle();
+  check('one sheet at a time', await sheets() === 1);
+  await page.click('.sheet [data-close]:not(.sheet-close)'); await settle();
+  check('deposits and leases sentence on the page', /reminded 60 days before a lease ends/.test(await page.textContent('#st-leases-now')));
   check('keyboard shortcuts tucked at the bottom', await page.evaluate(() => { const s = Array.from(document.querySelectorAll('.st-sec')); return s[s.length - 1].id === 'st-sec-keys'; }));
   check('who can see this', /Who can see this\?/.test(await page.textContent('#st-sec-about')));
   const w = forbiddenIn(await viewText());

@@ -16,7 +16,15 @@ node tools/smoke-today-rent.mjs   # Today + Rent
 node tools/smoke-tenants.mjs      # Tenants list, drawer, tenant sheets
 node tools/smoke-other.mjs        # Leases, Repairs, Reports, Settings
 node tools/shots.mjs              # screenshots of every view → shots/ (--only/--size/--theme/--text xl; see the file header)
+node tools/audit.mjs              # the v3 acceptance test (SPEC §10): every screen at 390×844, Normal + Extra large
 ```
+
+**`tools/audit.mjs` is the acceptance test for the v3 design laws** (SPEC §10): page height per screen against its budget,
+one filled button, no buttons on rows (except the one allowed soft button), five type sizes and two weights, nothing under
+14px, red/amber/green only on status markers, radii 6/10/16, no overflow or truncation, no wrapped controls, the pay and edit
+verbs, toasts never over a sheet, sheets never stacked, and the same "N tenants owe…" sentence everywhere. It builds first
+(`--no-build` to skip), prints a table, names the offending element for each breach, and exits 1 on any. Use
+`--only today,rent` (screen names are listed in the file header and in docs/CONTRACT.md), `--text xl`, `--size desktop`.
 
 Smoke tests and screenshots read `dist/preview.html`, so build first. Playwright and Chromium must already be
 installed; nothing else is needed. `dist/preview.html` opens straight from disk and runs in local mode (data kept
@@ -33,8 +41,8 @@ as a claude.ai Artifact. Declare these capabilities when publishing:
 | `downloads` | CSV exports, the JSON backup and the import template (`<a download>` is inert in the host) |
 | `user` | only to learn up front that a viewer can't write, so editing controls show "View only" |
 
-Without `db` (local preview, tests) the app runs in memory and persists to `localStorage`, and the sidebar says
-"Not syncing — saved on this device only".
+Without `db` (local preview, tests) the app runs in memory and persists to `localStorage`, and Settings (Who can see
+this) says "Not syncing — saved on this device only".
 
 ## Where things are
 

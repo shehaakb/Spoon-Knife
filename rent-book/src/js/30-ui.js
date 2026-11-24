@@ -826,7 +826,7 @@ ui.choices = function choices(opts) {
   const o = opts || {};
   const items = (o.items || []).filter(Boolean);
   return ui.sheet({
-    title: o.title || 'What would you like to do?', sub: o.sub, cancel: false, actions: [{ id: 'close', label: 'Close', kind: '' }],
+    title: o.title || 'What would you like to do?', sub: o.sub, cancel: false, actions: [],   // the head's "Close" is the one way out
     body: (el, sh) => {
       el.innerHTML = String(h`${o.body || ''}<ul class="rows choices-list">${items.map((x, i) => ui.row({
         title: x.label, sub: x.hint || x.sub, act: 'choice',

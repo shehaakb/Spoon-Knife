@@ -72,7 +72,6 @@
 .view-reports .rp-key::before { content: ""; width: calc(12px * var(--text-scale)); height: calc(12px * var(--text-scale)); }
 .view-reports .rp-key-charged::before { background: var(--sunk); }
 .view-reports .rp-key-collected::before { background: var(--accent); }
-.view-reports .plate { max-width: 9em; overflow: hidden; text-overflow: ellipsis; }
 
 @media (max-width: 759.98px) {
   .view-reports .rp-choose-rows { grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--line); }

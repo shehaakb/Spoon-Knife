@@ -2,6 +2,9 @@
    ways to pay, three rows that open their own flows; plus the "Bring in my tenants" guide, the restore and the
    ways-to-pay sheets. Tokens only. */
 .st-main { min-width: 0; max-width: 720px; }
+.st-head { margin-bottom: var(--s6); }
+.st-name { overflow-wrap: anywhere; }
+.st-sheet { display: flex; flex-direction: column; }
 .st-sec { padding: 0 0 var(--s6); scroll-margin-top: calc(var(--sticky-top) + var(--s3)); }
 .st-sec + .st-sec { padding-top: var(--s5); border-top: 1px solid var(--line); }
 .st-sec-title { margin: 0 0 var(--s2); font-size: var(--t-lead); font-weight: var(--w-strong); line-height: var(--lh-title); }

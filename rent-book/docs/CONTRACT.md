@@ -5,6 +5,13 @@ What view authors code against. SPEC.md is the product spec; this file is the AP
 
 - Build: `node build.mjs` → `dist/rent-book.html` + `dist/preview.html`. Open `dist/preview.html` directly (file://).
 - Tests: `node --test test/*.test.mjs` (pure model + sample data).
+- **Acceptance test (v3): `node tools/audit.mjs [--only today,rent,kit|sheets] [--text normal,xl] [--size phone|desktop] [--theme light|dark] [--no-build] [--verbose]`**
+  — builds first, checks every screen against SPEC §10 at 390×844 (Normal + Extra large), prints a table, exits 1 on a breach;
+  each failure names the element (`tag#id.class “text”`). Screen names: `today rent tenants tenant leases repairs repairs-history
+  property reports-roll reports-aging reports-collection reports-income settings kit` and the shared sheets `sheet-payment
+  sheet-part sheet-pick sheet-choices sheet-recent sheet-charge sheet-note sheet-help` (`--only sheets` runs them all).
+  Note: the tenant page is **`tenant`** in audit.mjs but **`tenant-detail`** in shots.mjs; Repairs to-do is `repairs` here and
+  `upkeep` in shots; Settings is `settings` here and `setup` in shots.
 - Screens: `node tools/shots.mjs [--only rent,kit] [--size desktop,phone,rail,wide] [--theme light|dark] [--no-build]` → `shots/*.png`.
   Default sizes are desktop (1360) and phone (390); `rail` (900, icon rail) and `wide` (1600) run only when named.
   Fails on console errors and on horizontal page overflow at any non-desktop size.
@@ -107,8 +114,39 @@ then larger balance, then name. `RB.model.attention()` sorts its rent items by t
   It is no longer in the sidebar.
 - `ui.pill` and semantic `ui.tag` tones (`ok/warn/bad`) now render **status markers** (no tinted boxes). Door plates are neutral
   (`ui.plate` ignores `status` except on the large grid plate, which keeps a small coloured glyph). `ui.money`/`ui.balance` are ink.
-- Top bar: title + Find only. The "+ Add" menu is gone (`RB.shell.quickAdd` still exists and opens the same items as a choices
+- Top bar: title + Find only. The "+ Add" menu is gone (`RB.shell.quickAdd()` and the `n` key open the same items as a choices
   sheet); every action is on its own screen and in Find.
+- **Toasts never cover a sheet**: a toast raised while a sheet is open is held and shown the moment the sheet closes (so the
+  "Recorded … Undo" toast from a sheet's own button appears as it closes, as before). On phone toasts sit above the tab bar.
+- `ui.choices` has no footer button: the head's "Close" is the one way out.
+- **Pay verb (law 7, coordinator's ruling):** "Record a payment"; when the month is part paid, "Record the rest ($675)" (Rent rows,
+  Today rows, the tenant page's filled button). Edit verb: "Change". The audit's `verbs` column enforces exactly this (other
+  legitimate Record… labels it accepts: "Record a rent payment", a sheet's "Record $1,550", bulk "Record 2 payments — $2,700",
+  "Record several at once").
+- Rows without a door plate (`.row-nolead`) have no empty first column: their text sits flush with `.rows-head`; the
+  `.rows-inset` divider then starts at the left edge (which is the text edge).
+
+### Shared output that changed in v3 (old → new) — update any smoke script that matched the old
+| Where | Old | New |
+|---|---|---|
+| `ui.pill`, `ui.monthPill` | `<span class="pill pill-late">` tinted box | `<span class="status status-late pill pill-late">` icon + `<span class="status-words">` — no box; same words |
+| `ui.tag(t, 'ok'/'warn'/'bad')` | tinted tag | a status marker (`.status.status-<tone>.tag.tag-<tone>`); `accent`/`quiet` stay neutral labels |
+| `ui.tenantTag('active')` | green "Active" tag | quiet "Active" label |
+| `ui.plate(u, {status})` | small plates tinted red/amber | neutral (status ignored on small plates); large grid plates keep a coloured corner glyph only |
+| `ui.money({tone})`, `ui.balance` | red owed / green credit | ink (classes unchanged) |
+| `ui.field({type:'choice'})` with ≥5 options | radio cards `#<id>-0…` | a `<select id="<id>">` (same name, same value read back). **Payment method (`#pay-method`), charge kind (`#chg-category`, `#ed-category`) and note kind (`#note-kind`) are selects now** |
+| `ui.field({type:'date'})` | the input | `<span class="datefield">` input + `<span id="<id>-words">Tuesday, November 24</span>` |
+| `ui.steps` | "Step 1 of 3" … "Last check / Is this right?" | "Step 1 of 4" … "Step 4 of 4 / Check and save" (summary counted) |
+| `ui.textSizeControl` in the sidebar | worded "Normal · Large · Extra large" (`#rb-ts-*` text) | three "A"s (`#rb-ts-normal|lg|xl`, text "A", `aria-label` "Normal text" …), "Text size: Large" beneath (`.textsize-now`) |
+| `ui.pickTenant` | `.pick-row` with `.pick-name/.pick-sub/.pick-owes` | canonical rows `.row.pick-row#pick-<id>[data-pick]`: title = name, sub = "Unit 2B at Alder Court", pay purpose adds `.row-amt` + late marker |
+| `ui.sheet()` | could stack on an open sheet | closes any open sheet / Find / menu first; dismisses toasts |
+| `ui.choices` | (fallbacks in views) | shared; rows `#<item.id>` or `#choice-<i>`, `data-choice="<item.id>"` |
+| payment sheet | sub "Name · Unit 2B, Alder Court"; button fallback "Record payment"; date hint "Today’s date is filled in. Change it…" | sub "Name — Unit 2B at Alder Court"; "Record a payment"; hint "Change it if the money came earlier."; method hint "Set to the way they paid last time." |
+| shell | `#rb-add` "+ Add" menu; Rent badge; sync note in sidebar; banner "You’re looking at sample tenants… [Remove sample tenants] [Bring in my tenants]" | no `#rb-add`; badge only on Today (neutral, not red); `RB.ui.syncNote()` for Settings; banner "These are example tenants — Remove them" (`#rb-banner-remove`, one link) |
+| Help answer "fix" | "…press More, then Change or Remove." | "…tap the payment in their Payment history, then choose Change or Remove." |
+| CSS | `.row` = flex utility; `--r-ctl 8`, `--r-panel 12`, `--r-plate 3`; `.btn` 500 weight; `.sec-title` Newsreader 18/500 | `.hstack` is the utility, `.row` the list row; radii 6 / 10 / 16; buttons 600; `.sec-title` sans 18/600 |
+| Today | `.td-task` cards, `#td-say` sentence, `.td-row` with `#td-1-<id>` buttons, month grid, "What happened lately" | `#td-money` block (`#td-figure`, `#td-say` "of $41,265 has come in.", `#td-owed`), `#td-task-pay|repair|tenant`, rows `#td-row-<itemId>` + `#td-pay-<itemId>`, `#td-more`, `#td-recent` |
+| Rent | `.rent-row` with `#rent-pay/part/more-<id>`, tabs "(N)", `.rent-say`, totals panel | rows `li[data-row=<id>]` with `#rent-row-<id>` (tap → choices `#rent-c-part|fee|receipt|remove|open`) and `#rent-pay-<id>`; segment `#rent-tab-owes|paid|all` "Still owes 6"; `#rent-month-name`; `#rent-summary` = owed sentence; glance `#rent-p-<id>` (desktop) |
 
 ## What changed in v2 for view authors (read first)
 
@@ -352,11 +390,11 @@ Data shapes are exactly SPEC §3. Additions: entry `undone:true` (Undo), entry `
 - `RB.shell.refresh(reason='refresh')` — re-render the mounted view now (§3.4).
 - `RB.shell.current()` → `{route, view, param}`; `RB.shell.root()` → mounted root el.
 - `RB.shell.setTitle(text|null)` — override the top-bar title until the next navigation.
-- `RB.shell.openPalette(query?)` (Find), `RB.shell.quickAdd(anchorEl)` (the "Add" menu), `RB.shell.helpSheet()` → **"How do I…?"** (nine answers,
+- `RB.shell.openPalette(query?)` (Find), `RB.shell.quickAdd()` (v3: a choices sheet; the top-bar menu is gone), `RB.shell.helpSheet()` → **"How do I…?"** (nine answers,
   each with a button that starts the task; `RB.shell.HELP` lists them), `RB.shell.keysSheet()` → keyboard shortcuts,
-  `RB.shell.textSizeSheet()`, `RB.shell.lateTenants()` → tenants with any month in status `late` (the Rent badge).
+  `RB.shell.textSizeSheet()`, `RB.shell.lateTenants()` → tenants with any month in status `late` (no longer shown as a badge).
 - `RB.commands.register({id, label, group?, icon?, hint?, keywords?, run, when?, quickAdd?, write?})` → unregister fn.
-  Shows in the ⌘K palette (`group` heading, default "Actions"); `quickAdd: n` also puts it in the "+" menu at order n;
+  Shows in the ⌘K palette (`group` heading, default "Actions"); `quickAdd: n` also lists it (order n) in the `n`-key choices sheet;
   `write: true` hides/blocks it when read-only; `when()` → false hides it. `RB.commands.run(id)`.
   **Any element with `data-cmd="<id>"` runs that command on click** (used by first-run, banner, Setup).
 - Built-in command ids: `go:today|rent|tenants|leases|repairs|reports|setup` (`go:upkeep` kept, hidden), `payment:record`
@@ -372,12 +410,12 @@ Data shapes are exactly SPEC §3. Additions: entry `undone:true` (Undo), entry `
 - Palette search covers tenant name, unit, property, phone, email, co-tenants; ≤3 matches add "Record payment / Add
   note / Add charge — <name>" actions.
 - Chrome the shell maintains: rail and tab-bar counts (Today = number of "What needs you" items, i.e.
-  `RB.store.attention().length`; Rent = tenants with rent past grace in *any* month, `RB.shell.lateTenants()`), phone tab bar
+  `RB.store.attention().length`; v3: no other badge), phone tab bar
   (Today · Rent · Tenants · Repairs · More, labels always shown), More sheet (Leases, Reports, Settings, Help, Text size),
-  sidebar footer (Help, Text size, sync note), sample-data banner / load-issue banner, sync note ("Everything is saved",
+  sidebar footer (Help + the three-"A" text size on one row; v3: the sync note moved to Settings via `RB.ui.syncNote()`), sample-data banner / load-issue banner, sync note ("Everything is saved",
   "Saving…", "Not syncing — saved on this device only", "View only"), "View only" tag in the top bar. The app name
   (sidebar, and the "RB" plate in the phone top bar) returns to Today. Top bar: view title, "Find" field/button, "Add" menu.
-  Ids: `#rb-nav-<route>`, `#rb-tab-<route>`, `#rb-more`, `#rb-help`, `#rb-ts-normal|lg|xl`, `#rb-find`, `#rb-add`, `#rb-brand`, `#rb-brand-phone`.
+  Ids: `#rb-nav-<route>`, `#rb-tab-<route>`, `#rb-more`, `#rb-help`, `#rb-ts-normal|lg|xl`, `#rb-find`, `#rb-brand`, `#rb-brand-phone`, `#rb-banner-remove` (`#rb-add` removed in v3).
 
 ## 6. RB.model (pure; node-loadable)
 
@@ -539,7 +577,8 @@ and first-run. `run(action)` dispatches every action type in §6.4, including `m
 | `date(d, {mono})` | `<time>` "Nov 3" |
 | `kbd(...keys)`, `copyline(text, what, {href, hrefLabel, hrefIcon})` | `copyline` = selectable text + a worded **Copy** button (global handler) + optional worded link button (`hrefLabel`, e.g. "Call") |
 | `button({label, kind, size, icon, iconOnly, cmd, act, id, attrs, disabled, write})` | `.btn` markup; the label is always visible (`iconOnly` is ignored apart from tighter padding) |
-| `textSizeControl({id, compact})` | "Text size: Normal · Large · Extra large" (buttons `#<id>-normal|lg|xl`, `data-textsize`); every copy stays in sync; remembered per device (`RB.textSize.get/set`, pref `textSize`) |
+| `textSizeControl({id, compact, letters})` | "Text size: Normal · Large · Extra large" (buttons `#<id>-normal|lg|xl`, `data-textsize`); `letters:true` → three "A"s with accessible names and "Text size: Large" beneath; every copy stays in sync; remembered per device (`RB.textSize.get/set`, pref `textSize`) |
+| `status(kind, words, opts)`, `row(opts)`, `rows(items, opts)`, `rowsHead(text, n)`, `rowsMore(n, opts)`, `segment(items, value, opts)`, `place(t)`, `dateWords(d)`, `dateField(opts)`, `choice(opts)`, `owed()`, `owedSentence()`, `syncNote()` | v3 — see "What changed in v3" at the top |
 | `moreDetails(body, {id, label, open})` | `<details class="more-details">` "Add more details (optional)" disclosure for optional fields |
 | `empty({icon, title, body, actions:[button opts], quiet})` | empty state; `quiet:true` → one muted line ("Nothing needs you today.") |
 | `skeleton({rows, title, plates})`, `loadingNote(text)`, `firstRun()` | loading / first run |
@@ -598,16 +637,20 @@ types: `text email tel number search money date select textarea checkbox seg cho
 --bad-line --bad-ink --faint --scrim --toast-bg --toast-ink --toast-accent --toast-hover --shadow-float --shadow-modal --focus-ring`.
 Type: `--f-display` (Newsreader) `--f-ui` (Plex Sans) `--f-mono` (Plex Mono); sizes `--t-12` (14) `--t-13` (15) `--t-15` (17) `--t-18` (20)
 `--t-24` (27) `--t-34` (38) `--t-body` (16 / 17 phone) `--t-micro` (14), `--lh` 1.5 — all × `--text-scale`.
-Space `--s1..--s7` (4 8 12 16 24 32 48, × scale). Radius `--r-ctl:8 --r-panel:12 --r-plate:3`. Sizes `--ctl-h` (44 → 48 phone)
+Space `--s1..--s8` (4 8 12 16 24 32 48 64, × scale). Radius (v3) `--r-ctl:6 --r-panel:10 --r-sheet:16 --r-round:999 --r-plate:6`. Sizes `--ctl-h` (44 → 48 phone)
 `--ctl-h-sm` (40 → 48) `--ctl-h-lg` (52 → 56) `--ctl-h-xl` (64) `--row-h` (56 → 60 phone) `--icon` (18) `--gutter` `--rail-w` `--top-h` `--tab-h` `--sticky-top`.
 `--text-scale` is 1 / 1.12 / 1.25 from `data-text` on the root element; a subtree with `class="text-scope" data-scale="lg"` recomputes every size
 token at its own scale (the kit uses this). Colour tokens go in 00-tokens.css in all three places (light, dark media, `[data-theme="dark"]`).
-Contrast (WCAG): light ink 16.2 / 17.5 / 15.0 on paper / surface / sunk; ink-2 8.8 / 9.5 / 8.2; ink-3 5.9 / 6.3 / 5.5; accent 7.8 / 8.4 / 7.2
+v3 contrast: light filled button white on accent 8.4:1 (fill vs surface 8.4); dark filled button (accent #A3B4FF, label #0B0E14)
+label 9.7:1, fill vs surface 8.8:1 (was 7.5) — the strongest element on a dark screen (soft fill 1.2:1, outline border 1.6:1);
+dark callouts use `--tint` #1B2029: ink 13.6:1, ink-2 8.2:1 (no more brown warn-soft). Status markers: light bad 7.0 / warn 6.7,
+dark bad 7.0 / warn 8.5 on the surface.
+Contrast (WCAG, v2): light ink 16.2 / 17.5 / 15.0 on paper / surface / sunk; ink-2 8.8 / 9.5 / 8.2; ink-3 5.9 / 6.3 / 5.5; accent 7.8 / 8.4 / 7.2
 (white on accent 8.4); ok 6.5, warn 6.2, bad 6.5 on paper (≥5.8 on their soft tints). Dark ink 15.7 / 14.6 / 16.2; ink-2 9.5 / 8.8 / 9.8;
 ink-3 6.4 / 6.0 / 6.7; accent 8.0 / 7.5; ok 8.4, warn 9.1, bad 7.5. Focus ring: 3px accent outside a 2px surface gap.
 
 ### 9.1 Utilities
-`.row` (flex, centred, gap 8) `.row-wrap .row-top .row-base .gap-1/3/4/5` · `.stack` (column, gap 8) `.stack-1/3/4/5/6` ·
+`.hstack` (flex, centred, gap 8 — v3 rename of the old `.row` utility) `.row-wrap .row-top .row-base .gap-1/3/4/5` · `.stack` (column, gap 8) `.stack-1/3/4/5/6` ·
 `.spacer .grow` · `.mt-2/4/5/6 .mb-2/4` · `.muted` (ink-2) `.faint` (ink-3) `.tone-ok/warn/bad/accent` ·
 `.num` (tabular, right) `.mono .micro .display .h-view .t-12/13/15/18/24/34 .strong .medium .nowrap .truncate .prewrap` ·
 `.vh` (visually hidden) · `.hide-phone .show-phone` · `.panel` (surface + hairline + radius 10; don't nest) · `.rule` (top hairline).

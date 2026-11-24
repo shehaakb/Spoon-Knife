@@ -16,7 +16,6 @@ const OTHER_UNIT = '*other';
 let tab = RB.prefs.get('repairs:tab', 'todo');          // todo | history
 let propFilter = RB.prefs.get('upkeep:prop', '');
 let doneAll = false;                                    // "Done lately" expanded in place
-const DONE_SHOWN = 3;
 
 function guard() {
   if (!S().canWrite()) { ui.toast('This rent book is view only — you can look, but not change anything.', { tone: 'bad' }); return false; }
@@ -494,7 +493,7 @@ function repairRow(k, today, o) {
   const where = o.where === false ? '' : isBuilding(k) ? 'Whole building' + (k.property ? ' at ' + k.property : '') : (k.property || 'No property');
   let when;
   if (k.status === 'done') when = 'done ' + shortDay(k.completed || k.reported, today);
-  else if (k.status === 'scheduled') when = k.scheduled ? (k.scheduled < today ? 'was booked for ' : 'booked for ') + longDay(k.scheduled, today) : 'booked — no day set';
+  else if (k.status === 'scheduled') when = k.scheduled ? (k.scheduled < today ? 'was booked for ' : 'booked for ') + shortDay(k.scheduled, today) : 'booked — no day set';
   else when = age === 0 ? 'reported today' : 'waiting ' + D.days(age);
   const sub = [where, when].filter(Boolean).join(' · ');
   return ui.row({
@@ -502,6 +501,7 @@ function repairRow(k, today, o) {
     title: k.title || 'Repair', sub,
     amt: k.status === 'done' && k.cost != null ? M.fmt(k.cost) : '',
     status: k.priority === 'urgent' && k.status !== 'done' ? ui.status('urgent', 'Urgent') : '',
+    statusPos: 'main',
     act: o.act, attrs: Object.assign({ 'data-ticket': k.id }, o.attrs || {}),
   });
 }
@@ -561,17 +561,16 @@ function todoTab(today) {
   const doneRecent = sorted(by.done.filter(k => (k.completed || k.reported) >= cutoff), 'done');
   const notDone = by.open.concat(by.scheduled);
   const urgent = notDone.filter(k => k.priority === 'urgent').length;
-  const oldest = notDone.reduce((m, k) => Math.max(m, k.reported ? D.diffDays(k.reported, today) : 0), 0);
   const sentence = notDone.length
-    ? h`${RB.plural(notDone.length, 'repair')} to do${by.scheduled.length || urgent ? h` — ${[by.scheduled.length ? by.scheduled.length + ' booked in' : '', urgent ? urgent + ' urgent' : ''].filter(Boolean).join(', ')}` : ''}.${oldest ? h` The oldest has waited ${D.days(oldest)}.` : ''}`
-    : h`Nothing to do — every repair is done.`;
+    ? h`<span class="t-display">${RB.plural(notDone.length, 'repair')} to do</span> ${[urgent ? urgent + ' urgent' : '', by.scheduled.length ? by.scheduled.length + ' booked in' : ''].filter(Boolean).join(', ').replace(/^./, c => c.toUpperCase())}${urgent || by.scheduled.length ? '.' : ''}`
+    : h`<span class="t-display">Nothing to do</span> Every repair is done.`;
   const sec = (key, title, items, empty, more) => h`<section class="rp-sec" aria-labelledby="uk-col-${key}">
     <h2 class="rows-head" id="uk-col-${key}">${title} <span class="rows-count">${items.length}</span></h2>
     ${items.length ? h`<ul class="rows rows-inset">${(more ? items.slice(0, more) : items).map(k => repairRow(k, today, { act: 'open', attrs: { 'data-id': k.id } }))}</ul>` : h`<p class="rp-empty">${empty}</p>`}
   </section>`;
-  const doneShown = doneAll ? doneRecent.length : DONE_SHOWN;
+
   return h`
-    <p class="rp-sum" id="uk-count">${sentence}</p>
+    <p class="rp-sum rp-display" id="uk-count">${sentence}</p>
     <div class="rp-bar">
       <button type="button" class="btn btn-primary" data-act="add" id="uk-add" data-write>${ui.icon('plus')}<span>Log a repair</span></button>
       ${props.length > 1 ? h`<label class="vh" for="uk-prop">Which property?</label><span class="select rp-prop-sel"><select class="input" id="uk-prop" data-change="prop">
@@ -580,9 +579,8 @@ function todoTab(today) {
     ${all.length ? h`
       ${sec('open', 'Needs doing', sorted(by.open, 'open'), 'Nothing waiting.')}
       ${sec('scheduled', 'Booked in', sorted(by.scheduled, 'scheduled'), 'Nothing booked in.')}
-      ${sec('done', 'Done lately', doneRecent, 'Nothing finished in the last 30 days.', doneShown)}
-      ${doneRecent.length > DONE_SHOWN ? h`<button type="button" class="rows-more" id="uk-done-more" data-act="doneMore" aria-expanded="${String(doneAll)}">${doneAll ? 'Show fewer' : 'Show all ' + doneRecent.length}</button>` : ''}
-      <button type="button" class="btn-link rp-older" data-act="tabHistory">See older repairs in History</button>`
+      ${doneAll ? sec('done', 'Done lately', doneRecent, 'Nothing finished in the last 30 days.') : ''}
+      ${doneRecent.length ? h`<button type="button" class="rows-more rp-done-more" id="uk-done-more" data-act="doneMore" aria-expanded="${String(doneAll)}">${doneAll ? 'Hide the ones done lately' : 'Done lately (' + doneRecent.length + ') — Show them'}</button>` : ''}`
       : ui.empty({ title: 'No repairs yet', body: 'Write repairs down here so nothing slips: what needs fixing, who is doing it and what it cost.', actions: [{ label: 'Add a past repair', act: 'past', write: true }] })}`;
 }
 
@@ -597,7 +595,8 @@ function historyTab(today) {
   const first = props.map(p => p.firstDate).filter(Boolean).sort()[0];
   const year = today.slice(0, 4);
   return h`
-    <p class="rp-sum" id="rp-hist-sum">${count ? h`${RB.plural(count, 'repair')} written down at ${RB.plural(props.length, 'property', 'properties')} — ${M.fmt(total)} spent${first ? ' since ' + first.slice(0, 4) : ''}. Choose a property to see its history.` : h`No past repairs written down yet. Add old invoices to build each property’s history.`}</p>
+    <p class="rp-sum rp-display" id="rp-hist-sum"><span class="t-display">${M.fmt(props.reduce((s, p) => s + p.thisYear.total, 0))}</span> spent on repairs in ${year}.
+      ${count ? h`${RB.plural(count, 'repair')} written down since ${first ? first.slice(0, 4) : year}, ${M.fmt(total)} in all.` : h`Add old invoices to build each property’s history.`}</p>
     <div class="rp-bar">
       <button type="button" class="btn btn-primary" data-act="add" id="uk-add" data-write>${ui.icon('plus')}<span>Log a repair</span></button>
       <button type="button" class="btn btn-outline" data-act="past" id="rp-past" data-write>Add a past repair</button>

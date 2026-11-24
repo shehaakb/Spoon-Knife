@@ -89,7 +89,7 @@ await page.evaluate(id => { RB.store.addEntry(id, { type: 'payment', date: RB.st
 await page.waitForTimeout(400);
 check('rejected write rolled back', await page.evaluate(a => RB.store.ledger(a.id).balance === a.b, { id: tid, b: before }));
 check('readOnly set after invalid_argument', await page.evaluate(() => RB.store.state.readOnly === true));
-check('"View only" shown', (await page.textContent('#rb-sync')).includes('View only'));
+check('"View only" shown', (await page.textContent('#rb-topnote')).includes('View only') && String(await page.evaluate(() => String(RB.ui.syncNote()))).includes('View only'));
 
 check('no console errors', errors.length === 0, errors.join(' | '));
 await browser.close();

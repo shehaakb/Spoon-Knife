@@ -2,19 +2,20 @@
    from --p = total / largest (columns on desktop, rows on phone), "Keep an eye on" rows, the list (this year open,
    earlier years folded), filters behind one control, text links to download/copy. Tokens only. */
 .pp { --pp-h: calc(140px * var(--text-scale)); max-width: 820px; }
-.pp-head { margin-bottom: var(--s7); }
-.pp-back { margin-bottom: var(--s3); }
+.pp-head { margin-bottom: var(--s5); }
+.pp-back { margin-bottom: var(--s2); }
 .pp-title { margin: 0; font-size: var(--t-title); line-height: var(--lh-title); font-weight: var(--w-strong); overflow-wrap: anywhere; }
 .pp-display { margin: var(--s3) 0 0; font-size: var(--t-lead); color: var(--ink); line-height: var(--lh-title); }
 .pp-fig { display: block; font-variant-numeric: tabular-nums; }
-.pp-sum, .pp-sub { margin: var(--s2) 0 0; color: var(--ink-2); }
-.pp-actions { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s5); }
+.pp-sum { margin: var(--s2) 0 0; color: var(--ink-2); }
+.pp-sub::before { content: " "; }
+.pp-actions { display: flex; flex-wrap: wrap; gap: var(--s3); margin-top: var(--s4); }
 
-.pp-charts { display: flex; flex-direction: column; gap: var(--s7); }
-.pp-sec { margin-top: var(--s7); }
+.pp-charts { display: flex; flex-direction: column; gap: var(--s6); }
+.pp-sec { margin-top: var(--s6); }
 .pp-charts .pp-sec { margin-top: 0; }
-.pp-sec-title { margin: 0 0 var(--s4); font-size: var(--t-lead); font-weight: var(--w-strong); line-height: var(--lh-title); }
-.pp-caption { margin: var(--s3) 0 0; max-width: 62ch; color: var(--ink-2); font-size: var(--t-cap); }
+.pp-sec-title { margin: 0 0 var(--s3); font-size: var(--t-lead); font-weight: var(--w-strong); line-height: var(--lh-title); }
+.pp-caption { margin: var(--s2) 0 0; max-width: 62ch; color: var(--ink-2); font-size: var(--t-cap); }
 
 /* ---- Spending by year: columns (desktop) */
 .pp-years { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: var(--s2); max-width: calc(var(--n) * 8em); }
@@ -48,7 +49,7 @@
 .pp-yrows + .pp-yrows { border-top: 0; }
 .pp-yfold { margin-left: var(--s2); font-weight: var(--w-regular); }
 .pp-none { padding: var(--s3) 0; color: var(--ink-2); }
-.pp-tools { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); margin-top: var(--s5); }
+.pp-tools { display: flex; flex-wrap: wrap; gap: 0 var(--s4); margin-top: var(--s4); }
 .pp-empty { max-width: 640px; }
 
 @media (max-width: 759.98px) {

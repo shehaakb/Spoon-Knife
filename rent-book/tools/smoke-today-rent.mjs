@@ -127,7 +127,7 @@ check('part: row reads "Owes $Z of November’s $Y"', partSub === `Owes ${await 
 check('part: status marker says part paid', /^Part paid/.test(((await page.textContent(`[data-row="${pt}"] .status`)) || '').trim()));
 const bar = await page.evaluate(id => { const b = document.querySelector(`[data-row="${id}"] .splitbar`); const p = b && b.querySelector('.splitbar-paid'); return b && p ? { w: b.getBoundingClientRect().width, p: p.getBoundingClientRect().width } : null; }, pt);
 check('part: paid-share bar drawn to scale (±1px)', bar && Math.abs(bar.p - bar.w * partAmt / pm0.charged) <= 1, JSON.stringify(bar));
-check('part: the one button now says "Record the rest"', ((await page.textContent('#rent-pay-' + pt)) || '').trim() === 'Record the rest');
+check('part: the one button now says "Record the rest ($X)"', ((await page.textContent('#rent-pay-' + pt)) || '').trim() === `Record the rest (${await fmt(pm0.open - partAmt)})`);
 const partEntry = await page.evaluate(id => { const e = RB.store.entries(id); return Object.keys(e).find(k => e[k].amount === 100000 && !e[k].undone); }, pt);
 await page.evaluate(([id, e]) => RB.actions.copyReceipt(id, e), [pt, partEntry]); await tick(page);
 const rc = await page.evaluate(() => window.__copied || '');

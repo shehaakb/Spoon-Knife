@@ -2,17 +2,17 @@
    select, then sections of shared rows. History: property rows. Forms: "For Unit 2B at Alder Court — Change", the
    saved line in "Add a past repair", and the tenant page's "Repairs in this unit". Tokens only. */
 .view-repairs:not(.is-property) { max-width: 760px; }
-.rp-switch { display: inline-flex; margin-bottom: var(--s5); }
+.rp-switch { display: inline-flex; margin-bottom: var(--s4); }
 .rp-switch > button { min-height: var(--ctl-h); padding-inline: var(--s5); white-space: nowrap; }
+.rp-display .t-display { display: block; }
 .rp-sum { font-size: var(--t-lead); line-height: var(--lh); color: var(--ink); max-width: 60ch; margin: 0 0 var(--s4); }
-.rp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-bottom: var(--s6); }
+.rp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-bottom: var(--s5); }
 .rp-prop-sel { flex: 0 1 auto; min-width: 0; }
-.rp-sec + .rp-sec { margin-top: var(--s6); }
+.rp-sec + .rp-sec, .rp-sec + .rp-done-more { margin-top: var(--s5); }
 .rp-empty { color: var(--ink-2); padding: var(--s2) 0 0; }
 .rp-older { margin-top: var(--s4); }
 .rp-caption { margin-top: var(--s3); font-size: var(--t-cap); color: var(--ink-2); }
 .rp-whole { display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
-.view-repairs .plate { max-width: 10em; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 759.98px) {
   .rp-bar > .btn { flex: 1 1 auto; }
   .rp-prop-sel { flex: 1 1 9em; }

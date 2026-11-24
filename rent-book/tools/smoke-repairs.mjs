@@ -185,7 +185,10 @@ await step('old repair without category reads as Other', async () => {
   const sub = await text('.sheet .sheet-sub');
   check('renders "Other"', / · Other( · |\.)/.test(sub), sub);
   await page.evaluate(() => RB.ui.closeAll()); await settle();
+  if (await page.locator('#pp-cats-more[aria-expanded="false"]').count()) { await page.click('#pp-cats-more'); await settle(); }
   check('counted under Other in the money chart', /Other/.test(await text('.pp-cats')));
+  await page.click('#pp-cats-more'); await settle();
+  check('"What the money went on" folds back to the biggest few', await page.locator('.pp-cat').count() <= 5);
 });
 await step('tenant-paid repair can be charged to the tenant from history', async () => {
   await go('p-alder-court');
@@ -202,7 +205,7 @@ await step('tenant-paid repair can be charged to the tenant from history', async
   await page.click(`.pp-entries [data-ticket="${k.id}"]`); await page.click('#rp-c-charge'); await settle();
   await page.click(`.pp-entries [data-ticket="${k.id}"]`); await settle();
   check('once charged: the choice is gone, the details say so', await btn.count() === 0 && /charged to them/.test(await text('.sheet .sheet-sub')));
-  await page.click('.sheet [data-action="close"]'); await settle();
+  await page.click('.sheet .sheet-close'); await settle();
   await page.evaluate(id => { const x = RB.store.ticket(id); RB.store.undoEntry(x.tenantId, x.chargeId); RB.store.updateTicket(id, { chargeId: null }); }, k.id); await settle();
 });
 await step('delete and undo from the history page', async () => {
@@ -298,7 +301,7 @@ await step('RB.repairs.unitSection for the tenant page', async () => {
   check('no buttons or cards: rows + at most one text link', await page.locator('#rp-test-host .row button, #rp-test-host .row a, #rp-test-host .btn').count() === 0 && await page.locator('#rp-test-host .btn-link').count() === 1);
   await page.click('#rp-test-host .rows .row'); await settle();
   check('a unit row opens "What would you like to do?"', await page.locator('#rp-c-change').count() === 1);
-  await page.evaluate(() => RB.ui.closeAll()); await settle();
+  await page.click('.sheet .sheet-close'); await settle();
   await page.click('#rp-test-host [data-rp-history]'); await settle();
   check('opens the property history filtered to that unit', await page.evaluate(() => location.hash) === '#p-alder-court' && /in Unit 2B/.test(await text('#pp-showing')) && (await page.inputValue('#pp-unit')) === '2B');
   check('hooks exposed', await page.evaluate(() => typeof RB.actions.openProperty === 'function' && typeof RB.actions.addPastRepair === 'function' && typeof RB.repairs.unitSection === 'function'));
