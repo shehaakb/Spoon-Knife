@@ -364,3 +364,152 @@ realistic categories, vendors, costs and notes, including one clear repeat probl
 some whole-building work (roof, gutters, boiler service) and one item under warranty. Generate them with a SEPARATE
 seeded PRNG, appended after everything else, so the ids and contents of the existing sample tenants, ledgers and
 six tickets do not change; the existing six tickets just gain a `category`.
+
+## 10. v3 — the elegance pass (overrides anything above that conflicts; §8's plain language stays)
+
+Why: research and an independent, measured critique agree. v2 made everything large and worded, and in doing so
+made it heavy: every row carries buttons, pages are 6–10 phone screens tall, filled buttons repeat down lists, red
+floods the screen when six tenants are late, and screens built separately disagree. Elegance here means **less on
+each screen, one clear thing to do, and the same answer everywhere**. Nothing in §8 about wording is relaxed.
+
+### 10.1 Laws (each is checked by `tools/audit.mjs`; a screen that breaks one is not done)
+1. **One filled button per screen** (and per sheet). Everything else is `soft` (tonal), `outline`, or a text link.
+2. **Rows do not carry buttons.** A row is one tap target (the whole row), ends in a chevron, and opens the thing
+   or a short "What would you like to do?" sheet. Two exceptions only, each ONE `soft` button and nothing else:
+   a "still owes" row on Rent, and a rent row in Today's "Needs you". No per-row "Open", "More", "Change or
+   delete", no secondary links on rows.
+3. **Page-length budget on a 390×844 phone with sample data** (heights in screens): Today ≤ 2.0 · Rent ≤ 2.5 ·
+   Tenants ≤ 3.0 · Tenant page ≤ 3.5 · Leases ≤ 2.5 · Repairs to-do ≤ 1.5 · Property history ≤ 3.5 · each Report
+   ≤ 3.5 · Settings ≤ 3.0. Achieve it by showing less (summary first, "Show all 14", collapsed groups), never by
+   shrinking type.
+4. **Five type sizes, two weights.** `--t-cap` 14 · `--t-body` 16 (17 on phone) · `--t-lead` 18 · `--t-title` 22 ·
+   `--t-display` 32 (36 on desktop), all × `--text-scale`. Weights 400 and 600 only; 600 is reserved for: the
+   first line of a row, button labels, sans headings. Exactly one `--t-display` element per screen (Newsreader):
+   the page's key figure or name. Line height 1.45 body, 1.25 title, 1.1 display. Nothing rendered under 14px,
+   including tab-bar labels and badges.
+5. **Red marks, it does not paint.** Semantic colour goes on the status marker (icon + word) only. Amounts and
+   sentences stay in ink. Door plates are neutral everywhere. No tinted rows, no coloured top bars, no red totals.
+   Paid is quiet (muted tick + "Paid"), not green text everywhere.
+6. **Hairlines, not boxes.** No cards for list items. One level of surface at most (sheets, the drawer, and a
+   single summary panel where a screen has one). Dividers are 1px, inset to the text edge. Border OR shadow,
+   never both. Radius: 6 (controls) · 10 (panels) · 16 (sheets) — no other values. Spacing only from the scale
+   4/8/12/16/24/32/48/64; inside a group 8–12, between groups 24–32, between sections 48.
+7. **One number, one name, one order.** The amount owed is computed in one place (`RB.model.owed(state, today)` →
+   `{total, thisMonth, tenants}`) and every screen words it the same way: "6 tenants owe $8,545 in total — $6,495 of
+   it is November's rent." Tenants needing attention are ordered by the same function on every screen. The edit
+   verb is always **Change**; the pay verb is always **Record a payment**. A report's sentence and its total row
+   must agree (assert in tests).
+8. **One choice control.** 2–4 options → radio cards (visible radio mark). 5+ options → a select. Chips are only
+   for filters. Segmented controls are only for switching views, fit on one row at 390px, and never wrap.
+9. **Guides tell the truth.** The check-and-save screen is counted ("Step 4 of 4"). Read-only steps are merged or
+   removed. Never ask again for what is already known (after choosing a tenant, show "For Unit 2B at Alder Court —
+   Change" instead of property/unit fields). Pickers show only what is relevant to the task.
+10. **Feedback never blocks.** A toast is dismissed the moment a sheet or drawer opens and never overlaps a
+    sheet's buttons; on phone it sits above the tab bar. Sheets never open from sheets.
+11. **Dates are written out** ("Tuesday, November 24") beside any native date field, and everywhere else.
+12. **Works at Extra large.** No truncated titles (wrap instead), no banner over 96px tall, nothing wraps inside a
+    control.
+
+### 10.2 The canonical row (shared CSS in `20-components.css`; all lists use it)
+```html
+<ul class="rows">                       <!-- hairline list; .rows-inset aligns dividers to the text edge -->
+  <li><a class="row" href="#t-abc">    <!-- or <button class="row"> ; whole row is the target, min-height 64px -->
+    <span class="row-lead">…door plate…</span>
+    <span class="row-main"><span class="row-title">Tomasz Wolski</span>
+                           <span class="row-sub">Unit 1B at Alder Court</span></span>
+    <span class="row-end"><span class="row-amt">$3,300</span>
+                          <span class="row-status">…ui.status('late', 'Late — 23 days')…</span></span>
+    <span class="row-chev" aria-hidden="true">…chevron…</span>
+  </a></li>
+</ul>
+<h3 class="rows-head">Still owes <span class="rows-count">6</span></h3>   <!-- group heading, 14px 600 ink-2 -->
+<button class="rows-more">Show all 14</button>                            <!-- quiet full-width text control -->
+```
+`row-title` 600 body size; `row-sub`, `row-status` caption size, `--ink-2`; `row-amt` body size, tabular, ink,
+right-aligned. A row with the allowed soft button uses `<div class="row row-act">` with the tappable part as
+`.row-hit` and the button as `.row-btn` (soft, ≥ 48px tall, right-aligned on desktop, under the text and
+right-aligned on phone). `RB.ui.row({lead, title, sub, amt, status, href|act, btn})` renders it; `RB.ui.status(kind,
+words)` renders the marker (icon shape + words; colour on the marker only). View authors use these, not their own.
+
+### 10.3 Screens
+**Today** — in this order, nothing else: (1) one sentence + the one display figure + the bar: "November rent" /
+"$34,770" / "of $41,265 has come in. 6 tenants still owe." (the block opens Rent); (2) actions: ONE filled "Record
+a rent payment", then two outline buttons side by side, "Log a repair" and "Add a tenant"; (3) "Needs you" — the 5
+most important items across all kinds as rows (rent rows may carry the soft "Record a payment"), then "Show all 14",
+which expands in place grouped by kind. The month grid moves to Rent (desktop only, under the list, titled "The
+month at a glance"); "What happened lately" becomes a single quiet link at the bottom, "See what you did recently",
+opening a page-like sheet. Desktop: content column 720px; at ≥ 1200px the "Needs you" list sits in a second column
+beside the money block and actions.
+
+**Rent** — sentence (per law 7), month name as the display element with "Earlier month" / "Later month" as text
+links either side, segment on one row ("Still owes 6 · Paid 20 · All 26"). Still-owes rows: title = name, sub =
+"Owes $1,550 for November" (+ "and $2,050 from earlier months"), status marker "Late — 23 days" / "Part paid —
+$800 of $1,475" (with the thin two-tone bar under the sub line), and ONE soft button: "Record a payment" (or
+"Record the rest"). Tapping the row itself opens "What would you like to do?" (They paid part of it · Add a $50
+late fee · See their page). Paid rows: plain rows, sub = "Paid $1,385 on November 3 by check", tap → same sheet
+with "Copy a receipt" / "Remove this payment — it was a mistake". "Record several at once" becomes a text link
+above the list. Totals as one sentence at the bottom.
+
+**Tenants** — find box first (no blank band above it), a one-row segment ("Everyone 26 · Owes money 6 · Moved out
+1"), then rows grouped: "Needs attention" first (law 7 order), then by property, alphabetical by unit. Row: plate ·
+name / "Unit 2B at Alder Court" · status marker (and amount when they owe) · chevron. No "Open" button, no lease
+text in the list, no banner. The single filled button is "Add a tenant" (top right on desktop; on phone a text
+link in the header row, since rows are the content). Desktop keeps list + detail side by side.
+
+**Tenant page** — order: plate + name (the display element) + one status sentence · actions (filled "Record a
+payment", outline "Add a note", outline "More") · **Payment history**: grouped by month, newest month first, each
+month headed "November 2026 — $1,475 due, $800 paid, $675 still owed" (or "paid in full"), with that month's lines
+beneath in the order they happened (charges then payments; no running-balance column); last 3 months shown, then
+"Show earlier months"; a line taps open → Change / Remove this payment / Copy a receipt · **Notes** (latest 3 +
+"Show all") · **Lease and rent** as short label/value rows with one "Change" link for the section · **Repairs in
+this unit** (one heading) · **Contact**: phone and email are themselves the tap targets ("Call (555) 0102-7738",
+"Email tomasz@…"), "Copy" lives in More. Exactly one way out ("Back to tenants" on phone, "Close" on desktop).
+
+**Leases** — sentence, then "Ending soon" and "Moving out" as rows whose tap opens a sheet with the three choices
+(Renew the lease · They are moving out · Leave it month-to-month). No buttons on rows. "Month-to-month (3)" as plain
+rows. "Later (20)" collapsed to one control "20 leases end later — Show them". The calendar stays behind its switch
+on desktop.
+
+**Repairs** — view switch "To do · History" (one row). To do: an optional property select (not chips), sections
+"Needs doing", "Booked in", "Done lately" as headings with rows (title / "Unit 202, 418 Marlow Street · waiting 1
+day" · marker "Urgent" where true); tap → sheet: Book a day · Mark it done · Change · Delete. The single filled
+button is "Log a repair". The log form: tenant/unit shown once (law 9), "What needs fixing?", kind (select, guessed),
+one checkbox "This is urgent"; everything else under "Add more details (optional)". History: property rows (name /
+"12 units · 11 repairs this year") with the year's cost as the amount.
+**Property history** — display element = this year's cost ("$3,885 spent on repairs in 2026"), the two charts
+(unchanged logic, quieter styling), "Keep an eye on", then the list: this year's entries as rows (title = what /
+sub = "November 7 · Unit 1C · Rooter Bros. Plumbing" / amount = cost); earlier years collapsed to one row each
+("2025 — 5 repairs", amount = year total) that expands in place. Tap an entry → sheet with details and Change /
+Delete / "Charge $185 to Hannah Becker" when applicable. Filters collapse behind one "Filter" control showing the
+active filter sentence. One filled button: "Add a past repair"; "Log a repair" is outline.
+
+**Reports** — chooser unchanged in substance but as rows. Each report: sentence(s) per law 7, one chart where it
+helps, then the table; on phone, 2-line rows (unit + name left; rent and status right) instead of label/value
+cards. Totals agree with the sentence.
+
+**Settings** — short: Text size · Your rent rules · Deposits and leases · Your name on receipts · Ways tenants pay
+you (as a compact editable list) · three rows that open their own flows: "Bring in my tenants", "Save a copy",
+"Restore from a copy" · Example tenants · Who can see this (includes the "saved on this device only" note when not
+syncing — it no longer lives in the sidebar) · Keyboard shortcuts.
+
+**Shell** — sidebar: labels unchanged; badges only on Today (count) — Rent's badge goes; footer holds Help and a
+compact text-size control on one row (three "A" buttons of increasing size, each with an accessible name, with the
+chosen size written beneath: "Text size: Large"). Phone tab bar labels 14px. Top bar: page title (wraps at XL),
+"Find", and nothing else (the "+ Add" menu goes; actions live on their screens). Sample banner: one line with one
+link, "These are example tenants — Remove them".
+
+### 10.4 Finish
+Motion: press feedback 100ms scale .98 on buttons and rows; sheets/drawer 240ms `cubic-bezier(0.32,0.72,0,1)`;
+menus 150ms; transform/opacity only; reduced-motion keeps fades only; hover effects inside `@media (hover:hover)`.
+Focus: 2px accent ring + 2px offset, `:focus-visible` only. Dark theme: the filled button keeps real emphasis
+(test it against the surface: ≥ 4.5:1 text, and the button itself must be the highest-contrast element on screen);
+callouts use the surface tint, not brown. Inputs ≥ 16px. Amount fields sized to the answer (~10ch), not full width.
+Empty states: one sentence + one action, no illustration.
+
+### 10.5 `tools/audit.mjs` (new; run in CI with the smoke tests; prints a table and exits non-zero on a breach)
+For each screen at 390×844 with sample data, light theme, Normal and Extra large: page height in screens vs budget;
+count of filled buttons (≤ 1); buttons inside `.row` (0, or 1 `.row-btn` on the two allowed lists); distinct
+computed font sizes (≤ 5 after dividing by text scale) and weights (≤ 2); smallest text ≥ 14px; elements whose
+text colour is the semantic red/amber/green and that are not inside a status marker (0); distinct border radii
+(⊆ {0, 6, 10, 16, 999}); horizontal overflow (none); truncated titles (none); toast overlapping an open sheet (never).
+Also: the owed total string is identical on Today, Rent, Tenants and both reports that state it.
