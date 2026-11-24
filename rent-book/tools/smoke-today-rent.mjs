@@ -90,7 +90,7 @@ const pt = await page.evaluate(k => { const t = RB.store.tenantsList().find(t =>
 const ptName = await page.evaluate(id => RB.store.tenant(id).name, pt);
 const pm0 = await month(pt);
 check('part: row offers "They paid part of it" in words', ((await page.textContent('#rent-part-' + pt)) || '').trim() === 'They paid part of it');
-await page.click('#rent-part-' + pt); await page.waitForSelector('#pay-amount');
+await page.click('#rent-part-' + pt); await page.waitForSelector('#pay-amount'); await tick(page, 120);
 check('part: "Only part of it" chosen, amount empty and focused', await page.isChecked('#pay-how-1') && (await page.inputValue('#pay-amount')) === '' && await page.evaluate(() => document.activeElement.id === 'pay-amount'));
 check('part: hint says what they owe', ((await page.textContent('#pay-amount-hint')) || '').startsWith('They owe ' + await fmt(pm0.open)));
 await page.click('[data-action="save"]'); await tick(page);

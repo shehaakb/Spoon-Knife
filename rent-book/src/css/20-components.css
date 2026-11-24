@@ -345,11 +345,21 @@ th.num .th-sort { flex-direction: row-reverse; }
 .ledger tr.is-void td { color: var(--ink-2); }
 .ledger tr.is-void .l-desc-text, .ledger tr.is-void .l-amt { text-decoration: line-through; text-decoration-color: var(--ink-3); }
 .ledger tbody tr:not(.ledger-month):hover td { background: var(--hover); }
+/* phone: each ledger row becomes a small stacked card (date + amount, description, balance after + More) — no sideways scrolling */
 @media (max-width: 759.98px) {
-  .ledger { font-size: var(--t-13); }
-  .ledger .l-date { width: calc(56px * var(--text-scale)); font-size: var(--t-12); }
-  .ledger th, .ledger td { padding: 6px 4px; }
-  .ledger thead th { font-size: var(--t-12); }
+  .ledger, .ledger tbody { display: block; width: 100%; }
+  .ledger thead { display: none; }
+  .ledger tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "date amt" "desc desc" "bal act"; column-gap: 12px; row-gap: 2px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .ledger td, .ledger th { display: block; height: auto; padding: 0; border: 0; width: auto; }
+  .ledger .l-date { grid-area: date; width: auto; font-size: var(--t-12); }
+  .ledger .l-desc { grid-area: desc; }
+  .ledger .l-amt { grid-area: amt; font-weight: 600; text-align: right; }
+  .ledger .l-amt:empty { display: none; }
+  .ledger .l-bal { grid-area: bal; align-self: center; text-align: left; font-weight: 400; color: var(--ink-2); font-size: var(--t-13); }
+  .ledger .l-bal::before { content: "Balance after: "; }
+  .ledger .l-act { grid-area: act; width: auto; justify-self: end; }
+  .ledger tr.ledger-month { display: block; padding: 16px 0 6px; border-bottom: 1px solid var(--line-2); }
+  .ledger tr.ledger-month td { padding: 0; height: auto; border: 0; }
 }
 
 /* ================= Section header ================= */
@@ -537,6 +547,8 @@ th.num .th-sort { flex-direction: row-reverse; }
   .sheet-foot .btn { flex: 1 1 auto; }
   .sheet-foot .btn-primary, .sheet-foot .btn-danger { flex-basis: 100%; order: -1; }
   .sheet-foot .sheet-foot-note { order: -2; }
+  .sheet-foot .btn-keep { flex-basis: 100%; order: -1; }
+  .sheet-foot .btn-keep ~ .btn-danger, .sheet-foot .btn-danger:has(~ .btn-keep) { order: 0; }
 }
 @keyframes rb-sheet-up { from { transform: translateY(40px); opacity: 0; } }
 @keyframes rb-sheet-down { to { transform: translateY(40px); opacity: 0; } }
@@ -557,7 +569,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .toast-msg { min-width: 0; }
 .toast-ico { color: var(--toast-accent); }
 .toast-action {
-  flex: none; min-height: var(--ctl-h); padding: 0 calc(20px * var(--text-scale)); border: 0; border-radius: var(--r-ctl); background: var(--toast-accent);
+  flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: var(--ctl-h); padding: 0 calc(20px * var(--text-scale)); border: 0; border-radius: var(--r-ctl); background: var(--toast-accent);
   color: var(--toast-bg); font-weight: 700; font-size: var(--t-15);
 }
 .toast-action:hover { filter: brightness(1.08); }
@@ -570,8 +582,10 @@ th.num .th-sort { flex-direction: row-reverse; }
 @keyframes rb-toast-out { to { transform: translateY(6px); opacity: 0; } }
 @media (max-width: 759.98px) {
   .toasts { bottom: calc(var(--tab-h) + 12px + env(safe-area-inset-bottom, 0px)); width: calc(100vw - 24px); }
-  .toast { width: 100%; flex-wrap: wrap; }
-  .toast-msg { flex: 1 1 60%; }
+  .toast { width: 100%; flex-wrap: wrap; row-gap: 8px; padding: 12px; }
+  .toast-msg { flex: 1 1 100%; padding: 0 4px; }
+  .toast-ico { display: none; }
+  .toast-action { flex: 1 1 auto; justify-content: center; }
 }
 
 /* ---- Command palette ---- */
@@ -605,7 +619,9 @@ th.num .th-sort { flex-direction: row-reverse; }
 @media (max-width: 759.98px) {
   .palette-wrap { padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 8px; }
   .palette { max-height: 80vh; }
-  .palette-item { min-height: var(--ctl-h-lg); }
+  .palette-item { min-height: var(--ctl-h-lg); flex-wrap: wrap; }
+  .palette-item-main { white-space: normal; overflow-wrap: anywhere; }
+  .palette-item-sub { display: block; margin-left: 0; }
 }
 
 /* ================= Misc building blocks ================= */

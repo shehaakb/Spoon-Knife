@@ -613,7 +613,7 @@ ui.palette = function palette(opts) {
   const wrap = document.createElement('div');
   wrap.className = 'palette-wrap';
   wrap.innerHTML = String(h`<div class="scrim" data-close></div>
-    <div class="palette" role="dialog" aria-modal="true" aria-label="${o.label || 'Search'}">
+    <div class="palette" role="dialog" aria-modal="true" aria-label="${o.label || 'Find'}">
       <div class="palette-head">${ui.icon('search')}<input class="palette-input" id="rb-palette-input" type="text" role="combobox" aria-expanded="true" aria-controls="rb-palette-list" aria-autocomplete="list" aria-label="${o.label || 'Find'}" placeholder="${o.placeholder || 'Find…'}" autocomplete="off" spellcheck="false"></div>
       <div class="palette-list" id="rb-palette-list" role="listbox"></div>
       <div class="palette-foot"><button type="button" class="btn btn-ghost btn-sm" data-close>${ui.icon('x')}<span>Close</span></button></div>
@@ -691,7 +691,7 @@ ui.pickTenant = function pickTenant(opts) {
       title: o.title || 'Which tenant?', sub: o.sub || (o.prefer === 'owes' ? 'People who still owe are at the top.' : ''), size: 'wide',
       cancel: 'Cancel', actions: [],
       body: (el, sh) => {
-        el.innerHTML = String(h`<label class="search pick-find" for="pick-q"><span class="search-icon">${ui.icon('search')}</span><input class="input" id="pick-q" type="search" placeholder="Type a name or unit, like “Maya” or “2B”" autocomplete="off" spellcheck="false" aria-label="Find a tenant"></label>
+        el.innerHTML = String(h`<label class="search pick-find" for="pick-q"><span class="search-icon">${ui.icon('search')}</span><input class="input" id="pick-q" type="search" placeholder="A name or a unit, like 2B" autocomplete="off" spellcheck="false" aria-label="Find a tenant"></label>
           ${o.skip ? h`<button type="button" class="btn btn-block pick-skip" id="pick-skip" data-pick="">${o.skip}</button>` : ''}
           <ul class="pick-list" id="pick-list" aria-label="Tenants"></ul>`);
         const list = el.querySelector('#pick-list'), q = el.querySelector('#pick-q');

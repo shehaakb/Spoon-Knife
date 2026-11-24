@@ -56,7 +56,7 @@ function renewLease(tenantId) {
       return h`${bits}`;
     };
     ui.sheet({
-      title: 'Renew the lease', sub: t.name + ' — ' + T.place(t), cancel: 'Close',
+      title: 'Renew the lease', sub: t.name + ' — ' + T.place(t),
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="tn-form">
           <p class="tn-lead">${curEnd ? h`The lease ends ${D.fmtLong(curEnd)} — ${W().rel(curEnd, today)}.` : 'They are month-to-month now.'}</p>

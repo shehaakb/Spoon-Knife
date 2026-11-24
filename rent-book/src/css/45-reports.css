@@ -20,7 +20,7 @@
 .view-reports .rp-year-q { font-size: var(--t-15); font-weight: 600; }
 .view-reports .rp-year-label { font-size: var(--t-24); font-family: var(--f-display); min-width: 3.2em; text-align: center; }
 
-.view-reports .rp-name { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; max-width: 100%; cursor: pointer; min-height: var(--ctl-h-sm); }
+.view-reports .rp-name { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; max-width: 100%; cursor: pointer; min-height: var(--ctl-h-sm); white-space: normal; overflow-wrap: anywhere; min-width: 0; }
 .view-reports .rp-name:hover { text-decoration: underline; text-underline-offset: 2px; }
 .view-reports .rp-name:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 2px; }
 .view-reports .tbl tr.is-muted .rp-name { color: var(--ink-2); font-weight: 400; }

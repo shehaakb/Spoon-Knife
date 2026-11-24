@@ -288,5 +288,6 @@ RB.views.register('rent', {
   shortcuts: [['j / ↓', 'Next tenant'], ['k / ↑', 'Previous tenant'], ['p', 'Record the full amount now'], ['Enter', 'Record a payment'], ['o', 'See the tenant'], ['Esc', 'Stop recording several']],
   render,
   onKey: e => handleKey(e),
-  destroy() { selected.clear(); bulkMode = false; },
+  // Coming back to Rent always shows this month (an earlier month is never left behind by surprise).
+  destroy() { selected.clear(); bulkMode = false; period = null; },
 });

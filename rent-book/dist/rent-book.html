@@ -615,11 +615,21 @@ th.num .th-sort { flex-direction: row-reverse; }
 .ledger tr.is-void td { color: var(--ink-2); }
 .ledger tr.is-void .l-desc-text, .ledger tr.is-void .l-amt { text-decoration: line-through; text-decoration-color: var(--ink-3); }
 .ledger tbody tr:not(.ledger-month):hover td { background: var(--hover); }
+/* phone: each ledger row becomes a small stacked card (date + amount, description, balance after + More) — no sideways scrolling */
 @media (max-width: 759.98px) {
-  .ledger { font-size: var(--t-13); }
-  .ledger .l-date { width: calc(56px * var(--text-scale)); font-size: var(--t-12); }
-  .ledger th, .ledger td { padding: 6px 4px; }
-  .ledger thead th { font-size: var(--t-12); }
+  .ledger, .ledger tbody { display: block; width: 100%; }
+  .ledger thead { display: none; }
+  .ledger tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "date amt" "desc desc" "bal act"; column-gap: 12px; row-gap: 2px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .ledger td, .ledger th { display: block; height: auto; padding: 0; border: 0; width: auto; }
+  .ledger .l-date { grid-area: date; width: auto; font-size: var(--t-12); }
+  .ledger .l-desc { grid-area: desc; }
+  .ledger .l-amt { grid-area: amt; font-weight: 600; text-align: right; }
+  .ledger .l-amt:empty { display: none; }
+  .ledger .l-bal { grid-area: bal; align-self: center; text-align: left; font-weight: 400; color: var(--ink-2); font-size: var(--t-13); }
+  .ledger .l-bal::before { content: "Balance after: "; }
+  .ledger .l-act { grid-area: act; width: auto; justify-self: end; }
+  .ledger tr.ledger-month { display: block; padding: 16px 0 6px; border-bottom: 1px solid var(--line-2); }
+  .ledger tr.ledger-month td { padding: 0; height: auto; border: 0; }
 }
 
 /* ================= Section header ================= */
@@ -807,6 +817,8 @@ th.num .th-sort { flex-direction: row-reverse; }
   .sheet-foot .btn { flex: 1 1 auto; }
   .sheet-foot .btn-primary, .sheet-foot .btn-danger { flex-basis: 100%; order: -1; }
   .sheet-foot .sheet-foot-note { order: -2; }
+  .sheet-foot .btn-keep { flex-basis: 100%; order: -1; }
+  .sheet-foot .btn-keep ~ .btn-danger, .sheet-foot .btn-danger:has(~ .btn-keep) { order: 0; }
 }
 @keyframes rb-sheet-up { from { transform: translateY(40px); opacity: 0; } }
 @keyframes rb-sheet-down { to { transform: translateY(40px); opacity: 0; } }
@@ -827,7 +839,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .toast-msg { min-width: 0; }
 .toast-ico { color: var(--toast-accent); }
 .toast-action {
-  flex: none; min-height: var(--ctl-h); padding: 0 calc(20px * var(--text-scale)); border: 0; border-radius: var(--r-ctl); background: var(--toast-accent);
+  flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: var(--ctl-h); padding: 0 calc(20px * var(--text-scale)); border: 0; border-radius: var(--r-ctl); background: var(--toast-accent);
   color: var(--toast-bg); font-weight: 700; font-size: var(--t-15);
 }
 .toast-action:hover { filter: brightness(1.08); }
@@ -840,8 +852,10 @@ th.num .th-sort { flex-direction: row-reverse; }
 @keyframes rb-toast-out { to { transform: translateY(6px); opacity: 0; } }
 @media (max-width: 759.98px) {
   .toasts { bottom: calc(var(--tab-h) + 12px + env(safe-area-inset-bottom, 0px)); width: calc(100vw - 24px); }
-  .toast { width: 100%; flex-wrap: wrap; }
-  .toast-msg { flex: 1 1 60%; }
+  .toast { width: 100%; flex-wrap: wrap; row-gap: 8px; padding: 12px; }
+  .toast-msg { flex: 1 1 100%; padding: 0 4px; }
+  .toast-ico { display: none; }
+  .toast-action { flex: 1 1 auto; justify-content: center; }
 }
 
 /* ---- Command palette ---- */
@@ -875,7 +889,9 @@ th.num .th-sort { flex-direction: row-reverse; }
 @media (max-width: 759.98px) {
   .palette-wrap { padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 8px; }
   .palette { max-height: 80vh; }
-  .palette-item { min-height: var(--ctl-h-lg); }
+  .palette-item { min-height: var(--ctl-h-lg); flex-wrap: wrap; }
+  .palette-item-main { white-space: normal; overflow-wrap: anywhere; }
+  .palette-item-sub { display: block; margin-left: 0; }
 }
 
 /* ================= Misc building blocks ================= */
@@ -1610,12 +1626,12 @@ th.num .th-sort { flex-direction: row-reverse; }
 .lz-item { display: flex; align-items: flex-start; gap: var(--s4); padding: var(--s4) var(--s2); border-bottom: 1px solid var(--line); }
 .lz-item.is-soon { background: var(--surface); }
 .lz-item > .plate { flex: none; margin-top: 2px; }
-.lz-item-main { flex: 1 1 auto; min-width: 0; }
+.lz-item-main { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .lz-item-text { font-size: var(--t-18); line-height: 1.4; overflow-wrap: anywhere; }
 .lz-item-sub { font-size: var(--t-13); color: var(--ink-2); margin-top: 2px; }
 .lz-item-acts { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
 .lz-item-acts .btn { white-space: normal; }
-.lz-name { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; min-height: 0; }
+.lz-name { overflow-wrap: anywhere; white-space: normal; max-width: 100%; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; min-height: 0; }
 .lz-name:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 2px; }
 .lz-quiet { color: var(--ink-2); }
 @media (max-width: 759.98px) {
@@ -1820,7 +1836,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 .view-reports .rp-year-q { font-size: var(--t-15); font-weight: 600; }
 .view-reports .rp-year-label { font-size: var(--t-24); font-family: var(--f-display); min-width: 3.2em; text-align: center; }
 
-.view-reports .rp-name { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; max-width: 100%; cursor: pointer; min-height: var(--ctl-h-sm); }
+.view-reports .rp-name { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; max-width: 100%; cursor: pointer; min-height: var(--ctl-h-sm); white-space: normal; overflow-wrap: anywhere; min-width: 0; }
 .view-reports .rp-name:hover { text-decoration: underline; text-underline-offset: 2px; }
 .view-reports .rp-name:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 2px; }
 .view-reports .tbl tr.is-muted .rp-name { color: var(--ink-2); font-weight: 400; }
@@ -2885,7 +2901,7 @@ function attention(state, today, getLedger) {
     const age = k.reported ? D.diffDays(k.reported, today) : 0;
     if (k.priority !== 'urgent' && !(k.status === 'open' && k.priority === 'normal')) continue;
     items.push({ id: 'ticket-' + k.id, kind: 'ticket', severity: k.priority === 'urgent' ? 'high' : 'low', rank: -age, ticketId: k.id, tenantId: k.tenantId || null,
-      unit: unitLabel(k), title: k.title || 'Upkeep request',
+      unit: unitLabel(k), title: k.title || 'Repair',
       detail: unitLabel(k) + ' · ' + (k.status === 'scheduled' && k.scheduled ? 'scheduled ' + D.fmt(k.scheduled, today) : age + ' d open') + (k.priority === 'urgent' ? ' · urgent' : ''),
       date: k.reported, action: { type: 'openTicket', ticketId: k.id, label: 'Open' } });
   }
@@ -4821,7 +4837,7 @@ ui.palette = function palette(opts) {
   const wrap = document.createElement('div');
   wrap.className = 'palette-wrap';
   wrap.innerHTML = String(h`<div class="scrim" data-close></div>
-    <div class="palette" role="dialog" aria-modal="true" aria-label="${o.label || 'Search'}">
+    <div class="palette" role="dialog" aria-modal="true" aria-label="${o.label || 'Find'}">
       <div class="palette-head">${ui.icon('search')}<input class="palette-input" id="rb-palette-input" type="text" role="combobox" aria-expanded="true" aria-controls="rb-palette-list" aria-autocomplete="list" aria-label="${o.label || 'Find'}" placeholder="${o.placeholder || 'Find…'}" autocomplete="off" spellcheck="false"></div>
       <div class="palette-list" id="rb-palette-list" role="listbox"></div>
       <div class="palette-foot"><button type="button" class="btn btn-ghost btn-sm" data-close>${ui.icon('x')}<span>Close</span></button></div>
@@ -4899,7 +4915,7 @@ ui.pickTenant = function pickTenant(opts) {
       title: o.title || 'Which tenant?', sub: o.sub || (o.prefer === 'owes' ? 'People who still owe are at the top.' : ''), size: 'wide',
       cancel: 'Cancel', actions: [],
       body: (el, sh) => {
-        el.innerHTML = String(h`<label class="search pick-find" for="pick-q"><span class="search-icon">${ui.icon('search')}</span><input class="input" id="pick-q" type="search" placeholder="Type a name or unit, like “Maya” or “2B”" autocomplete="off" spellcheck="false" aria-label="Find a tenant"></label>
+        el.innerHTML = String(h`<label class="search pick-find" for="pick-q"><span class="search-icon">${ui.icon('search')}</span><input class="input" id="pick-q" type="search" placeholder="A name or a unit, like 2B" autocomplete="off" spellcheck="false" aria-label="Find a tenant"></label>
           ${o.skip ? h`<button type="button" class="btn btn-block pick-skip" id="pick-skip" data-pick="">${o.skip}</button>` : ''}
           <ul class="pick-list" id="pick-list" aria-label="Tenants"></ul>`);
         const list = el.querySelector('#pick-list'), q = el.querySelector('#pick-q');
@@ -6240,7 +6256,7 @@ RB.views.register('kit', {
       </form>`)}
       ${sec('Segmented control & filter chips', h`<div class="stack stack-4">
         <div class="seg" role="group" aria-label="Example"><button type="button" aria-pressed="true">This month</button><button type="button" aria-pressed="false">Last month</button></div>
-        <div class="chips"><button type="button" class="chip" aria-pressed="true">All<span class="chip-count">27</span></button><button type="button" class="chip" aria-pressed="false">Unpaid<span class="chip-count">6</span></button><button type="button" class="chip" aria-pressed="false">Late<span class="chip-count is-bad">3</span></button><button type="button" class="chip" aria-pressed="false">Partial<span class="chip-count">2</span></button><button type="button" class="chip" aria-pressed="false">Paid<span class="chip-count">21</span></button></div></div>`)}
+        <div class="chips"><button type="button" class="chip" aria-pressed="true">All<span class="chip-count">27</span></button><button type="button" class="chip" aria-pressed="false">Still owes<span class="chip-count">6</span></button><button type="button" class="chip" aria-pressed="false">Late<span class="chip-count is-bad">3</span></button><button type="button" class="chip" aria-pressed="false">Part paid<span class="chip-count">2</span></button><button type="button" class="chip" aria-pressed="false">Paid<span class="chip-count">21</span></button></div></div>`)}
       ${sec('Status pills & tags', h`<div class="stack stack-3"><div class="row row-wrap">${sts.map(s => ui.pill(s, { daysLate: 9 }))}${ui.pill('late', { daysLate: 22, paid: 80000 })}</div>
         <div class="caption">Glossary words: Paid · Paid late · Part paid · Not paid yet · 22 days late · Part paid — rest is 22 days late (ui.pill(status, {paid}) or ui.monthPill(month)).</div><div class="row row-wrap">${sts.map(s => ui.pill(s, { daysLate: 9, size: 'sm' }))}</div>
         <div class="row row-wrap">${ui.tenantTag('active')}${ui.tenantTag('notice')}${ui.tenantTag('past')}${ui.tag('Urgent', 'bad')}${ui.tag('Scheduled Nov 26', 'accent', 'calendar')}${ui.tag('Month-to-month', 'quiet')}${ui.tag('View only', 'accent', 'key')}</div></div>`)}
@@ -6252,7 +6268,7 @@ RB.views.register('kit', {
         <div class="row row-base gap-5 row-wrap">${ui.balance(290000)}${ui.balance(-25000)}${ui.balance(0)}<span class="caption">ui.balance — worded by default</span></div>
         <div style="max-width:320px" class="stack stack-1"><span class="say">Part paid — $800 of $1,475. Still owes $675.</span>${ui.splitBar(80000, 147500)}</div>
         <div style="max-width:560px"><div class="bar bar-lg"><span class="bar-seg bar-seg-ok" style="width:68%"></span><span class="bar-seg bar-seg-warn" style="width:6%"></span><span class="bar-mark" style="left:84%" title="Target"></span></div>
-          <div class="bar-legend"><span class="bar-key bar-key-ok">Collected</span><span class="bar-key bar-key-warn">Partial</span><span class="bar-key bar-key-soft">Outstanding</span></div></div>
+          <div class="bar-legend"><span class="bar-key bar-key-ok">Collected</span><span class="bar-key bar-key-warn">Part paid</span><span class="bar-key bar-key-soft">Still owed</span></div></div>
         <div style="max-width:320px"><div class="bar bar-thin"><span class="bar-seg" style="width:72%"></span><span class="bar-mark" style="left:80%"></span></div></div></div>`)}
       ${sec('Data table', h`<div class="tbl-wrap tbl-scroll-phone"><table class="tbl">
         <thead><tr><th class="tbl-check hide-phone"><input type="checkbox" aria-label="Select all" id="kit-all"></th><th aria-sort="${sortDir}"><button type="button" class="th-sort" data-act="sort">Tenant${ui.icon('arrow-up', { cls: 'sort-ind' })}</button></th><th class="hide-phone"><button type="button" class="th-sort">Property${ui.icon('arrow-up', { cls: 'sort-ind' })}</button></th><th class="num hide-phone"><button type="button" class="th-sort">Rent${ui.icon('arrow-up', { cls: 'sort-ind' })}</button></th><th>Status</th><th class="hide-phone">12 months</th><th class="num">Balance</th></tr></thead>
@@ -6268,7 +6284,7 @@ RB.views.register('kit', {
         <div class="crow"><span class="crow-lead">${ui.plate('3C', { status: 'late' })}</span><div class="crow-main"><div class="crow-title">Elena Petrova</div><div class="crow-sub">Owes $1,225 for November — 17 days late</div></div><div class="crow-aside">${ui.pill('late', { daysLate: 17, size: 'sm' })}${ui.balance(122500)}</div>
           <div class="crow-actions"><button class="btn btn-primary btn-lg" type="button">Record payment</button><button class="btn-link" type="button">They paid part of it</button></div></div>
         <div class="crow"><span class="crow-lead">${ui.plate('1A')}</span><div class="crow-main"><div class="crow-title">Maya Okafor</div><div class="crow-sub">Paid $1,325 on Nov 1 by Zelle</div></div><div class="crow-aside">${ui.pill('paid', { size: 'sm' })}</div></div></div>`)}
-      ${sec('Ledger', h`<div style="max-width:640px"><table class="ledger"><thead><tr><th>Date</th><th>Description</th><th class="l-amt">Charge</th><th class="l-amt">Payment</th><th class="l-bal">Balance</th><th class="l-act"><span class="vh">Actions</span></th></tr></thead><tbody>${ledgerRows}</tbody></table></div>`)}
+      ${sec('Payment history (.ledger)', h`<div style="max-width:640px"><table class="ledger"><thead><tr><th>Date</th><th>Description</th><th class="l-amt">Charge</th><th class="l-amt">Payment</th><th class="l-bal">Balance</th><th class="l-act"><span class="vh">Actions</span></th></tr></thead><tbody>${ledgerRows}</tbody></table></div>`)}
       ${sec('Sections, key/value, copy, kbd', h`<div style="max-width:560px">
         <div class="sec"><h3 class="sec-title">Contact</h3><span class="sec-meta">2 people</span><div class="sec-actions"><button class="btn btn-sm btn-ghost" type="button">${ui.icon('edit')}Edit</button></div></div>
         <dl class="kv"><dt>Phone</dt><dd>${ui.copyline('(555) 0142-3381', 'phone number', { href: 'tel:5550142', hrefLabel: 'Call', hrefIcon: 'phone' })}</dd><dt>Email</dt><dd>${ui.copyline('maya.okafor@example.com', 'email address')}</dd><dt>Emergency</dt><dd>Ada Okafor · (555) 0199-2210</dd></dl>
@@ -6276,7 +6292,7 @@ RB.views.register('kit', {
         <p class="caption">Keyboard keys (${ui.kbd('g', 't')}, ${ui.kbd('/')}) still work but are only listed in Settings → Keyboard shortcuts.</p></div>`)}
       ${sec('Lists: attention rows & timeline', h`<div style="max-width:720px"><div class="rule">
         <div class="lrow"><span class="lrow-lead">${ui.plate('3C', { status: 'late' })}</span><div><div class="lrow-title"><span class="lrow-sev sev-high"></span> Elena Petrova</div><div class="lrow-detail">Owes $1,225 for November — 17 days late</div></div><div class="lrow-actions"><button class="btn btn-sm btn-ghost" type="button">Add late fee $50</button><button class="btn btn-sm btn-primary" type="button">Record payment</button></div></div>
-        <div class="lrow"><span class="lrow-lead">${ui.plate('202')}</span><div><div class="lrow-title"><span class="lrow-sev sev-medium"></span> No hot water</div><div class="lrow-detail">418 Marlow Street 202 · 1 d open · urgent</div></div><div class="lrow-actions"><button class="btn btn-sm" type="button">Open</button></div></div></div>
+        <div class="lrow"><span class="lrow-lead">${ui.plate('202')}</span><div><div class="lrow-title"><span class="lrow-sev sev-medium"></span> No hot water</div><div class="lrow-detail">Urgent repair at 418 Marlow Street, Unit 202. Reported 1 day ago.</div></div><div class="lrow-actions"><button class="btn btn-sm" type="button">Open the repair</button></div></div></div>
         <div class="tl mt-5"><div class="tl-item"><span class="tl-when">Nov 17</span><div class="tl-body">${ui.tag('Text', 'quiet', 'phone')} Texted a reminder about the balance.<div class="tl-meta">Follow up Nov 22 · due</div></div><input type="checkbox" aria-label="Done" id="kit-fu1"></div>
           <div class="tl-item is-done"><span class="tl-when">Oct 21</span><div class="tl-body">${ui.tag('Note', 'quiet', 'note')} Okayed a small vegetable bed.<div class="tl-meta">Done</div></div><input type="checkbox" checked aria-label="Done" id="kit-fu2"></div></div></div>`)}
       ${sec('Empty, loading, first run', h`<div class="stack stack-5"><div class="panel">${ui.empty({ icon: 'tenants', title: 'No tenants match', body: 'Try a different search or clear the filter.', actions: [{ label: 'Show everyone', kind: '' }, { label: 'Add a tenant', kind: 'primary', icon: 'plus' }] })}</div>
@@ -6377,7 +6393,7 @@ function renewLease(tenantId) {
       return h`${bits}`;
     };
     ui.sheet({
-      title: 'Renew the lease', sub: t.name + ' — ' + T.place(t), cancel: 'Close',
+      title: 'Renew the lease', sub: t.name + ' — ' + T.place(t),
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="tn-form">
           <p class="tn-lead">${curEnd ? h`The lease ends ${D.fmtLong(curEnd)} — ${W().rel(curEnd, today)}.` : 'They are month-to-month now.'}</p>
@@ -7071,7 +7087,8 @@ RB.views.register('rent', {
   shortcuts: [['j / ↓', 'Next tenant'], ['k / ↑', 'Previous tenant'], ['p', 'Record the full amount now'], ['Enter', 'Record a payment'], ['o', 'See the tenant'], ['Esc', 'Stop recording several']],
   render,
   onKey: e => handleKey(e),
-  destroy() { selected.clear(); bulkMode = false; },
+  // Coming back to Rent always shows this month (an earlier month is never left behind by surprise).
+  destroy() { selected.clear(); bulkMode = false; period = null; },
 });
 })();
 /* ---- js/views/repairs.js ---- */
@@ -7748,15 +7765,12 @@ function axisMoney(c) {
   if (d >= 1000) return M.symbol + (d / 1000).toFixed(d % 1000 === 0 ? 0 : 1).replace(/\.0$/, '') + 'k';
   return M.symbol + Math.round(d);
 }
-/** This month's status in glossary words for a tenant (part payments spelled out). */
-function monthWords(tenantId, status) {
+/** This month's status in glossary words (shared helper: part payments read "Part paid — rest is 22 days late"). */
+function monthWords(tenantId) {
   const lg = S().ledger(tenantId);
-  const p = lg && W().partial(lg, S().today());
-  if (p) return p.late ? 'Part paid — rest is ' + W().days(p.daysLate) + ' late' : 'Part paid';
-  if (status === 'late') return lg ? W().days(lg.current.daysLate) + ' late' : 'Late';
-  return { paid: 'Paid', paid_late: 'Paid late', partial: 'Part paid', due: 'Not paid yet' }[status] || null;
+  return lg && lg.current.status !== 'none' ? ui.statusWords(lg.months[lg.current.period] || lg.current) : null;
 }
-const monthPill = (tenantId, status) => { const w = monthWords(tenantId, status); return w ? ui.pill(status, { label: w }) : h`<span class="rp-dash">No rent this month</span>`; };
+const monthPill = tenantId => { const lg = S().ledger(tenantId); const m = lg && (lg.months[lg.current.period] || null); return m && m.status !== 'none' ? ui.monthPill(m) : h`<span class="rp-dash">No rent this month</span>`; };
 const balWords = c => (c > 0 ? h`<span class="tone-bad">Owes ${$(c)}</span>` : c < 0 ? h`${$(-c)} paid ahead` : h`<span class="rp-dash">All paid up</span>`);
 const partCount = rows => rows.filter(r => { const lg = S().ledger(r.tenantId); return lg && W().partial(lg, S().today()); }).length;
 const who = (id, name, unit) => h`<span class="rp-who">${ui.plate(unit)}<button type="button" class="rp-name" data-act="open" data-id="${id}">${name}</button></span>`;
@@ -7788,7 +7802,7 @@ function rentRoll(today) {
           <td class="num">${r.status === 'past' ? h`<span class="rp-dash">—</span>` : ui.money(r.rent)}</td>
           <td>${end(r)}</td>
           <td class="num">${r.deposit ? ui.money(r.deposit) : h`<span class="rp-dash">None</span>`}</td>
-          <td class="num">${balWords(r.balance)}</td><td>${r.status === 'past' ? h`<span class="rp-dash">Moved out</span>` : monthPill(r.tenantId, r.monthStatus)}</td></tr>`)}
+          <td class="num">${balWords(r.balance)}</td><td>${r.status === 'past' ? h`<span class="rp-dash">Moved out</span>` : monthPill(r.tenantId)}</td></tr>`)}
         <tr class="rp-subtotal"><td></td><td>${g.property} in total</td><td class="num">${ui.money(g.rent)}</td><td></td><td class="num">${ui.money(g.deposit)}</td><td class="num">${balWords(g.balance)}</td><td></td></tr>
       </tbody>`)}
       <tfoot><tr class="rp-total"><td></td><td>Everyone (${RB.plural(rr.rows.length, 'tenant')})</td><td class="num" data-total="rent">${ui.money(rr.totals.rent)}</td><td></td><td class="num" data-total="deposit">${ui.money(rr.totals.deposit)}</td><td class="num" data-total="balance">${balWords(rr.totals.balance)}</td><td></td></tr></tfoot>
@@ -7802,7 +7816,7 @@ function rentRoll(today) {
             <div><dt>Lease ends</dt><dd>${end(r)}</dd></div>
             <div><dt>Deposit</dt><dd>${r.deposit ? $(r.deposit) : 'None'}</dd></div>
             <div><dt>Owes</dt><dd>${balWords(r.balance)}</dd></div>
-            ${r.status !== 'past' ? h`<div><dt>This month</dt><dd>${monthPill(r.tenantId, r.monthStatus)}</dd></div>` : ''}
+            ${r.status !== 'past' ? h`<div><dt>This month</dt><dd>${monthPill(r.tenantId)}</dd></div>` : ''}
           </dl></div>`)}
         <p class="rp-ph-sub">${g.property} in total: ${$(g.rent)} rent each month.</p>`)}
     </div>`;
@@ -7811,7 +7825,7 @@ function rentRoll(today) {
     { label: 'Property', key: 'property' }, { label: 'Unit', key: 'unit' }, { label: 'Tenant', key: 'name' }, { label: 'Status', get: statusWord },
     { label: 'Rent each month', key: 'rent', money: true }, { label: 'Lease started', key: 'leaseStart' }, { label: 'Lease ends', get: r => r.leaseEnd || 'Month-to-month' },
     { label: 'Deposit', key: 'deposit', money: true }, { label: 'Owes', money: true, get: r => Math.max(0, r.balance) }, { label: 'Paid ahead', money: true, get: r => Math.max(0, -r.balance) },
-    { label: 'This month', get: r => (r.status === 'past' ? 'Moved out' : monthWords(r.tenantId, r.monthStatus) || 'No rent this month') },
+    { label: 'This month', get: r => (r.status === 'past' ? 'Moved out' : monthWords(r.tenantId) || 'No rent this month') },
   ]);
   return { title: 'Rent roll', file: 'rent-roll', csv, answer, body };
 }
@@ -8142,7 +8156,7 @@ async function doImport(today) {
     const ok = await ui.confirm({
       title: 'Remove the example tenants and bring in yours?',
       body: h`<p>The <strong>${RB.plural(ts, 'example tenant')}</strong>, their payment history and the example repairs are deleted first. Then your <strong>${RB.plural(checks.length, 'tenant')}</strong> are added.</p>`,
-      confirmLabel: 'Remove the examples and bring in mine', cancelLabel: 'Keep it as it is', danger: true,
+      confirmLabel: 'Remove the examples and bring in mine', danger: true,
     });
     if (!ok) return;
     try { await S().removeSample(); } catch (e) { return; }
@@ -8220,11 +8234,11 @@ function importStep3(p, today) {
   const checks = checkAll(p, today);
   const good = checks.filter(c => c.ok).length;
   const bad = checks.length - good;
-  const rowName = (c, i) => (c.data.name || 'Row ' + (i + 1)) + (c.data.unit ? ', ' + c.data.unit : '');
+  const rowName = c => [c.data.name, c.data.unit].filter(Boolean).join(', ') || 'empty';
   return h`<h3 class="st-step-title">Step 3 of 3: Look it over</h3>
     <p class="st-p"><strong>${good === 1 ? '1 tenant is' : good + ' tenants are'} ready to bring in.</strong>${bad ? h` <span class="tone-bad">${bad === 1 ? '1 row has a problem' : bad + ' rows have problems'} and will be left out.</span>` : ''}</p>
     ${bad ? h`<div class="st-problems"><p class="st-p">To fix a problem, change it in your spreadsheet and paste the list again — or carry on, and only that row is left out.</p>
-      <ul>${checks.map((c, i) => c.ok ? '' : h`<li><strong>Row ${i + 1} (${rowName(c, i)}):</strong> ${c.problems.join(' ')}</li>`)}</ul></div>` : ''}
+      <ul>${checks.map((c, i) => c.ok ? '' : h`<li><strong>Row ${i + 1} (${rowName(c)}):</strong> ${c.problems.join(' ')}</li>`)}</ul></div>` : ''}
     <ul class="st-preview" id="st-import-table">${checks.slice(0, 200).map((c, i) => h`<li class="${c.ok ? '' : 'is-bad'}">
       <span class="st-preview-n">Row ${i + 1}</span>
       <span class="st-preview-main"><strong>${c.data.name || 'No name'}</strong>${c.data.unit || c.data.property ? h` — ${[c.data.unit, c.data.property].filter(Boolean).join(', ')}` : ''}${c.data.rent ? h` — ${M.fmt(c.data.rent)} a month` : ''}</span>
@@ -8822,7 +8836,7 @@ T.noteSheet = function noteSheet(id, lid) {
         ${ui.field({ name: 'followUp', id: 'tn-note-follow', label: 'Remind me to follow up on…', type: 'date', value: e ? e.followUp || '' : '', optional: true, hint: 'Leave this empty if you don’t need a reminder. On that day it shows on Today.' })}
       </div>`,
       initialFocus: '#tn-note-text',
-      cancel: 'Close',
+     
       actions: [{ id: 'save', label: e ? 'Save the note' : 'Add the note', kind: 'primary', onClick: s => {
         const v = ui.form(s.body, { validate: v => ({ followUp: v.followUp && !D.valid(v.followUp) ? 'Pick a date from the calendar' : '' }) });
         if (!v) return false;
@@ -8903,7 +8917,7 @@ T.moreSheet = function moreSheet(id) {
   items.push(['edit', 'Edit their details', 'Name, phone, unit, rent and more', () => A.editTenant(id)]);
   items.push(['delete', 'Remove this tenant', 'Only if they were added by mistake — this deletes all their history', () => T.deleteTenant(id)]);
   ui.sheet({
-    title: 'What would you like to do?', sub: t.name + ' — ' + T.place(t), cancel: 'Close', actions: [],
+    title: 'What would you like to do?', sub: t.name + ' — ' + T.place(t), cancel: false, actions: [],
     body: (el, sh) => {
       el.innerHTML = String(h`<div class="tn-morelist">${items.map(([k, label, sub]) => h`<button type="button" class="tn-moreitem${k === 'delete' ? ' is-danger' : ''}" data-more="${k}"${k === 'stmt' ? '' : RB.raw(' data-write')}><span class="tn-moreitem-l">${label}</span><span class="tn-moreitem-s">${sub}</span>${ui.icon('chevron-right')}</button>`)}</div>`);
       el.addEventListener('click', e => {
@@ -9241,7 +9255,7 @@ function editTenant(id, section) {
   return new Promise(resolve => {
     let saved = null;
     ui.sheet({
-      title: 'Edit their details', sub: sub(t), size: 'wide', cancel: 'Close',
+      title: 'Edit their details', sub: sub(t), size: 'wide',
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="tn-form">
           ${ui.field({ name: 'name', id: 'tf-name', label: 'Their full name', value: t.name, required: true, requiredMsg: 'Write their name' })}
@@ -9366,7 +9380,7 @@ function changeRent(id) {
   return new Promise(resolve => {
     let ok = false;
     ui.sheet({
-      title: 'Raise or change the rent', sub: sub(t), cancel: 'Close',
+      title: 'Raise or change the rent', sub: sub(t),
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="tn-form">
           <p class="tn-lead">The rent is ${$(cur)} a month now.</p>
@@ -9583,7 +9597,7 @@ function settleDeposit(id) {
   return new Promise(resolve => {
     let ok = false;
     ui.sheet({
-      title: 'Give back the deposit', size: 'wide', sub: sub(t), cancel: 'Close',
+      title: 'Give back the deposit', size: 'wide', sub: sub(t),
       body: (el, sh) => {
         sh.el.classList.add('tn-settle-sheet');
         const inner = document.createElement('div');
@@ -9621,7 +9635,7 @@ T.deleteTenant = async function deleteTenant(id) {
     title: 'Remove ' + (t.name || 'this tenant') + '?',
     body: h`<p>This deletes <strong>${t.name}</strong> (${T.place(t)}) and their whole payment history${n ? h` — ${RB.plural(n, 'payment or charge', 'payments and charges')}` : ''}${notes ? h` and ${RB.plural(notes, 'note')}` : ''}. It cannot be undone.</p>
       ${t.status !== 'past' ? h`<p class="mt-2">If they have simply left, choose <strong>They are moving out</strong> instead — that keeps their history.</p>` : ''}`,
-    confirmLabel: 'Remove ' + (t.name || 'this tenant'), cancelLabel: 'Keep it', danger: true,
+    confirmLabel: 'Remove ' + (t.name || 'this tenant'), danger: true,
   });
   if (!ok) return false;
   if (location.hash === '#t-' + id) location.hash = 'tenants';

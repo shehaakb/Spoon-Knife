@@ -30,10 +30,38 @@ await page.evaluate(() => RB.actions.loadSample({ quiet: true }));
 await page.waitForFunction(() => RB.store.tenantsList().length === 27);
 const today = await page.evaluate(() => RB.store.today());
 
-// ---------------------------------------------------------------- Leases: scale
-await step('leases timeline', async () => {
+// ---------------------------------------------------------------- Leases: plain list first
+const FORBIDDEN = /\b(upkeep|ticket|request|ledger|void(ed)?|delinquent|aging|cr|prorat\w*|import|backup|csv|setup|palette)\b|\b\d+ d\b|\/mo\b/i;
+const forbiddenIn = text => { const m = String(text).match(FORBIDDEN); return m ? m[0] + ' … ' + String(text).slice(Math.max(0, m.index - 40), m.index + 40).replace(/\s+/g, ' ') : ''; };
+const viewText = () => page.evaluate(() => [document.getElementById('rb-view'), ...document.querySelectorAll('.sheet')].filter(Boolean).map(e => e.innerText).join('\n'));
+const audit = minH => page.evaluate(minH => {
+  const roots = [document.getElementById('rb-view'), ...document.querySelectorAll('.sheet')].filter(Boolean);
+  const els = roots.flatMap(r => Array.from(r.querySelectorAll('button, a[href], label.btn, select, input:not([type=hidden]):not([type=file]):not([type=checkbox]), textarea'))).filter(e => e.offsetParent !== null && !e.closest('.vh'));
+  const noText = els.filter(e => e.tagName === 'BUTTON' && !e.innerText.trim()).map(e => (e.className || e.tagName) + ' ' + (e.getAttribute('aria-label') || ''));
+  const small = els.filter(e => { if (e.matches('.lz-name, .rp-name')) return false; const r = e.getBoundingClientRect(); return r.height && r.height < minH - 0.5; }).map(e => (e.innerText || e.id || e.className).trim().slice(0, 30) + ' ' + Math.round(e.getBoundingClientRect().height) + 'px');
+  return { noText: noText.slice(0, 5), small: small.slice(0, 6) };
+}, minH);
+await step('leases list', async () => {
   await go('leases');
-  if (await page.locator('#lz-mode-timeline[aria-pressed="false"]').count()) await page.click('#lz-mode-timeline');
+  if (await page.locator('#lz-cal:checked').count()) { await page.click('#lz-cal'); await settle(); }
+  const titles = await page.$$eval('.lz-sec-title', els => els.map(e => e.textContent.replace(/\s*\(\d+\)\s*$/, '').trim()));
+  check('list leads, in plain sections', titles[0] === 'Leases ending soon' && titles.includes('Month-to-month') && titles.includes('Moving out'), titles.join(', '));
+  const rosa = await page.evaluate(() => RB.store.tenantsList().find(t => t.name === 'Rosa Delgado').id);
+  const line = (await page.textContent(`.lz-item[data-tenant="${rosa}"] .lz-item-text`)).replace(/\s+/g, ' ').trim();
+  check('ending-soon row in words', /^Rosa Delgado, Unit 301 — lease ends [A-Z][a-z]{2} \d+, in \d+ days$/.test(line), line);
+  const acts = (await page.locator(`.lz-item[data-tenant="${rosa}"] .lz-item-acts .btn`).allTextContents()).map(s => s.trim());
+  check('two worded choices + a quieter one', acts.join('|') === 'Renew the lease|They are moving out|Leave it month-to-month', acts.join('|'));
+  check('summary sentence', /in the next \d+ days\. \d+ tenants? (is|are) month-to-month\. \d+ tenants? (is|are) moving out\./.test(await page.textContent('#lz-summary')), await page.textContent('#lz-summary'));
+  const w = forbiddenIn(await viewText());
+  check('leases: no forbidden words', !w, w);
+  const au = await audit(40);
+  check('leases: every button has words', !au.noText.length, au.noText.join(', '));
+});
+
+// ---------------------------------------------------------------- Leases: calendar behind a switch, drawn to scale
+await step('leases calendar', async () => {
+  await page.click('#lz-cal'); await settle();
+  check('calendar has a caption', /Each bar is one lease/.test(await page.textContent('.lz-cal-cap')));
   const geo = await page.evaluate(() => {
     const D = RB.date, today = RB.store.today();
     const w0 = D.monthStart(D.monthKey(today)), w1 = D.monthStart(D.addMonthKey(D.monthKey(today), 12)), span = D.diffDays(w0, w1);
@@ -44,65 +72,64 @@ await step('leases timeline', async () => {
       const s = bar.dataset.start, e = bar.dataset.end;
       const expL = D.diffDays(w0, s) / span * tr.width;
       const expR = e && e < w1 ? D.diffDays(w0, D.addDays(e, 1)) / span * tr.width : tr.width;
-      out.push({ id: row.dataset.tenant, dl: Math.abs(br.left - tr.left - expL), dr: Math.abs(br.right - tr.left - expR) });
+      out.push({ dl: Math.abs(br.left - tr.left - expL), dr: Math.abs(br.right - tr.left - expR) });
     });
     const t = document.querySelector('.lz-today'), g = document.querySelector('.lz-grid').getBoundingClientRect();
     const todayErr = Math.abs(t.getBoundingClientRect().left + 1 - g.left - D.diffDays(w0, today) / span * g.width);
     return { out, todayErr, rows: out.length, expected: RB.store.tenantsList({ includePast: false }).length };
   });
-  check('timeline has one row per current tenant', geo.rows === geo.expected, geo.rows + ' vs ' + geo.expected);
+  check('calendar has one row per current tenant', geo.rows === geo.expected, geo.rows + ' vs ' + geo.expected);
   const worst = Math.max(...geo.out.map(o => Math.max(o.dl, o.dr)));
   check('bars drawn to scale (≤1.5px off)', worst <= 1.5, 'worst ' + worst.toFixed(2) + 'px');
-  check('today rule at today', geo.todayErr <= 1.5, geo.todayErr.toFixed(2) + 'px');
+  check('today line at today', geo.todayErr <= 1.5, geo.todayErr.toFixed(2) + 'px');
   const order = await page.evaluate(() => Array.from(document.querySelectorAll('.lz-row .lz-bar')).map(b => b.dataset.end || '9999'));
   check('rows sorted by end date', order.every((e, i) => i === 0 || order[i - 1] <= e));
-  check('summary line', /lease.*end.*in the next \d+ days · \d+ month-to-month · \d+ moving out/.test(await page.textContent('.lz-summary')));
+  await page.click('#lz-cal'); await settle();
 });
 
-// ---------------------------------------------------------------- Leases: renew
+// ---------------------------------------------------------------- Leases: renew (plain questions)
 await step('renew lease', async () => {
   const id = await page.evaluate(() => RB.store.tenantsList().find(t => t.name === 'Rosa Delgado').id);
   const before = await page.evaluate(id => RB.store.tenant(id), id);
-  await page.click(`.lz-row[data-tenant="${id}"] [data-act="renew"]`);
+  await page.click(`.lz-item[data-tenant="${id}"] [data-act="renew"]`);
   await page.waitForSelector('#lz-renew-end');
+  check('renew asks plain questions', (await page.textContent('label[for="lz-renew-end"]')).trim() === 'New end date?' && /Is the rent changing\?/.test(await page.textContent('.sheet')));
   const defEnd = await page.inputValue('#lz-renew-end');
   check('renew defaults to +12 months', defEnd === await page.evaluate(e => RB.date.addMonths(e, 12), before.lease.end), defEnd);
+  check('rent questions hidden until "Yes"', await page.isHidden('#lz-renew-rent'));
+  await page.click('[data-seg-for="lz-renew-change"] [data-value="yes"]');
   await page.fill('#lz-renew-rent', '1,800');
   await page.waitForTimeout(50);
-  check('renew summary names the change', (await page.textContent('#lz-renew-sum')).includes('$1,800'));
+  check('renew ends with a summary sentence', /lease will end on .* The rent goes from \$1,725 to \$1,800 a month on/.test(await page.textContent('#lz-renew-sum')), await page.textContent('#lz-renew-sum'));
   check('renew button says what happens', (await page.textContent('[data-action="save"]')).trim() === 'Renew at $1,800');
+  await page.evaluate(() => document.querySelectorAll('.toast').forEach(t => t.remove()));
   await page.click('[data-action="save"]');
   await settle();
   const after = await page.evaluate(id => RB.store.tenant(id), id);
   const from = await page.evaluate(e => RB.date.addDays(e, 1), before.lease.end);
   check('lease end moved', after.lease.end === defEnd);
   check('rent schedule appended', after.rent.length === before.rent.length + 1 && after.rent[after.rent.length - 1].amount === 180000 && after.rent[after.rent.length - 1].from === from);
-  const bar = await page.evaluate(id => { const b = document.querySelector(`.lz-row[data-tenant="${id}"] .lz-bar`); return { end: b.dataset.end, off: b.classList.contains('lz-bar-off') }; }, id);
-  check('bar moved to the new end (runs off the window)', bar.end === defEnd && bar.off);
-  check('rent in force unchanged until the new term', await page.evaluate(id => RB.model.rentOn(RB.store.tenant(id), RB.store.today()), id) === 172500);
+  check('renewed lease leaves "ending soon"', await page.locator(`#lz-h-soon ~ ul .lz-item[data-tenant="${id}"]`).count() === 0);
+  check('toast in words with Undo', /^Renewed Rosa Delgado’s lease to/.test(await page.locator('.toast .toast-msg').last().textContent()));
   await toastUndo();
   const undone = await page.evaluate(id => RB.store.tenant(id), id);
-  check('undo renew restores end + schedule', undone.lease.end === before.lease.end && undone.rent.length === before.rent.length);
+  check('Undo renew restores end + schedule', undone.lease.end === before.lease.end && undone.rent.length === before.rent.length);
 });
 
-// ---------------------------------------------------------------- Leases: month-to-month + undo
+// ---------------------------------------------------------------- Leases: leave it month-to-month + undo; moving-out entry point
 await step('month-to-month', async () => {
-  const id = await page.evaluate(() => RB.store.tenantsList().find(t => t.name === 'Theo Lindqvist').id);
+  const id = await page.evaluate(() => RB.store.tenantsList().find(t => t.name === 'Rosa Delgado').id);
   const end = await page.evaluate(id => RB.store.tenant(id).lease.end, id);
-  await page.click(`.lz-row[data-tenant="${id}"] [data-act="decide"]`);
-  await page.click('.menu-item:has-text("Go month-to-month")');
+  await page.click(`.lz-item[data-tenant="${id}"] [data-act="mtm"]`);
   await settle();
-  check('went month-to-month', await page.evaluate(id => RB.store.tenant(id).lease.end === null, id));
-  check('bar is open-ended dashed', await page.evaluate(id => document.querySelector(`.lz-row[data-tenant="${id}"] .lz-bar`).classList.contains('lz-bar-mtm'), id));
+  check('left month-to-month', await page.evaluate(id => RB.store.tenant(id).lease.end === null, id));
+  check('now listed under Month-to-month', await page.locator(`#lz-sec-mtm, section[aria-labelledby="lz-h-mtm"] .lz-item[data-tenant="${id}"]`).count() === 1);
   await toastUndo();
-  check('undo restores end date', await page.evaluate(([id, end]) => RB.store.tenant(id).lease.end === end, [id, end]));
-  // list mode groups
-  await page.click('#lz-mode-list');
-  await settle();
-  const groups = await page.$$eval('.lz-group .sec-title', els => els.map(e => e.textContent));
-  check('list mode groups', groups.includes('Ending in 30 days') && groups.includes('Month-to-month') && groups.includes('Moving out'), groups.join(', '));
-  await page.click('#lz-mode-timeline');
-  // renewLease hook is wired for Today / palette
+  check('Undo restores the end date', await page.evaluate(([id, end]) => RB.store.tenant(id).lease.end === end, [id, end]));
+  await page.click(`.lz-item[data-tenant="${id}"] [data-act="moveout"]`);
+  await page.waitForSelector('#mo-date');
+  check('"They are moving out" opens the move-out guide', /When are they moving out\?/.test(await page.textContent('.sheet')));
+  await page.evaluate(() => RB.ui.closeAll());
   check('renewLease hook replaced', await page.evaluate(() => !/openTenant/.test(String(RB.actions.renewLease))));
 });
 
@@ -174,30 +201,43 @@ await step('upkeep flow', async () => {
 await step('reports', async () => {
   await go('reports');
   const fmt = (c) => page.evaluate(c => RB.money.fmt(c), c);
+  const choices = (await page.locator('.rp-choice .rp-choice-l').allTextContents()).join('|');
+  check('four big worded choices', choices === 'Rent roll|Who owes, and for how long|Money collected each month|Income for the year', choices);
+  check('each choice explains itself', await page.locator('.rp-choice .rp-choice-s').count() === 4 && (await page.textContent('#rp-tab-roll')).includes('Every unit, tenant and rent on one page'));
   await page.click('#rp-tab-roll'); await settle();
   const rr = await page.evaluate(() => RB.store.rentRoll().totals);
-  const roll = await page.evaluate(() => ['rent', 'deposit', 'balance'].map(k => document.querySelector(`#rp-roll [data-total="${k}"]`).textContent.trim()));
-  check('rent roll totals match model', roll[0] === await fmt(rr.rent) && roll[1] === await fmt(rr.deposit) && roll[2] === await fmt(rr.balance), roll.join(' '));
+  const roll = await page.evaluate(() => ['rent', 'deposit'].map(k => document.querySelector(`#rp-roll [data-total="${k}"]`).textContent.trim()));
+  check('rent roll totals match model', roll[0] === await fmt(rr.rent) && roll[1] === await fmt(rr.deposit), roll.join(' '));
   check('rent roll grouped with subtotals', await page.locator('#rp-roll .rp-subtotal').count() === 3);
-  check('occupancy line', /\d+ of \d+ units occupied/.test(await page.textContent('#rp-meta')));
-  // CSV fallback sheet
+  check('rent roll opens with the answer', /\d+ of \d+ units have a tenant/.test(await page.textContent('#rp-meta')) && /\d+ tenants owe a total of \$[\d,]+ — 2 of the \d+ have paid part of this month\./.test(await page.textContent('#rp-meta')), await page.textContent('#rp-meta'));
+  check('rent roll: part paid in words', /Part paid — rest is \d+ days late/.test(await page.textContent('#rp-roll')));
+  check('download explained in a line', /saves this table as a file that opens in Excel/.test(await page.textContent('.rp-actions-note')));
   await page.click('#rp-csv');
   await page.waitForSelector('#rb-showtext');
-  check('CSV fallback sheet opens', (await page.inputValue('#rb-showtext')).startsWith('Property,Unit,Tenant'));
+  const csvRoll = await page.inputValue('#rb-showtext');
+  check('Download for Excel: plain column headings', csvRoll.startsWith('Property,Unit,Tenant,Status,Rent each month,Lease started,Lease ends,Deposit,Owes,Paid ahead,This month'), csvRoll.split('\n')[0]);
   await page.keyboard.press('Escape'); await settle();
 
   await page.click('#rp-tab-aging'); await settle();
   const ag = await page.evaluate(() => RB.store.aging());
   const agT = await page.evaluate(() => ['d0_30', 'd31_60', 'd61_90', 'd90', 'total'].map(k => document.querySelector(`#rp-aging [data-total="${k}"]`).textContent.trim()));
   const agE = []; for (const k of ['d0_30', 'd31_60', 'd61_90', 'd90', 'total']) agE.push(await fmt(ag.totals[k]));
-  check('aging totals match model', agT.join() === agE.join(), agT.join(' '));
-  check('aging rows = owing tenants', await page.locator('#rp-aging tbody tr').count() === ag.rows.length);
-  check('aging counts tenants owing nothing', (await page.textContent('#rp-meta')).includes((await page.evaluate(n => RB.store.tenantsList().length - n, ag.rows.length)) + ' tenants owe nothing'));
+  check('who-owes totals match model', agT.join() === agE.join(), agT.join(' '));
+  check('who-owes rows = owing tenants', await page.locator('#rp-aging tbody tr').count() === ag.rows.length);
+  check('who-owes columns in plain words', (await page.locator('#rp-aging thead th').allTextContents()).join('|') === 'Tenant|Under a month|1 to 2 months|2 to 3 months|Over 3 months|Total owed');
+  const meta = (await page.textContent('#rp-meta')).replace(/\s+/g, ' ');
+  check('who-owes answer sentences', /\d+ tenants owe a total of \$[\d,]+\. Tomasz Wolski owes the most: \$3,300, going back to September\./.test(meta) && /2 of the \d+ have paid part of this month\./.test(meta), meta);
+  await page.click('#rp-csv');
+  await page.waitForSelector('#rb-showtext');
+  check('who-owes download headings', (await page.inputValue('#rb-showtext')).startsWith('Tenant,Property,Unit,Under a month,1 to 2 months,2 to 3 months,Over 3 months,Total owed'));
+  await page.keyboard.press('Escape'); await settle();
 
   await page.click('#rp-tab-collection'); await settle();
   const col = await page.evaluate(() => RB.store.collectionByMonth(12));
   const sumC = col.reduce((s, r) => s + r.charged, 0), sumP = col.reduce((s, r) => s + r.collected, 0);
   check('collection totals match model', (await page.textContent('#rp-collection [data-total="charged"]')).trim() === await fmt(sumC) && (await page.textContent('#rp-collection [data-total="collected"]')).trim() === await fmt(sumP));
+  check('collection answer sentence', /Over the last 12 months you collected \$[\d,.]+ of the \$[\d,.]+ charged — \d+%\./.test(await page.textContent('#rp-meta')));
+  check('chart has a caption', /how much of that month’s rent came in/.test(await page.textContent('.rp-legend')));
   const chart = await page.evaluate(() => {
     const plot = document.querySelector('.rp-chart-plot'); const max = +plot.dataset.axisMax; const H = plot.getBoundingClientRect().height;
     return Array.from(document.querySelectorAll('.rp-charged, .rp-collected')).map(b => Math.abs(b.getBoundingClientRect().height - (+b.dataset.v / max) * H));
@@ -208,47 +248,65 @@ await step('reports', async () => {
   const yr = +today.slice(0, 4);
   const inc = await page.evaluate(y => RB.store.incomeByYear(y).totals, yr);
   check('income total matches model', (await page.textContent('#rp-income [data-total="payments"]')).trim() === await fmt(inc.payments));
+  check('year buttons are worded', (await page.textContent('#rp-year-prev')).trim() === 'Previous year' && (await page.textContent('#rp-year-next')).trim() === 'Next year');
   await page.click('#rp-year-prev'); await settle();
-  check('year stepper', (await page.textContent('#rp-year-label')).trim() === String(yr - 1));
+  check('Previous year', (await page.textContent('#rp-year-label')).trim() === String(yr - 1));
   await page.click('#rp-year-next'); await settle();
   await page.click('#rp-copy');
   await page.waitForTimeout(150);
-  check('copy gives feedback', await page.locator('.toast, #rb-showtext').count() >= 1);
+  check('Copy gives feedback', await page.locator('.toast, #rb-showtext').count() >= 1);
   await page.evaluate(() => { RB.ui.closeAll(); document.querySelectorAll('.toast').forEach(t => t.remove()); });
+  for (const t of ['roll', 'aging', 'collection', 'income']) {
+    await page.click('#rp-tab-' + t); await settle();
+    const w = forbiddenIn(await viewText());
+    check('reports ' + t + ': no forbidden words', !w, w);
+    const au = await audit(40);
+    check('reports ' + t + ': every button has words', !au.noText.length, au.noText.join(', '));
+  }
 });
 
-// ---------------------------------------------------------------- Setup: settings save + persist, drafts survive
+// ---------------------------------------------------------------- Settings: sentences that save on change, drafts survive
 await step('settings', async () => {
   await go('setup');
+  check('Text size is at the very top', await page.evaluate(() => { const s = document.querySelector('.st-sec'); return s && s.id === 'st-sec-text' && !!s.querySelector('[data-textsize]'); }));
+  check('rules read as sentences', /Give tenants\s+days before it counts as late\./.test((await page.textContent('[data-row="graceDays"] .st-sentence-text')).replace(/Saved/, '')) && /Rent is due on the/.test(await page.textContent('[data-row="dueDay"]')));
   await page.fill('#st-graceDays', '7');
   await page.press('#st-graceDays', 'Tab');
   await settle();
   check('grace days saved', await page.evaluate(() => RB.store.settings().graceDays === 7));
-  check('"Saved" confirmation shows', await page.locator('#st-saved-graceDays.is-on').count() === 1);
-  check('rule sentence updates', (await page.textContent('#st-rule-sentence')).includes('After the 8th, suggest a $50 late fee'));
+  check('clear "Saved"', await page.locator('#st-saved-graceDays.is-on').count() === 1 && (await page.textContent('#st-saved-graceDays')).trim() === 'Saved');
+  check('rules paragraph updates', (await page.textContent('#st-rule-sentence')).includes('It counts as late after the 8th. Then a $50 late fee is suggested'), await page.textContent('#st-rule-sentence'));
   await page.fill('#st-graceDays', '99'); await page.press('#st-graceDays', 'Tab'); await settle();
-  check('invalid value rejected with message', await page.evaluate(() => RB.store.settings().graceDays === 7) && (await page.textContent('[data-row="graceDays"] .field-error')).length > 0);
+  check('bad value explained', await page.evaluate(() => RB.store.settings().graceDays === 7) && /Use a number from 0 to 27/.test(await page.textContent('[data-row="graceDays"] .field-error')));
   await page.fill('#st-graceDays', '7'); await page.press('#st-graceDays', 'Tab'); await settle();
   await page.click('#st-lf-percent'); await settle();
   check('late fee rule switched to percent', await page.evaluate(() => { const l = RB.store.settings().lateFee; return l.type === 'percent' && l.amount === 5; }));
+  check('late fee sentence', /When rent is late, suggest a late fee of\s+percent of that month’s rent\./.test((await page.textContent('[data-row="lateFeeAmount"] .st-sentence-text')).replace(/Saved/, '')));
   await page.fill('#st-portfolioName', 'Harbour Lane Homes'); await page.press('#st-portfolioName', 'Tab'); await settle();
-  // methods
   await page.fill('#st-method-new', 'PayPal'); await page.press('#st-method-new', 'Enter'); await settle();
-  check('method added', await page.evaluate(() => RB.store.settings().methods.includes('PayPal')));
-  // half-typed field survives a store change
+  check('payment way added', await page.evaluate(() => RB.store.settings().methods.includes('PayPal')));
+  check('ways have worded Remove buttons', (await page.locator('#st-methods .btn').first().textContent()).trim() === 'Remove');
   await page.focus('#st-leaseNoticeDays'); await page.fill('#st-leaseNoticeDays', '9');
   await page.evaluate(() => RB.store.addLog(RB.store.tenantsList()[0].id, { text: 'store change' }));
   await page.waitForTimeout(120);
-  check('half-typed field survives store change', await page.inputValue('#st-leaseNoticeDays') === '9' && await page.evaluate(() => document.activeElement.id === 'st-leaseNoticeDays'));
+  check('half-typed field survives a store change', await page.inputValue('#st-leaseNoticeDays') === '9' && await page.evaluate(() => document.activeElement.id === 'st-leaseNoticeDays'));
   await page.fill('#st-leaseNoticeDays', '60'); await page.press('#st-leaseNoticeDays', 'Tab'); await settle();
+  check('keyboard shortcuts tucked at the bottom', await page.evaluate(() => { const s = Array.from(document.querySelectorAll('.st-sec')); return s[s.length - 1].id === 'st-sec-keys'; }));
+  check('who can see this', /Who can see this\?/.test(await page.textContent('#st-sec-about')));
+  const w = forbiddenIn(await viewText());
+  check('settings: no forbidden words', !w, w);
+  const au = await audit(40);
+  check('settings: every button has words', !au.noText.length, au.noText.join(', '));
   await page.reload();
   await page.waitForFunction(() => RB.store.state.ready);
   check('settings persist across reload', await page.evaluate(() => { const s = RB.store.settings(); return s.graceDays === 7 && s.lateFee.type === 'percent' && s.portfolioName === 'Harbour Lane Homes' && s.methods.includes('PayPal'); }));
 });
 
-// ---------------------------------------------------------------- Setup: import
+// ---------------------------------------------------------------- Settings: bring in my tenants (3 steps, one bad row)
 await step('import', async () => {
   await go('setup');
+  check('step 1 in plain words', /Step 1 of 3: Paste your list or choose a file/.test(await page.textContent('#st-import')) && /Download an example for Excel/.test(await page.textContent('#st-import')) && await page.locator('.st-eg table').count() === 1);
+  check('Next waits for a list', await page.isDisabled('#st-imp-next1'));
   const paste = ['Tenant\tApt\tBuilding\tMonthly rent\tLease start\tLease end\tDeposit\tBalance owed',
     'Anna Berg\t4A\tElm House\t1200\t1/15/2026\t1/14/2027\t1200\t0',
     'Bo Chen\t4B\tElm House\t$1,350.00\t2026-02-01\t2027-01-31\t1350\t150',
@@ -256,37 +314,52 @@ await step('import', async () => {
     'Dara Ito\t4D\tElm House\t1,025\tMar 3 2026\t\t\t',
     'Eli Ford\t5A\tElm House\t1500\t2026-03-01\t\t\t-50'].join('\n');
   await page.fill('#st-import-text', paste);
-  await page.waitForTimeout(350);
-  check('auto-mapped columns', await page.evaluate(() => [0, 1, 2, 3, 4, 5, 6, 7].map(i => document.getElementById('st-map-' + i).value).join() === 'name,unit,property,rent,start,end,deposit,balance'));
-  check('bad row flagged', (await page.textContent('#st-import-table')).includes('Missing name'));
-  // pasted import survives a store change while the textarea has focus, and after it loses focus
+  await page.waitForTimeout(150);
+  check('rows counted while pasting', (await page.textContent('#st-imp-count')).trim() === 'We found 5 tenant rows.' && !(await page.isDisabled('#st-imp-next1')));
   await page.evaluate(() => RB.store.addLog(RB.store.tenantsList()[0].id, { text: 'store change 2' }));
   await page.waitForTimeout(100);
-  await page.focus('#st-keys');
+  await page.focus('#st-backup');
   await page.waitForTimeout(100);
-  check('pasted import survives store change', (await page.inputValue('#st-import-text')) === paste);
-  check('button counts good rows', (await page.textContent('#st-import-go')).trim() === 'Import 4 tenants');
+  check('pasted list survives a store change', (await page.inputValue('#st-import-text')) === paste);
+  await page.click('#st-imp-next1'); await settle();
+  check('step 2: check the columns', /Step 2 of 3: Check we understood your columns/.test(await page.textContent('#st-import')));
+  check('columns matched by heading', await page.evaluate(() => [0, 1, 2, 3, 4, 5, 6, 7].map(i => document.getElementById('st-map-' + i).value).join() === 'name,unit,property,rent,start,end,deposit,balance'));
+  check('each column shows examples', /For example: Anna Berg, Bo Chen/.test(await page.textContent('.st-cols')));
+  await page.selectOption('#st-map-0', ''); await settle();
+  check('missing name explained, Next blocked', /which column holds the name/.test(await page.textContent('#st-import')) && await page.isDisabled('#st-imp-next2'));
+  await page.selectOption('#st-map-0', 'name'); await settle();
+  await page.click('#st-imp-next2'); await settle();
+  const s3 = (await page.textContent('#st-import')).replace(/\s+/g, ' ');
+  check('step 3: look it over, problem in plain words', /Step 3 of 3: Look it over/.test(s3) && /4 tenants are ready to bring in\./.test(s3) && /1 row has a problem and will be left out\./.test(s3) && /Row 3 \(4C\): There is no name\./.test(s3) && /change it in your spreadsheet and paste the list again/.test(s3), s3.slice(0, 300));
+  check('button counts good rows', (await page.textContent('#st-import-go')).trim() === 'Bring in 4 tenants');
+  await page.click('[data-act="impStep"][data-s="2"]'); await settle();
+  await page.click('[data-act="impStep"][data-s="1"]'); await settle();
+  check('Back keeps the pasted list', (await page.inputValue('#st-import-text')) === paste);
+  await page.click('#st-imp-next1'); await settle();
+  await page.click('#st-imp-next2'); await settle();
   if (await page.locator('#st-import-rmsample').count()) await page.uncheck('#st-import-rmsample');
   const n0 = await page.evaluate(() => RB.store.tenantsList().length);
   await page.click('#st-import-go');
   await page.waitForTimeout(300);
   const res = await page.evaluate(() => { const l = RB.store.tenantsList(); const b = l.find(t => t.name === 'Bo Chen'); const e = l.find(t => t.name === 'Eli Ford'); return { n: l.length, b, e, lb: RB.store.ledger(b.id) }; });
-  check('imported 4 tenants', res.n === n0 + 4);
+  check('brought in 4 tenants', res.n === n0 + 4);
   const first = today.slice(0, 8) + '01';
-  check('trackFrom = first of month, opening from balance', res.b.trackFrom === first && res.b.opening.amount === 15000 && res.e.opening.amount === -5000);
-  check('dates + money parsed', res.b.lease.start === '2026-02-01' && res.b.lease.end === '2027-01-31' && res.b.rent[0].amount === 135000 && res.b.deposit.amount === 135000);
-  check('ledger starts cleanly (opening + this month)', res.lb.rows.filter(r => r.kind === 'rent').length === 1 && res.lb.balance === 15000 + 135000);
-  check('success note shown', await page.locator('.st-done').count() === 1);
+  check('rent counted from the 1st, what they owed carried in', res.b.trackFrom === first && res.b.opening.amount === 15000 && res.e.opening.amount === -5000);
+  check('dates + money understood', res.b.lease.start === '2026-02-01' && res.b.lease.end === '2027-01-31' && res.b.rent[0].amount === 135000 && res.b.deposit.amount === 135000);
+  check('payment history starts cleanly', res.lb.rows.filter(r => r.kind === 'rent').length === 1 && res.lb.balance === 15000 + 135000);
+  check('done note in words', /Brought in 4 tenants\. 1 row with a problem was left out\./.test(await page.textContent('.st-done')));
+  check('toast in words', /^Brought in 4 tenants\./.test(await page.locator('.toast .toast-msg').last().textContent()));
 });
 
-// ---------------------------------------------------------------- Backup → wipe → restore
+// ---------------------------------------------------------------- Save a copy → wipe → restore from a copy
 await step('backup round trip', async () => {
   await go('setup');
+  check('copy buttons in words', (await page.textContent('#st-backup')).trim() === 'Save a copy' && /Restore from a copy/.test(await page.textContent('#st-sec-backup')));
   const snap = await page.evaluate(() => ({ n: RB.store.tenantsList().length, k: RB.store.ticketsList().length, bal: RB.store.tenantsList().map(t => RB.store.ledger(t.id).balance).join() }));
   await page.click('#st-backup');
   await page.waitForSelector('#rb-showtext');
   const json = await page.inputValue('#rb-showtext');
-  check('backup is JSON of everything', JSON.parse(json).format === 'rent-book-backup');
+  check('the copy has everything', JSON.parse(json).format === 'rent-book-backup');
   await page.keyboard.press('Escape'); await settle();
   await page.evaluate(() => RB.store._resetLocal());
   await page.waitForTimeout(100);
@@ -294,16 +367,17 @@ await step('backup round trip', async () => {
   await go('setup');
   await page.setInputFiles('#st-restore-file', { name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(json) });
   await page.waitForSelector('#st-restore-summary');
-  check('restore shows summary', (await page.textContent('#st-restore-summary')).includes(snap.n + ' tenants'));
+  check('restore explains what is in the copy and the consequence', (await page.textContent('#st-restore-summary')).includes(snap.n + ' tenants') && /everything in this rent book now is replaced/.test(await page.textContent('#st-restore-summary')));
   await page.click('#st-restore-go');
   await page.waitForSelector('[data-action="confirm"]');
-  check('confirm says it replaces everything', /replaced/.test(await page.textContent('.sheet-body')));
+  check('confirm says it replaces everything', /replace/i.test(await page.textContent('.sheet-body')));
   await page.click('[data-action="confirm"]');
   await page.waitForTimeout(300);
   check('restore round trip', await page.evaluate(s => RB.store.tenantsList().length === s.n && RB.store.ticketsList().length === s.k && RB.store.tenantsList().map(t => RB.store.ledger(t.id).balance).join() === s.bal, snap));
   await page.setInputFiles('#st-restore-file', { name: 'nope.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":1}') });
   await page.waitForSelector('.st-restore.is-bad');
-  check('non-backup file refused', (await page.textContent('.st-restore.is-bad')).includes('isn’t a Rent Book backup'));
+  check('a file that is not a copy is refused in words', (await page.textContent('.st-restore.is-bad')).includes('isn’t a copy saved from Rent Book'));
+  await page.click('.st-restore.is-bad [data-act="restoreClose"]');
 });
 
 // ---------------------------------------------------------------- Hostile strings
@@ -316,16 +390,18 @@ await step('escaping', async () => {
   }, evil);
   await page.waitForTimeout(100);
   for (const r of ['leases', 'upkeep', 'reports', 'setup']) await go(r);
-  await go('leases'); await page.click('#lz-mode-list'); await settle(); await page.click('#lz-mode-timeline');
+  await go('leases'); await page.click('#lz-cal'); await settle(); await page.click('#lz-cal'); await settle();
   await go('reports');
   for (const t of ['roll', 'aging', 'collection', 'income']) { await page.click('#rp-tab-' + t); await settle(); }
   await go('setup');
   await page.fill('#st-import-text', 'Name,Unit,Rent\n' + '"' + evil.replace(/"/g, '""') + '",1,abc');
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(150);
+  await page.click('#st-imp-next1'); await settle(); await page.click('#st-imp-next2'); await settle();
   await page.evaluate(() => { RB.actions.openTicket('evilk'); }); await settle();
   await page.evaluate(() => { RB.ui.closeAll(); RB.actions.renewLease('evil1'); }); await settle();
   check('hostile strings stay escaped', await page.evaluate(() => !window.__x && !document.querySelector('#rb-view img, #rb-view b, #rb-layer img, #rb-layer b')));
   await page.evaluate(() => RB.ui.closeAll());
+  await page.click('[data-act="impStep"][data-s="2"]'); await settle(); await page.click('[data-act="impStep"][data-s="1"]'); await settle();
   await page.fill('#st-import-text', '');
 });
 
@@ -342,8 +418,28 @@ await step('phone overflow', async () => {
   await go('setup');
   await page.fill('#st-import-text', 'Name\tUnit\tProperty\tRent\tLease start\tLease end\tDeposit\tBalance\nA very long tenant name indeed\t4A\tA very long property name here\t1200\t1/15/2026\t1/14/2027\t1200\t0');
   await page.waitForTimeout(300);
-  await probe('setup + import preview');
+  await probe('setup + import step 1');
+  await page.click('#st-imp-next1'); await probe('setup + import step 2');
+  await page.click('#st-imp-next2'); await probe('setup + import step 3');
   check('no horizontal page overflow at 390px', !bad.length, bad.join(', '));
+  // Extra large text: Leases, Reports, Settings — no sideways scroll, every tappable thing ≥ 48px, words on buttons
+  await page.evaluate(() => RB.textSize && RB.textSize.set('xl'));
+  const badXL = [], smallXL = [], wordless = [];
+  const probeXL = async name => {
+    await page.waitForTimeout(150);
+    const o = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth); if (o > 0) badXL.push(name + ' +' + o + 'px');
+    const au = await audit(48); if (au.small.length) smallXL.push(name + ': ' + au.small.join(', ')); if (au.noText.length) wordless.push(name + ': ' + au.noText.join(', '));
+  };
+  await go('leases'); await probeXL('leases');
+  await page.click('.lz-item [data-act="renew"]'); await probeXL('renew sheet'); await page.evaluate(() => RB.ui.closeAll());
+  await go('reports');
+  for (const t of ['roll', 'aging', 'collection', 'income']) { await page.click('#rp-tab-' + t); await probeXL('reports ' + t); }
+  await go('setup'); await probeXL('settings');
+  await page.click('[data-act="impStep"][data-s="1"]').catch(() => {}); await settle();
+  check('phone XL: no horizontal overflow (Leases, Reports, Settings)', !badXL.length, badXL.join(', '));
+  check('phone XL: tappable things ≥ 48px', !smallXL.length, smallXL.join(' | '));
+  check('phone XL: every button has words', !wordless.length, wordless.join(' | '));
+  await page.evaluate(() => RB.textSize && RB.textSize.set('normal'));
   await page.setViewportSize({ width: 1360, height: 900 });
 });
 

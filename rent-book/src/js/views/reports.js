@@ -32,15 +32,12 @@ function axisMoney(c) {
   if (d >= 1000) return M.symbol + (d / 1000).toFixed(d % 1000 === 0 ? 0 : 1).replace(/\.0$/, '') + 'k';
   return M.symbol + Math.round(d);
 }
-/** This month's status in glossary words for a tenant (part payments spelled out). */
-function monthWords(tenantId, status) {
+/** This month's status in glossary words (shared helper: part payments read "Part paid — rest is 22 days late"). */
+function monthWords(tenantId) {
   const lg = S().ledger(tenantId);
-  const p = lg && W().partial(lg, S().today());
-  if (p) return p.late ? 'Part paid — rest is ' + W().days(p.daysLate) + ' late' : 'Part paid';
-  if (status === 'late') return lg ? W().days(lg.current.daysLate) + ' late' : 'Late';
-  return { paid: 'Paid', paid_late: 'Paid late', partial: 'Part paid', due: 'Not paid yet' }[status] || null;
+  return lg && lg.current.status !== 'none' ? ui.statusWords(lg.months[lg.current.period] || lg.current) : null;
 }
-const monthPill = (tenantId, status) => { const w = monthWords(tenantId, status); return w ? ui.pill(status, { label: w }) : h`<span class="rp-dash">No rent this month</span>`; };
+const monthPill = tenantId => { const lg = S().ledger(tenantId); const m = lg && (lg.months[lg.current.period] || null); return m && m.status !== 'none' ? ui.monthPill(m) : h`<span class="rp-dash">No rent this month</span>`; };
 const balWords = c => (c > 0 ? h`<span class="tone-bad">Owes ${$(c)}</span>` : c < 0 ? h`${$(-c)} paid ahead` : h`<span class="rp-dash">All paid up</span>`);
 const partCount = rows => rows.filter(r => { const lg = S().ledger(r.tenantId); return lg && W().partial(lg, S().today()); }).length;
 const who = (id, name, unit) => h`<span class="rp-who">${ui.plate(unit)}<button type="button" class="rp-name" data-act="open" data-id="${id}">${name}</button></span>`;
@@ -72,7 +69,7 @@ function rentRoll(today) {
           <td class="num">${r.status === 'past' ? h`<span class="rp-dash">—</span>` : ui.money(r.rent)}</td>
           <td>${end(r)}</td>
           <td class="num">${r.deposit ? ui.money(r.deposit) : h`<span class="rp-dash">None</span>`}</td>
-          <td class="num">${balWords(r.balance)}</td><td>${r.status === 'past' ? h`<span class="rp-dash">Moved out</span>` : monthPill(r.tenantId, r.monthStatus)}</td></tr>`)}
+          <td class="num">${balWords(r.balance)}</td><td>${r.status === 'past' ? h`<span class="rp-dash">Moved out</span>` : monthPill(r.tenantId)}</td></tr>`)}
         <tr class="rp-subtotal"><td></td><td>${g.property} in total</td><td class="num">${ui.money(g.rent)}</td><td></td><td class="num">${ui.money(g.deposit)}</td><td class="num">${balWords(g.balance)}</td><td></td></tr>
       </tbody>`)}
       <tfoot><tr class="rp-total"><td></td><td>Everyone (${RB.plural(rr.rows.length, 'tenant')})</td><td class="num" data-total="rent">${ui.money(rr.totals.rent)}</td><td></td><td class="num" data-total="deposit">${ui.money(rr.totals.deposit)}</td><td class="num" data-total="balance">${balWords(rr.totals.balance)}</td><td></td></tr></tfoot>
@@ -86,7 +83,7 @@ function rentRoll(today) {
             <div><dt>Lease ends</dt><dd>${end(r)}</dd></div>
             <div><dt>Deposit</dt><dd>${r.deposit ? $(r.deposit) : 'None'}</dd></div>
             <div><dt>Owes</dt><dd>${balWords(r.balance)}</dd></div>
-            ${r.status !== 'past' ? h`<div><dt>This month</dt><dd>${monthPill(r.tenantId, r.monthStatus)}</dd></div>` : ''}
+            ${r.status !== 'past' ? h`<div><dt>This month</dt><dd>${monthPill(r.tenantId)}</dd></div>` : ''}
           </dl></div>`)}
         <p class="rp-ph-sub">${g.property} in total: ${$(g.rent)} rent each month.</p>`)}
     </div>`;
@@ -95,7 +92,7 @@ function rentRoll(today) {
     { label: 'Property', key: 'property' }, { label: 'Unit', key: 'unit' }, { label: 'Tenant', key: 'name' }, { label: 'Status', get: statusWord },
     { label: 'Rent each month', key: 'rent', money: true }, { label: 'Lease started', key: 'leaseStart' }, { label: 'Lease ends', get: r => r.leaseEnd || 'Month-to-month' },
     { label: 'Deposit', key: 'deposit', money: true }, { label: 'Owes', money: true, get: r => Math.max(0, r.balance) }, { label: 'Paid ahead', money: true, get: r => Math.max(0, -r.balance) },
-    { label: 'This month', get: r => (r.status === 'past' ? 'Moved out' : monthWords(r.tenantId, r.monthStatus) || 'No rent this month') },
+    { label: 'This month', get: r => (r.status === 'past' ? 'Moved out' : monthWords(r.tenantId) || 'No rent this month') },
   ]);
   return { title: 'Rent roll', file: 'rent-roll', csv, answer, body };
 }

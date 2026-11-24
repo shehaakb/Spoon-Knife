@@ -270,7 +270,7 @@ function editTenant(id, section) {
   return new Promise(resolve => {
     let saved = null;
     ui.sheet({
-      title: 'Edit their details', sub: sub(t), size: 'wide', cancel: 'Close',
+      title: 'Edit their details', sub: sub(t), size: 'wide',
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="tn-form">
           ${ui.field({ name: 'name', id: 'tf-name', label: 'Their full name', value: t.name, required: true, requiredMsg: 'Write their name' })}
@@ -395,7 +395,7 @@ function changeRent(id) {
   return new Promise(resolve => {
     let ok = false;
     ui.sheet({
-      title: 'Raise or change the rent', sub: sub(t), cancel: 'Close',
+      title: 'Raise or change the rent', sub: sub(t),
       body: (el, sh) => {
         el.innerHTML = String(h`<div class="tn-form">
           <p class="tn-lead">The rent is ${$(cur)} a month now.</p>
@@ -612,7 +612,7 @@ function settleDeposit(id) {
   return new Promise(resolve => {
     let ok = false;
     ui.sheet({
-      title: 'Give back the deposit', size: 'wide', sub: sub(t), cancel: 'Close',
+      title: 'Give back the deposit', size: 'wide', sub: sub(t),
       body: (el, sh) => {
         sh.el.classList.add('tn-settle-sheet');
         const inner = document.createElement('div');
@@ -650,7 +650,7 @@ T.deleteTenant = async function deleteTenant(id) {
     title: 'Remove ' + (t.name || 'this tenant') + '?',
     body: h`<p>This deletes <strong>${t.name}</strong> (${T.place(t)}) and their whole payment history${n ? h` — ${RB.plural(n, 'payment or charge', 'payments and charges')}` : ''}${notes ? h` and ${RB.plural(notes, 'note')}` : ''}. It cannot be undone.</p>
       ${t.status !== 'past' ? h`<p class="mt-2">If they have simply left, choose <strong>They are moving out</strong> instead — that keeps their history.</p>` : ''}`,
-    confirmLabel: 'Remove ' + (t.name || 'this tenant'), cancelLabel: 'Keep it', danger: true,
+    confirmLabel: 'Remove ' + (t.name || 'this tenant'), danger: true,
   });
   if (!ok) return false;
   if (location.hash === '#t-' + id) location.hash = 'tenants';

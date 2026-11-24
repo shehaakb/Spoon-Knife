@@ -12,6 +12,69 @@ What view authors code against. SPEC.md is the product spec; this file is the AP
   `tools/smoke-tenants.mjs`, `tools/smoke-other.mjs` (Leases, Upkeep, Reports, Setup). Cloud-path simulation:
   `node tools/cloud-sim.mjs` (fake db, see §11).
 - Component review page: open `dist/preview.html#kit` (not in the nav). Every class below is rendered there.
+- Screens at a text size: `node tools/shots.mjs --text xl` (or `lg`) → `shots/<name>-<size>-<theme>-xl.png`; overflow of any element past the screen edge fails the run.
+
+## What changed in v2 for view authors (read first)
+
+v2 makes the whole app easy for a non-technical 50+ user (SPEC §8 — the eleven rules and the **glossary** are the
+wording authority; use its words exactly in UI, toasts, CSV headings and help). Most of it arrives automatically through
+tokens and `RB.ui`; these are the things **you** must do to stay consistent:
+
+1. **Sizes come from tokens, which scale.** Every size token multiplies by `--text-scale` (Text size control:
+   Normal 1 · Large 1.12 · Extra large 1.25, `data-text="lg|xl"` on the root element). Never write literal `px` for type, control heights
+   or row heights in view CSS — use `var(--t-*)`, `var(--ctl-h*)`, `var(--row-h)`, `var(--s*)`, or `calc(Npx * var(--text-scale))`.
+   Token *names* are unchanged but values went up: `--t-12` 14px · `--t-13` 15 · `--t-15` 17 · `--t-18` 20 · `--t-24` 27 ·
+   `--t-34` 38 · `--t-body` 16 desktop / 17 phone · `--t-micro` 14. `--ctl-h` 44 desktop / 48 phone, `--ctl-h-sm` 40 / 48,
+   `--ctl-h-lg` 52 / 56, new `--ctl-h-xl` 64, `--row-h` 56 / 60, `--icon` 18. Nothing on phone may be tappable below 48px
+   (`.linkbtn` is inline text — for a standalone quiet action use the new **`.btn-link`**). Check your view at 390px with
+   `node tools/shots.mjs --size phone --text xl` — the run fails on any element wider than the screen.
+2. **Secondary text is `--ink-2` (`.muted`) wherever it means something.** `--ink-3` (`.faint`) is decoration only.
+3. **No icon-only buttons.** `ui.button({iconOnly})` now always shows its label; `ui.copyline` renders a worded "Copy"
+   (and "Call" etc. via `hrefLabel`); `ui.drawerClose()` reads "Close" (desktop) / "Back" (phone full-screen page); sheet
+   close reads "Close". Replace any hand-built `btn-icon` with words (row menus: a "More" button with the `more` icon + word).
+4. **Shared words changed** (see the table below). If your smoke script matches old strings, update it.
+5. **Forms:** use `.form-col` (one column), question labels ("How much is the rent each month?"), `type:'choice'` instead
+   of `select` for ≤ 6 options, put optional fields in `ui.moreDetails(...)`, state the action on the primary button,
+   and set a plain live sentence with `handle.setNote(...)`. Long flows (Add a tenant) use **`ui.steps`** (§8.4).
+6. **Confirm** (`ui.confirm`) now renders a plain sentence, a large "Keep it" (focused) and a red worded button —
+   pass `confirmLabel` that says the action ("Delete Maya Okafor"), and a `body` that says the consequence.
+7. **Status:** render month status with `ui.monthPill(month)` (or `ui.pill(status, {daysLate, paid})`) so a late month
+   with money paid reads **"Part paid — rest is 22 days late"**, never just "Late". Plain text: `ui.statusWords(month)`.
+8. **Routes/nav:** nav label "Repairs" (`#repairs`; `#upkeep` is an alias — `RB.views.get('repairs')` finds a view
+   registered as either name), "Settings" (route stays `#setup`). `#p-<slug>` routes to the Repairs view with
+   `ctx.param = slug`. Keyboard shortcuts are not advertised anywhere in the main UI; Settings links to them with
+   `data-cmd="help:keys"` (still works, also `?`).
+9. **Compact density is gone.** `.tbl-compact` is a no-op (rows stay ≥ 52px); remove density toggles from your view.
+10. **Text size control:** `ui.textSizeControl({id})` — the Settings engineer places one on the Settings page
+    (the shell already shows it in the sidebar footer and the phone More sheet).
+
+### Shared-helper output: old → new
+| Helper | Old | New |
+|---|---|---|
+| `RB.date.rel` | "in 12 d", "9 d ago", "9 d late", "1 d late" | "in 12 days", "9 days ago", "9 days late", "1 day late" (today / tomorrow / yesterday unchanged) |
+| `RB.date.days(n)` | "9 d" | "9 days" / "1 day" |
+| `ui.pill` | partial "Partial", due "Due", late "9 d late", none = dash only | "Part paid", "Not paid yet", "9 days late", late with `paid>0` → "Part paid — rest is 9 days late" (class `pill-partial_late`), none = dash + "No rent this month" |
+| `RB.model.STATUS_LABEL` | Partial / Due | Part paid / Not paid yet (tiny model change) |
+| `ui.balance(c)` | owed "$1,225" red · credit "$250 cr" · zero "—" | "Owes $1,225" · "$250 paid ahead" · "All paid up" (`{plain:true}` → "$1,225" / "$250 ahead" / "—"; `{zero:''}` still works). Classes `.bal .bal-owed .bal-ahead .bal-zero`; `.cr` no longer rendered |
+| `ui.tenantTag` | "Notice given", "Past" | "Moving out", "Moved out" |
+| `ui.strip` titles | "partly paid", "due", "no charge", "9 d late" | "part paid", "not paid yet", "no rent", "9 days late" |
+| `ui.copyline` | icon-only copy button | `<button class="btn btn-sm btn-worded">` Copy icon + "Copy"; link button shows `hrefLabel` text; empty → "Not given" |
+| `ui.button` | `iconOnly` → `.btn-icon` + aria-label | label always visible in `<span class="btn-label">`; `iconOnly` adds `.btn-worded` |
+| `ui.drawerClose` | ✕ icon only | ✕ "Close" (desktop) / ‹ "Back" (phone) |
+| `ui.toast` | 7 s, small "Undo" link, ✕ | **10 s** (`ui.TOAST_MS`), large filled Undo button (with icon), worded "Close" (`.toast-x` is now a text button) |
+| `ui.sheet` | ✕ close | ✕ "Close"; foot note is a full-width sentence; actions accept `hidden`; `handle.setAction(id,{hidden})`, `handle.setSub(text)` |
+| `ui.confirm` | Cancel + Confirm | red `confirmLabel` + large **"Keep it"** (`kind:'keep'`, `.btn-keep`, focused); `cancelLabel` overrides "Keep it" |
+| `ui.palette` | placeholder "Search…", kbd hints footer | "Find…", footer is a "Close" button |
+| `ui.pickTenant` | palette list | a sheet: find box + large rows (plate, name, property, "Owes $X"/"All paid up", "N days late"); `prefer:'owes'`, `skip` |
+| `ui.firstRun` | "Import from a spreadsheet", "Explore with sample data" | "Bring in my tenants", "Try it with sample tenants first" |
+| `ui.copy` toast | "Copied phone number" | "Copied the phone number. You can paste it into a text message or email." |
+| actions toasts | "Recorded $1,450 from Unit 2B" · "Added $40 charge to Unit 2B" · "Credited $40 to …" · "Added late fee $50 to …" · "Voided $1,450 payment" · "Note added" · "Follow-up done" | "Recorded $1,450 from Maya Okafor. All paid up." / "… Still owes $550." · "Added a $40 charge for Maya Okafor." · "Took $40 off what Maya Okafor owes." · "Added a $50 late fee for Maya Okafor (November)." · "Removed the $1,450 payment for Maya Okafor." · "Saved your note for Maya Okafor." · "Marked the reminder done." |
+| action sheets | "Record payment", "Add charge", "Add credit", "Add note", "Edit payment" | "Record a payment", "Add a charge", "Take money off what they owe", "Write a note", "Change this payment" (field ids unchanged: `pay-amount`, `pay-date`, `pay-method` (now radio cards `pay-method-0…`), `pay-ref`, `pay-memo`, `chg-*`, `cr-*`, `note-*`, `ed-*`; new `pay-how-0/1`) |
+| `removeSample` / `restore` confirm | "Remove sample data" | "Remove sample tenants" / "Replace with the copy" |
+| commands | "Record payment…", "Add charge…", "Add credit…", "Add note…", "Add tenant", "New upkeep request", "Import tenants…", "Download backup (JSON)", "Load/Remove sample data" | "Record a rent payment", "Add a charge", "Take money off what someone owes", "Write a note", "Add a tenant", "Log a repair", "Bring in my tenants", "Save a copy of everything", "Load/Remove sample tenants"; new `payment:part`, `help:howto`, `textsize`; `help:keys` hidden from Find but still runs |
+| shell | nav "Upkeep", "Setup"; "Shortcuts ?" in sidebar; ⌕ / + icon buttons; banner "Remove sample data" / "Import my tenants" | "Repairs", "Settings"; Help + Text size in sidebar; "Find" / "Add" worded; banner "Remove sample tenants" / "Bring in my tenants"; sync "Everything is saved" |
+| CSS removed/renamed | `.rail-help-label` kbd, `.search-kbd` in the top bar, `.tbl-compact` heights, `.stepper` in Rent, Rent `.rent-tbl`, `.rent-card`, `#rent-f-*` chips, `#rent-sheet-*`, `#rent-all`, `#rent-select` | Rent now `.rent-list > .rent-row` with `#rent-pay-<id>`, `#rent-part-<id>`, `#rent-more-<id>`, tabs `#rent-tab-owes|paid|all`, `#rent-bulkmode`, `#rent-chk-<id>`, `#rent-bulk`. Today: `.td-task`, `#td-say`, `.td-row`, `.td-sentence` (`.lrow` kept in the library) |
+
 
 ## 0. Files
 
@@ -30,13 +93,13 @@ What view authors code against. SPEC.md is the product spec; this file is the AP
 | `src/js/30-ui.js` | `RB.ui` — renderers (SafeHTML) and primitives (toast, sheet, confirm, menu, drawer, palette, forms) |
 | `src/js/35-actions.js` | `RB.actions` — shared flows (record payment, charges, notes, downloads, sample data…) |
 | `src/js/40-shell.js` | `RB.views`, `RB.shell`, `RB.commands`, router, keyboard, palette, chrome |
-| `src/js/views/today.js` | **Today** view |
-| `src/js/views/rent.js` | **Rent** view (monthly collection sheet, quick pay, bulk pay) |
+| `src/js/views/today.js` | **Today** view (three task buttons, rent sentence, What needs you, month at a glance, activity) |
+| `src/js/views/rent.js` | **Rent** view (Still owes / Paid, two-tap payment, part payments, "Record several at once") |
 | `src/js/views/tenants.js` | **Tenants** list; hosts the `#t-<id>` drawer; shares state with the two files below via `RB._tn` |
 | `src/js/views/tenant-detail.js` | tenant drawer (header, contact, lease, ledger, notes & timeline) |
 | `src/js/views/tenant-forms.js` | tenant sheets; assigns hooks `addTenant`, `editTenant`, `changeRent`, `giveNotice`, `moveOut`, `settleDeposit` |
 | `src/js/views/leases.js` | **Leases** view; assigns hook `renewLease` |
-| `src/js/views/upkeep.js` | **Upkeep** view; assigns hooks `addTicket`, `openTicket` |
+| `src/js/views/repairs.js` | **Repairs** view (formerly Upkeep; `#repairs`, `#upkeep`, `#p-<slug>`); assigns hooks `addTicket`, `openTicket` |
 | `src/js/views/reports.js` | **Reports** view (rent roll, aging, collection, income) |
 | `src/js/views/setup.js` | **Setup** view (settings, import, backup, sample data) |
 | `src/js/views/kit.js` | `#kit` developer route (foundation-owned; keep) |
@@ -60,7 +123,7 @@ The build fails if any JS contains `</script` or `<!--` (split the string: `'<' 
   `−$120`). Parse user input with `RB.money.parse()` → cents or `null`. Numbers in columns: class `num`.
 - **Dates** are `'YYYY-MM-DD'` strings; months are `'YYYY-MM'` keys. Never `new Date(str)`. "Today" is
   `ctx.today` / `RB.store.today()` (not `RB.date.today()` in views — the store's today is what the ledger used).
-  Display: `D.fmt(d, today)` → "Nov 3" / "Nov 3, 2025"; deadlines `D.rel(d, today)` → "in 12 d" / "9 d ago" / `{style:'late'}` → "9 d late".
+  Display: `D.fmt(d, today)` → "Nov 3" / "Nov 3, 2025"; deadlines `D.rel(d, today)` → "in 12 days" / "9 days ago" / `{style:'late'}` → "9 days late"; `D.days(n)` → "1 day" / "9 days". Never abbreviate.
 - **Status vocabulary** (month status): `paid | paid_late | partial | due | late | none`. Always render with
   `ui.pill()` / `ui.plate()` / `ui.strip()` (icon shape + word, never colour alone).
 - **Writes** only on user actions, through `RB.store` mutations or `RB.actions`. Never write in render.
@@ -100,7 +163,8 @@ RB.views.register('rent', {
 - `phone`: true under 760 px (at render time; layout should still be CSS-driven).
 
 Routes and files: `#today` → today.js, `#rent` → rent.js, `#tenants` and `#t-<id>` → tenants.js (detail drawer
-open when `ctx.param`), `#leases`, `#upkeep`, `#reports`, `#setup`, `#kit`. Unknown hash → Today.
+open when `ctx.param`), `#leases`, `#repairs` (alias `#upkeep`) and `#p-<slug>` → repairs.js (registered as `repairs` or `upkeep`; `ctx.view` is `'repairs'`), `#reports`, `#setup` (labelled Settings), `#kit`. Unknown hash → Today.
+Parameterised routes live in `PATTERNS` in 40-shell.js (`[regex, view]`, first capture → `ctx.param`). Intents in use: `go('rent','owes')`, `go('repairs','history')`, `go('setup','import')`.
 
 Before your view gets `render`, the shell handles: loading (skeleton until `state.ready`) and no-tenants (first-run
 panel) unless you opt out with `loading:true` / `firstRun:false`. Upkeep and Setup currently opt out of first-run.
@@ -192,15 +256,17 @@ Data shapes are exactly SPEC §3. Additions: entry `undone:true` (Undo), entry `
 - `RB.shell.refresh(reason='refresh')` — re-render the mounted view now (§3.4).
 - `RB.shell.current()` → `{route, view, param}`; `RB.shell.root()` → mounted root el.
 - `RB.shell.setTitle(text|null)` — override the top-bar title until the next navigation.
-- `RB.shell.openPalette(query?)`, `RB.shell.quickAdd(anchorEl)`, `RB.shell.helpSheet()`, `RB.shell.lateTenants()` → tenants
-  with any month in status `late` (the Rent badge).
+- `RB.shell.openPalette(query?)` (Find), `RB.shell.quickAdd(anchorEl)` (the "Add" menu), `RB.shell.helpSheet()` → **"How do I…?"** (nine answers,
+  each with a button that starts the task; `RB.shell.HELP` lists them), `RB.shell.keysSheet()` → keyboard shortcuts,
+  `RB.shell.textSizeSheet()`, `RB.shell.lateTenants()` → tenants with any month in status `late` (the Rent badge).
 - `RB.commands.register({id, label, group?, icon?, hint?, keywords?, run, when?, quickAdd?, write?})` → unregister fn.
   Shows in the ⌘K palette (`group` heading, default "Actions"); `quickAdd: n` also puts it in the "+" menu at order n;
   `write: true` hides/blocks it when read-only; `when()` → false hides it. `RB.commands.run(id)`.
   **Any element with `data-cmd="<id>"` runs that command on click** (used by first-run, banner, Setup).
-- Built-in command ids: `go:today|rent|tenants|leases|upkeep|reports|setup`, `payment:record`, `charge:add`,
-  `credit:add`, `note:add`, `tenant:add`, `ticket:add`, `setup:import` (→ `go('setup','import')`),
-  `backup:download`, `sample:load`, `sample:remove`, `help:keys`.
+- Built-in command ids: `go:today|rent|tenants|leases|repairs|reports|setup` (`go:upkeep` kept, hidden), `payment:record`
+  ("Who paid you?" chooser, owing tenants first), `payment:part`, `charge:add`, `credit:add` ("Take money off…"), `note:add`,
+  `tenant:add`, `ticket:add` ("Log a repair"), `setup:import` (→ `go('setup','import')`), `backup:download`, `sample:load`,
+  `sample:remove`, `help:howto` (Help), `help:keys` (shortcuts; hidden from Find), `textsize`.
 - Global keys (ignored while typing in a **text-entry** control — text-like `input`s, `textarea`, `select`,
   `contenteditable`; checkboxes, radios and buttons do *not* swallow shortcuts, so `j/k/p` keep working after a click on a tick box): `/` search (opens palette), `⌘K`/`Ctrl-K` palette (works in fields
   too), `n` or `+` quick-add menu, `?` help, `g d` Today, `g r` Rent, `g t` Tenants, `g l` Leases, `g u` Upkeep,
@@ -209,9 +275,13 @@ Data shapes are exactly SPEC §3. Additions: entry `undone:true` (Undo), entry `
   that's how `j/k` stepping in the tenant drawer works).
 - Palette search covers tenant name, unit, property, phone, email, co-tenants; ≤3 matches add "Record payment / Add
   note / Add charge — <name>" actions.
-- Chrome the shell maintains: rail and tab-bar counts (Today = number of "Needs attention" items, i.e.
-  `RB.store.attention().length`; Rent = tenants with rent past grace in *any* month, `RB.shell.lateTenants()`), phone tab bar (Today · Rent · Tenants · Upkeep · More), sample-data banner / load-issue banner, sync note
-  ("Saved", "Saving…", "Not syncing — saved on this device only", "View only"), "View only" tag in the top bar.
+- Chrome the shell maintains: rail and tab-bar counts (Today = number of "What needs you" items, i.e.
+  `RB.store.attention().length`; Rent = tenants with rent past grace in *any* month, `RB.shell.lateTenants()`), phone tab bar
+  (Today · Rent · Tenants · Repairs · More, labels always shown), More sheet (Leases, Reports, Settings, Help, Text size),
+  sidebar footer (Help, Text size, sync note), sample-data banner / load-issue banner, sync note ("Everything is saved",
+  "Saving…", "Not syncing — saved on this device only", "View only"), "View only" tag in the top bar. The app name
+  (sidebar, and the "RB" plate in the phone top bar) returns to Today. Top bar: view title, "Find" field/button, "Add" menu.
+  Ids: `#rb-nav-<route>`, `#rb-tab-<route>`, `#rb-more`, `#rb-help`, `#rb-ts-normal|lg|xl`, `#rb-find`, `#rb-add`, `#rb-brand`, `#rb-brand-phone`.
 
 ## 6. RB.model (pure; node-loadable)
 
@@ -316,13 +386,14 @@ All return Promises; all guard read-only/loading with a toast.
 
 | Call | Does |
 |---|---|
-| `recordPayment(tenantId, {quick?, amount?, date?, method?})` → entryId\|null | `quick:true`: records the full open balance today with the tenant's last-used method, toast "Recorded $1,450 from Unit 2B" + Undo (falls back to the sheet if nothing is owed). Otherwise the payment sheet (amount prefilled to `amount` ?? balance ?? rent, date, method, reference, memo, live "Balance after", button "Record $X"). |
+| `recordPayment(tenantId, {quick?, amount?, part?, date?, method?})` → entryId\|null | `quick:true`: records `amount` ?? the full balance today with the last-used method, toast "Recorded $1,450 from Maya Okafor. All paid up." + Undo (falls back to the sheet if nothing is owed). Otherwise the sheet: when they owe, **"Did they pay all of it?"** — "Yes, all $X" (preselected; X = `amount` ?? balance) / "Only part of it" (`part:true` preselects it; reveals an empty, focused "How much did they pay?" with hint "They owe $X…"); "When did you get it?"; "How did they pay?" as large choices (last method preselected); reference + note behind "Add more details (optional)"; live sentence (`afterSentence`): "After this, Imogen will still owe $550 for November." / "…will be all paid up." / "That is $50 more than they owe — it will count toward next month."; button "Record $X". Blank/zero → "Type how much they paid, like 800". |
 | `recordPayments(tenantIds, opts?)` | bulk quick-pay; one toast "Recorded 6 payments · $8,400" + Undo. Each records the tenant's whole balance unless `opts.amounts = {tenantId: cents}` names an amount (capped at the balance), e.g. one past month's open amount. |
-| `addCharge(tenantId, preset?)`, `addCredit(tenantId, preset?)` | sheets; Undo toast |
+| `addCharge(tenantId, preset?)`, `addCredit(tenantId, preset?)` | "Add a charge" / "Take money off what they owe" sheets (question labels, kind as choices, date/month behind "more details"); Undo toast |
+| `afterSentence(tenant, ledger, cents)` | the plain "After this, …" sentence used by the payment sheet |
 | `addLateFee(tenantId, period?)` | one click; uses the ledger suggestion; Undo toast |
-| `voidEntry(tenantId, entryId)` | Undo toast ("Voided $1,450 payment") |
+| `voidEntry(tenantId, entryId)` (alias `removeEntry`) | "Remove" in the UI; Undo toast ("Removed the $1,450 payment for Maya Okafor.") |
 | `editEntry(tenantId, entryId)` | sheet; Undo toast restores previous values |
-| `copyReceipt(tenantId, entryId)`, `copyStatement(tenantId, {from,to}?)` | clipboard (call inside a click handler) |
+| `copyReceipt(tenantId, entryId)`, `copyStatement(tenantId, {from,to}?)` | clipboard (call inside a click handler). A part payment's receipt adds "Part payment received: $800." / "Still owed for November: $675."; statements list part-paid months at the end |
 | `downloadLedgerCsv(tenantId)` | via `downloadFile` |
 | `addNote(tenantId, preset?)` | sheet (kind seg, text, follow-up date); Undo |
 | `followupDone(tenantId, logId, done=true)` | Undo toast |
@@ -345,8 +416,10 @@ replaces each is listed in §0.
 | `moveOut(id)` | sheet: move-out date with final-month preview. Date ≤ today → status `past`, then `settleDeposit` if a deposit is held. **Date in the future → recorded as notice** (status `notice`, `lease.moveOut` set, sheet says so); Today and the drawer offer "Complete move-out" once the date arrives |
 | `settleDeposit(id, opts?)` | deductions list, apply-to-balance, refund auto-computed, deadline shown; Undo [opens the tenant] |
 | `renewLease(id)` | sheet: new end date + optional new rent from a date [opens the tenant] |
-| `addTicket(prefill?)` | upkeep request sheet [`#upkeep` + `RB.emit('ticket:add')`] |
-| `openTicket(id)` | upkeep request sheet for that ticket [`#upkeep` + `RB.emit('ticket:open', id)`] |
+| `addTicket(prefill?)` | repair sheet (Today's "Log a repair" passes `{tenantId}` or nothing) [`#repairs` + `RB.emit('ticket:add')`] |
+| `openTicket(id)` | repair sheet for that ticket [`#repairs` + `RB.emit('ticket:open', id)`] |
+
+Help answers and Today call `changeRent`, `giveNotice`, `moveOut` **only if defined**, otherwise they open the tenant page.
 
 The built-in commands call through `RB.actions.*`, so replacing a hook also updates the palette, "+" menu, Today actions
 and first-run. `run(action)` dispatches every action type in §6.4, including `moveOut`.
@@ -357,39 +430,61 @@ and first-run. `run(action)` dispatches every action type in §6.4, including `m
 | Call | Output |
 |---|---|
 | `icon(name, {size=16, label, cls})` | inline SVG. Names: today rent tenants leases upkeep wrench reports setup more more-v plus search check check-late clock triangle half circle dash chevron-left/right/down/up arrow-up arrow-right copy download upload phone mail note calendar key undo x filter sort trash edit external home user alert cash keyboard door sample grid link dot sync |
-| `pill(status, {daysLate, label, size:'sm', title})` | status pill; late → "9 d late"; none → dash only |
+| `pill(status, {daysLate, paid, label, size:'sm', title})` | status pill in glossary words: Paid · Paid late · Part paid · Not paid yet · "9 days late"; `late` with `paid > 0` (or status `'partial_late'`) → "Part paid — rest is 9 days late"; none → dash + "No rent this month" |
+| `monthPill(month, opts)` | the pill for a `RB.model` Month (passes `daysLate` and `rentPaid`) — **use this** |
+| `statusWords(month, today?)` | plain text: "Paid Nov 3", "Part paid — $800 of $1,475", "Not paid yet — due Dec 1", "22 days late", "Part paid — rest is 22 days late" |
+| `balanceWords(cents)` | plain text: "Owes $1,225" / "All paid up" / "$250 paid ahead" |
+| `splitBar(paid, total, {label})` | thin two-tone bar (`.splitbar > .splitbar-paid`), paid share drawn to scale |
 | `tag(text, tone?, icon?)` | tones: '' accent ok warn bad quiet. `tenantTag(status)` for active/notice/past |
 | `plate(unit, {size:'sm'\|'lg', status, button, title, property, attrs})` | door plate; lg = 44 px status plate with corner glyph; `button:true` + `attrs:{'data-act':'open','data-id':id}` for clickable |
 | `strip(cells, {lg, today})` | 12-month payment strip from `RB.model.monthsBack(...)`; per-cell titles + aria-label |
 | `money(cents, {size:'lg'\|'md', tone:'owed'\|'credit', sign, cents, cls})` | money with muted currency symbol |
-| `balance(cents, {zero})` | owed red / credit muted "cr" / zero → em-rule (or `zero` text; `zero:''` renders nothing visible) |
+| `balance(cents, {zero, plain})` | worded: "Owes $1,225" (red) / "$250 paid ahead" (green) / "All paid up"; `zero` text overrides zero (`''` renders nothing visible); `plain:true` → figures only |
 | `date(d, {mono})` | `<time>` "Nov 3" |
-| `kbd(...keys)`, `copyline(text, what, {href, hrefLabel, hrefIcon})` | `copyline` = selectable text + copy button (global handler, toast "Copied phone number") |
-| `button({label, kind, size, icon, iconOnly, cmd, act, id, attrs, disabled, write})` | `.btn` markup |
+| `kbd(...keys)`, `copyline(text, what, {href, hrefLabel, hrefIcon})` | `copyline` = selectable text + a worded **Copy** button (global handler) + optional worded link button (`hrefLabel`, e.g. "Call") |
+| `button({label, kind, size, icon, iconOnly, cmd, act, id, attrs, disabled, write})` | `.btn` markup; the label is always visible (`iconOnly` is ignored apart from tighter padding) |
+| `textSizeControl({id, compact})` | "Text size: Normal · Large · Extra large" (buttons `#<id>-normal|lg|xl`, `data-textsize`); every copy stays in sync; remembered per device (`RB.textSize.get/set`, pref `textSize`) |
+| `moreDetails(body, {id, label, open})` | `<details class="more-details">` "Add more details (optional)" disclosure for optional fields |
 | `empty({icon, title, body, actions:[button opts], quiet})` | empty state; `quiet:true` → one muted line ("Nothing needs you today.") |
 | `skeleton({rows, title, plates})`, `loadingNote(text)`, `firstRun()` | loading / first run |
 | `field(opts)` | form field (§8.3) |
 | `attrs(obj)` | escaped attribute string |
 | `highlight(text, query)`, `match(hay, query)` → score\|-1 | search helpers |
-| `drawerClose()` | the standard drawer ✕ button |
+| `drawerClose()` | the standard drawer close: "Close" on desktop, "Back" on phone |
 
 ### 8.2 Primitives
-- `toast(message, {undo: fn, action:{label, run}, tone:'bad', icon, duration=7000 (0 sticky)})` → `{close}`. Past tense: "Recorded $1,450 from Unit 2B".
+- `toast(message, {undo: fn, action:{label, run}, tone:'bad', icon, duration=10000 (0 sticky)})` → `{close}`. Large, plain, full
+  sentence in past tense with the person's name: "Recorded $1,385 from Claire Dubois. All paid up." On phone it sits above the tab bar.
 - `sheet({title, sub, body, size:'wide'|'xwide', actions:[{id, label, kind, onClick(handle)}], cancel='Cancel'|false, note, initialFocus, onClose(result)})` → handle `{el, body, form, close(result), action(id), setAction(id,{label,disabled}), setNote(html), setTitle(text)}`.
   `body` may be SafeHTML or `(bodyEl, handle) => {}`. The first `primary`/`danger` action is the submit (Enter in a
   field triggers it). `onClick` may return `false` (or a Promise of false) to keep the sheet open — the pattern is
   `const v = ui.form(handle.body, {validate}); if (!v) return false; …`. Centred modal on desktop, bottom sheet on phone.
-- `confirm({title, body, confirmLabel, cancelLabel, danger})` → `Promise<boolean>`.
+- `confirm({title, body, confirmLabel, cancelLabel='Keep it', danger})` → `Promise<boolean>`. Body = one plain consequence
+  sentence; red worded button + larger focused "Keep it" (first on phone). Nothing to type.
 - `menu(anchorEl, items, {align:'start'|'end'})` — items `{label, icon, hint, danger, disabled, write, onSelect}` | `{sep:true}` | `{heading}`. Arrow keys, Esc, outside click; same anchor toggles.
 - `drawer({label, render(el, handle), onClose, scrim=true})` → `{el, rerender(), close({silent}), isOpen()}`. One at a time; calling again replaces the content. Fill `el` with `.drawer-head` / `.drawer-body` / `.drawer-foot`. Esc/scrim/`[data-drawer-close]` close it and call `onClose` (the Tenants view sets `location.hash='tenants'` there). `ui.currentDrawer()`.
-- `palette({placeholder, query, source(q) → [{group, items:[{id,label,sub,hint,icon,plate,run}]}], onClose(picked)})`, `pickTenant({title, filter, includePast})` → `Promise<id|null>`.
+- `palette({placeholder, query, source(q) → [{group, items:[{id,label,sub,hint,icon,plate,run}]}], onClose(picked)})` (shown to people as **Find**).
+- `pickTenant({title='Which tenant?', sub, filter, includePast, prefer:'owes', skip})` → `Promise<id | '' | null>`: a sheet with a
+  big find box and large rows (door plate, name, property, "Owes $X" / "All paid up", "N days late"). `prefer:'owes'` puts
+  owing tenants first, most owed first (use for payments). `skip: 'It’s for a whole building'` adds a button that resolves `''`.
+  `null` = cancelled. Row buttons: `#pick-<id>`, find box `#pick-q`.
+- **`steps({title, steps:[{title, body(el, data), validate(values, data)}], summary(data), onDone(data), doneLabel='Save', data, size})`** —
+  step-by-step guide in a sheet: "Step 2 of 3", Back / Next (Enter = Next), each step's named fields are read with
+  `ui.readForm` and merged into `data`; after the last step, "Is this right?" shows `summary(data)` (one sentence, e.g.
+  "Maya Okafor, Unit 1A at Alder Court, $1,325 a month from March 1") and the `doneLabel` button calls `onDone(data)`
+  (return `false` to stay open). Returns the sheet handle (`handle.steps.go(i)`). Example in `#kit` → "Step-by-step guide".
 - `copy(text, what)` (toast or selectable fallback sheet), `showText({title, text, note, filename})`.
 - `bind(el, handlers)` (§3.5). `isPhone()`. `closeAll()`. `hasModal()`. `topLayer()`.
 - Focus: every layer traps Tab, closes on Esc, and restores focus to the opener.
 
 ### 8.3 Forms
 `ui.field({name, id?, label, type, value, options, placeholder, hint, required, optional, span:2, attrs, rows, min, max, step, write})`
-types: `text email tel number search money date select textarea checkbox seg`.
+types: `text email tel number search money date select textarea checkbox seg choice`.
+- `choice`: large tappable radio cards (`.choices > label.choice`), options `[{value, label, sub?, icon?}]` or strings,
+  `cols: 2|3`. Ids `<id>-0`, `<id>-1`… Prefer it over `select` for up to ~6 options. Read back like any field.
+- `money` with `big:true` → larger input (`.money-input-lg`).
+- v2 form layout: `<div class="form-col">` (one column), labels as questions, an example in the hint, optional fields inside
+  `ui.moreDetails(...)`, at most ~5 visible questions.
 - `money`: value in cents; input shows `1,450.50`; reformatted on blur; read as cents.
 - `seg`: segmented single choice (hidden input + buttons; dispatches `change`). Options `[{value,label,icon?}]` or strings.
 - `ui.readForm(root, {validate(values) → {name: msg}})` → `{values, errors, ok}` (money → cents|null, date → string|null, checkbox → bool, number → Number|null).
@@ -405,10 +500,15 @@ types: `text email tel number search money date select textarea checkbox seg`.
 `--paper --surface --sunk --ink --ink-2 --ink-3 --line --line-2 --accent --accent-ink --accent-soft --ok --ok-soft
 --warn --warn-soft --bad --bad-soft` (spec) plus derived: `--hover --accent-line --accent-hover --ok-line --warn-line
 --bad-line --bad-ink --faint --scrim --toast-bg --toast-ink --toast-accent --toast-hover --shadow-float --shadow-modal --focus-ring`.
-Type: `--f-display` (Newsreader) `--f-ui` (Plex Sans) `--f-mono` (Plex Mono); sizes `--t-12 --t-13 --t-15 --t-18 --t-24 --t-34 --t-body --t-micro`.
-Space `--s1..--s7` (4 8 12 16 24 32 48). Radius `--r-ctl:6 --r-panel:10 --r-plate:3`. Sizes `--ctl-h` (32 → 44 phone)
-`--ctl-h-sm` `--ctl-h-lg` `--row-h` (44 → 52 phone) `--gutter` `--rail-w` `--top-h` `--tab-h` `--sticky-top` (use for sticky things under the top bar).
-New tokens go in 00-tokens.css in all three places (light, dark media, `[data-theme="dark"]`).
+Type: `--f-display` (Newsreader) `--f-ui` (Plex Sans) `--f-mono` (Plex Mono); sizes `--t-12` (14) `--t-13` (15) `--t-15` (17) `--t-18` (20)
+`--t-24` (27) `--t-34` (38) `--t-body` (16 / 17 phone) `--t-micro` (14), `--lh` 1.5 — all × `--text-scale`.
+Space `--s1..--s7` (4 8 12 16 24 32 48, × scale). Radius `--r-ctl:8 --r-panel:12 --r-plate:3`. Sizes `--ctl-h` (44 → 48 phone)
+`--ctl-h-sm` (40 → 48) `--ctl-h-lg` (52 → 56) `--ctl-h-xl` (64) `--row-h` (56 → 60 phone) `--icon` (18) `--gutter` `--rail-w` `--top-h` `--tab-h` `--sticky-top`.
+`--text-scale` is 1 / 1.12 / 1.25 from `data-text` on the root element; a subtree with `class="text-scope" data-scale="lg"` recomputes every size
+token at its own scale (the kit uses this). Colour tokens go in 00-tokens.css in all three places (light, dark media, `[data-theme="dark"]`).
+Contrast (WCAG): light ink 16.2 / 17.5 / 15.0 on paper / surface / sunk; ink-2 8.8 / 9.5 / 8.2; ink-3 5.9 / 6.3 / 5.5; accent 7.8 / 8.4 / 7.2
+(white on accent 8.4); ok 6.5, warn 6.2, bad 6.5 on paper (≥5.8 on their soft tints). Dark ink 15.7 / 14.6 / 16.2; ink-2 9.5 / 8.8 / 9.8;
+ink-3 6.4 / 6.0 / 6.7; accent 8.0 / 7.5; ok 8.4, warn 9.1, bad 7.5. Focus ring: 3px accent outside a 2px surface gap.
 
 ### 9.1 Utilities
 `.row` (flex, centred, gap 8) `.row-wrap .row-top .row-base .gap-1/3/4/5` · `.stack` (column, gap 8) `.stack-1/3/4/5/6` ·
@@ -418,7 +518,8 @@ New tokens go in 00-tokens.css in all three places (light, dark media, `[data-th
 
 ### 9.2 Components (markup)
 ```html
-<!-- buttons: kinds btn-primary | btn-soft | btn-ghost | btn-danger | btn-danger-soft | (default bordered); sizes btn-sm | btn-lg; btn-icon; btn-block -->
+<!-- buttons: kinds btn-primary | btn-soft | btn-ghost | btn-danger | btn-danger-soft | btn-keep | (default bordered); sizes btn-sm | btn-lg | btn-xl; btn-block;
+     btn-icon is legacy — every button needs a visible word. Quiet worded action: <button class="btn-link">They paid part of it</button> (≥48px on phone) -->
 <button class="btn btn-primary" type="button">Record $1,450</button>
 <button class="btn btn-ghost btn-icon btn-sm" type="button" aria-label="Copy"><svg…/></button>
 <span class="btn-group"><button class="btn btn-sm btn-primary">Mark paid</button><button class="btn btn-sm btn-primary btn-caret" aria-label="Payment details"><svg chevron-down/></button></span>

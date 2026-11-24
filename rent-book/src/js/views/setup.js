@@ -183,7 +183,7 @@ async function doImport(today) {
     const ok = await ui.confirm({
       title: 'Remove the example tenants and bring in yours?',
       body: h`<p>The <strong>${RB.plural(ts, 'example tenant')}</strong>, their payment history and the example repairs are deleted first. Then your <strong>${RB.plural(checks.length, 'tenant')}</strong> are added.</p>`,
-      confirmLabel: 'Remove the examples and bring in mine', cancelLabel: 'Keep it as it is', danger: true,
+      confirmLabel: 'Remove the examples and bring in mine', danger: true,
     });
     if (!ok) return;
     try { await S().removeSample(); } catch (e) { return; }
@@ -261,11 +261,11 @@ function importStep3(p, today) {
   const checks = checkAll(p, today);
   const good = checks.filter(c => c.ok).length;
   const bad = checks.length - good;
-  const rowName = (c, i) => (c.data.name || 'Row ' + (i + 1)) + (c.data.unit ? ', ' + c.data.unit : '');
+  const rowName = c => [c.data.name, c.data.unit].filter(Boolean).join(', ') || 'empty';
   return h`<h3 class="st-step-title">Step 3 of 3: Look it over</h3>
     <p class="st-p"><strong>${good === 1 ? '1 tenant is' : good + ' tenants are'} ready to bring in.</strong>${bad ? h` <span class="tone-bad">${bad === 1 ? '1 row has a problem' : bad + ' rows have problems'} and will be left out.</span>` : ''}</p>
     ${bad ? h`<div class="st-problems"><p class="st-p">To fix a problem, change it in your spreadsheet and paste the list again — or carry on, and only that row is left out.</p>
-      <ul>${checks.map((c, i) => c.ok ? '' : h`<li><strong>Row ${i + 1} (${rowName(c, i)}):</strong> ${c.problems.join(' ')}</li>`)}</ul></div>` : ''}
+      <ul>${checks.map((c, i) => c.ok ? '' : h`<li><strong>Row ${i + 1} (${rowName(c)}):</strong> ${c.problems.join(' ')}</li>`)}</ul></div>` : ''}
     <ul class="st-preview" id="st-import-table">${checks.slice(0, 200).map((c, i) => h`<li class="${c.ok ? '' : 'is-bad'}">
       <span class="st-preview-n">Row ${i + 1}</span>
       <span class="st-preview-main"><strong>${c.data.name || 'No name'}</strong>${c.data.unit || c.data.property ? h` — ${[c.data.unit, c.data.property].filter(Boolean).join(', ')}` : ''}${c.data.rent ? h` — ${M.fmt(c.data.rent)} a month` : ''}</span>

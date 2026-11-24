@@ -417,7 +417,7 @@ T.noteSheet = function noteSheet(id, lid) {
         ${ui.field({ name: 'followUp', id: 'tn-note-follow', label: 'Remind me to follow up on…', type: 'date', value: e ? e.followUp || '' : '', optional: true, hint: 'Leave this empty if you don’t need a reminder. On that day it shows on Today.' })}
       </div>`,
       initialFocus: '#tn-note-text',
-      cancel: 'Close',
+     
       actions: [{ id: 'save', label: e ? 'Save the note' : 'Add the note', kind: 'primary', onClick: s => {
         const v = ui.form(s.body, { validate: v => ({ followUp: v.followUp && !D.valid(v.followUp) ? 'Pick a date from the calendar' : '' }) });
         if (!v) return false;
@@ -498,7 +498,7 @@ T.moreSheet = function moreSheet(id) {
   items.push(['edit', 'Edit their details', 'Name, phone, unit, rent and more', () => A.editTenant(id)]);
   items.push(['delete', 'Remove this tenant', 'Only if they were added by mistake — this deletes all their history', () => T.deleteTenant(id)]);
   ui.sheet({
-    title: 'What would you like to do?', sub: t.name + ' — ' + T.place(t), cancel: 'Close', actions: [],
+    title: 'What would you like to do?', sub: t.name + ' — ' + T.place(t), cancel: false, actions: [],
     body: (el, sh) => {
       el.innerHTML = String(h`<div class="tn-morelist">${items.map(([k, label, sub]) => h`<button type="button" class="tn-moreitem${k === 'delete' ? ' is-danger' : ''}" data-more="${k}"${k === 'stmt' ? '' : RB.raw(' data-write')}><span class="tn-moreitem-l">${label}</span><span class="tn-moreitem-s">${sub}</span>${ui.icon('chevron-right')}</button>`)}</div>`);
       el.addEventListener('click', e => {

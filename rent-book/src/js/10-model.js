@@ -435,7 +435,7 @@ function attention(state, today, getLedger) {
     const age = k.reported ? D.diffDays(k.reported, today) : 0;
     if (k.priority !== 'urgent' && !(k.status === 'open' && k.priority === 'normal')) continue;
     items.push({ id: 'ticket-' + k.id, kind: 'ticket', severity: k.priority === 'urgent' ? 'high' : 'low', rank: -age, ticketId: k.id, tenantId: k.tenantId || null,
-      unit: unitLabel(k), title: k.title || 'Upkeep request',
+      unit: unitLabel(k), title: k.title || 'Repair',
       detail: unitLabel(k) + ' · ' + (k.status === 'scheduled' && k.scheduled ? 'scheduled ' + D.fmt(k.scheduled, today) : age + ' d open') + (k.priority === 'urgent' ? ' · urgent' : ''),
       date: k.reported, action: { type: 'openTicket', ticketId: k.id, label: 'Open' } });
   }
