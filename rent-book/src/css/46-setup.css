@@ -41,7 +41,8 @@
 .st-import-text { min-height: 8em; font-family: var(--f-mono); font-size: var(--t-body); }
 .st-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
 .st-col { min-width: 0; }
-.st-problems { margin: var(--s3) 0; padding: var(--s3) var(--s4); background: var(--tint); border-radius: var(--r-panel); }
+.st-import { text-align: left; }
+.st-problems { margin: var(--s3) 0; }
 .st-problems ul { margin: var(--s2) 0 0; padding-left: var(--s5); }
 .st-preview { margin-top: var(--s4); }
 .st-rmsample { margin-top: var(--s4); }

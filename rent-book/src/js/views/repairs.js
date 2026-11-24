@@ -515,7 +515,7 @@ function unitSection(tenant) {
     .sort((a, b) => D.cmp(Mo.repairItem(b).date, Mo.repairItem(a).date));
   const who = Mo.unitWords(unit);
   return h`<section class="rp-unit" aria-labelledby="rp-unit-h">
-    <h3 class="rows-head" id="rp-unit-h">Repairs in this unit</h3>
+    <h3 class="tn-sec-title rp-unit-h" id="rp-unit-h">Repairs in this unit</h3>
     ${list.length ? h`<ul class="rows rp-unit-rows">${list.slice(0, 3).map(k => repairRow(k, today, { where: false, act: 'rpOpen', attrs: { 'data-rp-open': k.id } }))}</ul>
       <button type="button" class="btn-link rp-unit-link" data-rp-history data-property="${tenant.property}" data-unit="${unit}">See all ${RB.plural(list.length, 'repair')} for ${who}</button>`
       : h`<p class="rp-unit-none">No repairs written down for ${who} yet.</p>

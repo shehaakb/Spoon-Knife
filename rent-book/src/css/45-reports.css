@@ -39,17 +39,17 @@
 .view-reports .rp-ages { margin: 0 0 var(--s5); }
 .view-reports .rp-agebar { display: flex; height: calc(12px * var(--text-scale)); gap: 2px; background: var(--paper); }
 .view-reports .rp-age { flex-basis: 0; min-width: 2px; }
-.view-reports .rp-age-0 { background: var(--accent-soft); }
-.view-reports .rp-age-1 { background: var(--accent-line); }
-.view-reports .rp-age-2 { background: var(--accent); opacity: .7; }
-.view-reports .rp-age-3 { background: var(--accent); }
+.view-reports .rp-age-0 { background: var(--accent); opacity: .35; }
+.view-reports .rp-age-1 { background: var(--accent); opacity: .55; }
+.view-reports .rp-age-2 { background: var(--accent); opacity: .75; }
+.view-reports .rp-age-3 { background: var(--accent); opacity: 1; }
 .view-reports .rp-agekeys { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin-top: var(--s2); font-size: var(--t-cap); color: var(--ink-2); }
-.view-reports .rp-agekey { display: inline-flex; align-items: center; gap: var(--s1); background: none; }
+.view-reports .rp-agekey { display: inline-flex; align-items: center; gap: var(--s1); background: none; opacity: 1; }
 .view-reports .rp-agekey::before { content: ""; width: calc(12px * var(--text-scale)); height: calc(12px * var(--text-scale)); }
-.view-reports .rp-agekey.rp-age-0::before { background: var(--accent-soft); }
-.view-reports .rp-agekey.rp-age-1::before { background: var(--accent-line); }
-.view-reports .rp-agekey.rp-age-2::before { background: var(--accent); opacity: .7; }
-.view-reports .rp-agekey.rp-age-3::before { background: var(--accent); }
+.view-reports .rp-agekey.rp-age-0::before { background: var(--accent); opacity: .35; }
+.view-reports .rp-agekey.rp-age-1::before { background: var(--accent); opacity: .55; }
+.view-reports .rp-agekey.rp-age-2::before { background: var(--accent); opacity: .75; }
+.view-reports .rp-agekey.rp-age-3::before { background: var(--accent); opacity: 1; }
 
 /* collection chart: bars drawn to scale with percentage heights against a nice axis; one accent */
 .view-reports .rp-chart { margin: 0 0 var(--s6); }

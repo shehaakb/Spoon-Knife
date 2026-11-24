@@ -82,7 +82,7 @@ function watchList(found) {
   return h`<section class="pp-sec" aria-labelledby="pp-watch-title">
     <h2 class="pp-sec-title" id="pp-watch-title">Keep an eye on</h2>
     <ul class="rows rows-inset pp-watch">${found.map((x, i) => ui.row({
-      title: x.text + '.', status: x.kind === 'repeat' ? ui.status('warn', 'Repeat') : ui.status('ok', 'Warranty'),
+      title: x.text + '.', status: x.kind === 'repeat' ? ui.status('warn', 'Repeat') : ui.status('ok', 'Warranty'), statusPos: 'main',
       act: x.kind === 'repeat' ? 'watch' : 'open', attrs: x.kind === 'repeat' ? { 'data-i': i, 'data-kind': 'repeat' } : { 'data-id': x.id, 'data-kind': 'warranty' },
     }))}</ul>
     <p class="pp-caption">Same repair 3 times in a year, or twice in 90 days.</p>

@@ -76,12 +76,13 @@ function rentRoll(today) {
   if (groups.length === 1) openGroups.add(groups[0].property);
   const ow = owedWords(rr.rows);
   const owedTotal = rr.rows.reduce((s, r) => s + Math.max(0, r.balance), 0);
-  const end = r => r.status === 'past' ? 'Moved out ' + ui.dateWords(r.moveOut || r.leaseEnd, today) : r.status === 'notice' && r.moveOut ? 'Moving out ' + ui.dateWords(r.moveOut, today) : r.leaseEnd ? 'Ends ' + ui.dateWords(r.leaseEnd, today) : 'Month-to-month';
+  const day = d => D.fmtLong(d).replace(', ' + today.slice(0, 4), '');
+  const end = r => r.status === 'past' ? 'Moved out ' + day(r.moveOut || r.leaseEnd) : r.status === 'notice' && r.moveOut ? 'Moving out ' + day(r.moveOut) : r.leaseEnd ? 'Ends ' + day(r.leaseEnd) : 'Month-to-month';
   const endShort = r => r.status === 'past' ? 'moved out ' + D.fmtLong(r.moveOut || r.leaseEnd).replace(', ' + today.slice(0, 4), '')
     : r.status === 'notice' && r.moveOut ? 'moving out ' + D.fmtLong(r.moveOut).replace(', ' + today.slice(0, 4), '')
     : r.leaseEnd ? 'until ' + D.fmtMonth(D.monthKey(r.leaseEnd)) : 'month-to-month';
   const owesCell = r => (r.balance > 0 ? $(r.balance) : r.balance < 0 ? $(-r.balance) + ' ahead' : h`<span class="rp-dash">—</span>`);
-  const totalOwes = (owed, ahead, attr) => h`<span${attr ? h` data-total="owed"` : ''}>${$(owed)}</span>${ahead ? h`<span class="rp-ahead"${attr ? h` data-total="ahead"` : ''}>${$(ahead)} paid ahead</span>` : ''}`;
+  const totalOwes = (owed, ahead, attr) => h`<span${attr ? h` data-total="owed"` : ''}>${owed || attr ? $(owed) : '—'}</span>${ahead ? h`<span class="rp-ahead"${attr ? h` data-total="ahead"` : ''}>${$(ahead)} paid ahead</span>` : ''}`;
   const answer = h`${fig($(rr.totals.rent), 'rent each month.')}
     <p>${occ.occupied} of ${occ.units} units have a tenant (${Math.round(occ.rate * 100)}%), and you hold ${$(rr.totals.deposit)} in deposits.</p>
     <p id="rp-owed">${ow.sentence}</p>`;
@@ -161,7 +162,7 @@ function aging(today) {
       ${ui.rows(rows.map(r => {
         const o = oldest(r);
         return { lead: ui.plate(r.unit), title: r.name, sub: monthWords(r.tenantId) || unitWord(r.unit), amt: $(r.total),
-          status: ui.status(o[0] === 'd0_30' ? 'partial' : 'late', o[1]), href: '#t-' + r.tenantId, attrs: { 'data-tenant': r.tenantId } };
+          status: ui.status(o[0] === 'd0_30' ? 'warn' : 'late', o[1]), href: '#t-' + r.tenantId, attrs: { 'data-tenant': r.tenantId } };
       }), { inset: true })}
       <p class="rp-total-line">Everyone: <span data-total="total">${$(ag.totals.total)}</span> owed.</p>
     </div>
@@ -262,7 +263,7 @@ RB.views.register('reports', {
     const rep = BUILD[tab](ctx.today);
     el.innerHTML = String(h`
       <p class="rp-jump show-phone"><a class="btn-link" href="#rp-choose-h" data-act="jump">Choose another report</a></p>
-      <nav class="rp-choose" aria-labelledby="rp-choose-h"><h2 class="rows-head" id="rp-choose-h">Reports</h2> aria-label="Which report?">${ui.rows(TABS.map(([k, label, sub]) => ({
+      <nav class="rp-choose" aria-labelledby="rp-choose-h"><h2 class="rows-head" id="rp-choose-h">Which report?</h2>${ui.rows(TABS.map(([k, label, sub]) => ({
         title: label, sub, act: 'tab', cls: 'rp-choice' + (tab === k ? ' is-current' : ''),
         attrs: { id: 'rp-tab-' + k, 'data-tab': k, 'aria-current': tab === k ? 'true' : null },
       })), { cls: 'rp-choose-rows' })}</nav>

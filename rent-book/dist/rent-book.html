@@ -1578,6 +1578,7 @@ th.num .th-sort { flex-direction: row-reverse; }
 /* ---- tenant page: Repairs in this unit */
 .rp-unit-none { color: var(--ink-2); margin: 0 0 var(--s2); }
 .rp-unit-link { margin-top: var(--s2); }
+.rp-unit-h { margin: 0 0 var(--s3); }   /* same heading as the tenant page's other sections */
 /* ---- 45-reports.css ---- */
 /* Reports: a chooser of rows, then the report — key figure, sentence(s), one chart where it helps, the table (desktop)
    or two-line rows (phone), text links to download or copy. Semantic colour only on status markers. Tokens only. */
@@ -1620,17 +1621,17 @@ th.num .th-sort { flex-direction: row-reverse; }
 .view-reports .rp-ages { margin: 0 0 var(--s5); }
 .view-reports .rp-agebar { display: flex; height: calc(12px * var(--text-scale)); gap: 2px; background: var(--paper); }
 .view-reports .rp-age { flex-basis: 0; min-width: 2px; }
-.view-reports .rp-age-0 { background: var(--accent-soft); }
-.view-reports .rp-age-1 { background: var(--accent-line); }
-.view-reports .rp-age-2 { background: var(--accent); opacity: .7; }
-.view-reports .rp-age-3 { background: var(--accent); }
+.view-reports .rp-age-0 { background: var(--accent); opacity: .35; }
+.view-reports .rp-age-1 { background: var(--accent); opacity: .55; }
+.view-reports .rp-age-2 { background: var(--accent); opacity: .75; }
+.view-reports .rp-age-3 { background: var(--accent); opacity: 1; }
 .view-reports .rp-agekeys { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin-top: var(--s2); font-size: var(--t-cap); color: var(--ink-2); }
-.view-reports .rp-agekey { display: inline-flex; align-items: center; gap: var(--s1); background: none; }
+.view-reports .rp-agekey { display: inline-flex; align-items: center; gap: var(--s1); background: none; opacity: 1; }
 .view-reports .rp-agekey::before { content: ""; width: calc(12px * var(--text-scale)); height: calc(12px * var(--text-scale)); }
-.view-reports .rp-agekey.rp-age-0::before { background: var(--accent-soft); }
-.view-reports .rp-agekey.rp-age-1::before { background: var(--accent-line); }
-.view-reports .rp-agekey.rp-age-2::before { background: var(--accent); opacity: .7; }
-.view-reports .rp-agekey.rp-age-3::before { background: var(--accent); }
+.view-reports .rp-agekey.rp-age-0::before { background: var(--accent); opacity: .35; }
+.view-reports .rp-agekey.rp-age-1::before { background: var(--accent); opacity: .55; }
+.view-reports .rp-agekey.rp-age-2::before { background: var(--accent); opacity: .75; }
+.view-reports .rp-agekey.rp-age-3::before { background: var(--accent); opacity: 1; }
 
 /* collection chart: bars drawn to scale with percentage heights against a nice axis; one accent */
 .view-reports .rp-chart { margin: 0 0 var(--s6); }
@@ -1711,7 +1712,8 @@ th.num .th-sort { flex-direction: row-reverse; }
 .st-import-text { min-height: 8em; font-family: var(--f-mono); font-size: var(--t-body); }
 .st-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
 .st-col { min-width: 0; }
-.st-problems { margin: var(--s3) 0; padding: var(--s3) var(--s4); background: var(--tint); border-radius: var(--r-panel); }
+.st-import { text-align: left; }
+.st-problems { margin: var(--s3) 0; }
 .st-problems ul { margin: var(--s2) 0 0; padding-left: var(--s5); }
 .st-preview { margin-top: var(--s4); }
 .st-rmsample { margin-top: var(--s4); }
@@ -6574,7 +6576,7 @@ function watchList(found) {
   return h`<section class="pp-sec" aria-labelledby="pp-watch-title">
     <h2 class="pp-sec-title" id="pp-watch-title">Keep an eye on</h2>
     <ul class="rows rows-inset pp-watch">${found.map((x, i) => ui.row({
-      title: x.text + '.', status: x.kind === 'repeat' ? ui.status('warn', 'Repeat') : ui.status('ok', 'Warranty'),
+      title: x.text + '.', status: x.kind === 'repeat' ? ui.status('warn', 'Repeat') : ui.status('ok', 'Warranty'), statusPos: 'main',
       act: x.kind === 'repeat' ? 'watch' : 'open', attrs: x.kind === 'repeat' ? { 'data-i': i, 'data-kind': 'repeat' } : { 'data-id': x.id, 'data-kind': 'warranty' },
     }))}</ul>
     <p class="pp-caption">Same repair 3 times in a year, or twice in 90 days.</p>
@@ -7522,7 +7524,7 @@ function unitSection(tenant) {
     .sort((a, b) => D.cmp(Mo.repairItem(b).date, Mo.repairItem(a).date));
   const who = Mo.unitWords(unit);
   return h`<section class="rp-unit" aria-labelledby="rp-unit-h">
-    <h3 class="rows-head" id="rp-unit-h">Repairs in this unit</h3>
+    <h3 class="tn-sec-title rp-unit-h" id="rp-unit-h">Repairs in this unit</h3>
     ${list.length ? h`<ul class="rows rp-unit-rows">${list.slice(0, 3).map(k => repairRow(k, today, { where: false, act: 'rpOpen', attrs: { 'data-rp-open': k.id } }))}</ul>
       <button type="button" class="btn-link rp-unit-link" data-rp-history data-property="${tenant.property}" data-unit="${unit}">See all ${RB.plural(list.length, 'repair')} for ${who}</button>`
       : h`<p class="rp-unit-none">No repairs written down for ${who} yet.</p>
@@ -7730,12 +7732,13 @@ function rentRoll(today) {
   if (groups.length === 1) openGroups.add(groups[0].property);
   const ow = owedWords(rr.rows);
   const owedTotal = rr.rows.reduce((s, r) => s + Math.max(0, r.balance), 0);
-  const end = r => r.status === 'past' ? 'Moved out ' + ui.dateWords(r.moveOut || r.leaseEnd, today) : r.status === 'notice' && r.moveOut ? 'Moving out ' + ui.dateWords(r.moveOut, today) : r.leaseEnd ? 'Ends ' + ui.dateWords(r.leaseEnd, today) : 'Month-to-month';
+  const day = d => D.fmtLong(d).replace(', ' + today.slice(0, 4), '');
+  const end = r => r.status === 'past' ? 'Moved out ' + day(r.moveOut || r.leaseEnd) : r.status === 'notice' && r.moveOut ? 'Moving out ' + day(r.moveOut) : r.leaseEnd ? 'Ends ' + day(r.leaseEnd) : 'Month-to-month';
   const endShort = r => r.status === 'past' ? 'moved out ' + D.fmtLong(r.moveOut || r.leaseEnd).replace(', ' + today.slice(0, 4), '')
     : r.status === 'notice' && r.moveOut ? 'moving out ' + D.fmtLong(r.moveOut).replace(', ' + today.slice(0, 4), '')
     : r.leaseEnd ? 'until ' + D.fmtMonth(D.monthKey(r.leaseEnd)) : 'month-to-month';
   const owesCell = r => (r.balance > 0 ? $(r.balance) : r.balance < 0 ? $(-r.balance) + ' ahead' : h`<span class="rp-dash">—</span>`);
-  const totalOwes = (owed, ahead, attr) => h`<span${attr ? h` data-total="owed"` : ''}>${$(owed)}</span>${ahead ? h`<span class="rp-ahead"${attr ? h` data-total="ahead"` : ''}>${$(ahead)} paid ahead</span>` : ''}`;
+  const totalOwes = (owed, ahead, attr) => h`<span${attr ? h` data-total="owed"` : ''}>${owed || attr ? $(owed) : '—'}</span>${ahead ? h`<span class="rp-ahead"${attr ? h` data-total="ahead"` : ''}>${$(ahead)} paid ahead</span>` : ''}`;
   const answer = h`${fig($(rr.totals.rent), 'rent each month.')}
     <p>${occ.occupied} of ${occ.units} units have a tenant (${Math.round(occ.rate * 100)}%), and you hold ${$(rr.totals.deposit)} in deposits.</p>
     <p id="rp-owed">${ow.sentence}</p>`;
@@ -7815,7 +7818,7 @@ function aging(today) {
       ${ui.rows(rows.map(r => {
         const o = oldest(r);
         return { lead: ui.plate(r.unit), title: r.name, sub: monthWords(r.tenantId) || unitWord(r.unit), amt: $(r.total),
-          status: ui.status(o[0] === 'd0_30' ? 'partial' : 'late', o[1]), href: '#t-' + r.tenantId, attrs: { 'data-tenant': r.tenantId } };
+          status: ui.status(o[0] === 'd0_30' ? 'warn' : 'late', o[1]), href: '#t-' + r.tenantId, attrs: { 'data-tenant': r.tenantId } };
       }), { inset: true })}
       <p class="rp-total-line">Everyone: <span data-total="total">${$(ag.totals.total)}</span> owed.</p>
     </div>
@@ -7916,7 +7919,7 @@ RB.views.register('reports', {
     const rep = BUILD[tab](ctx.today);
     el.innerHTML = String(h`
       <p class="rp-jump show-phone"><a class="btn-link" href="#rp-choose-h" data-act="jump">Choose another report</a></p>
-      <nav class="rp-choose" aria-labelledby="rp-choose-h"><h2 class="rows-head" id="rp-choose-h">Reports</h2> aria-label="Which report?">${ui.rows(TABS.map(([k, label, sub]) => ({
+      <nav class="rp-choose" aria-labelledby="rp-choose-h"><h2 class="rows-head" id="rp-choose-h">Which report?</h2>${ui.rows(TABS.map(([k, label, sub]) => ({
         title: label, sub, act: 'tab', cls: 'rp-choice' + (tab === k ? ' is-current' : ''),
         attrs: { id: 'rp-tab-' + k, 'data-tab': k, 'aria-current': tab === k ? 'true' : null },
       })), { cls: 'rp-choose-rows' })}</nav>

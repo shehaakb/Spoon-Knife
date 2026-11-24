@@ -181,7 +181,7 @@ try {
   check('exactly one filled button on the tenant page', (await filled(page, '.drawer')).length === 1, (await filled(page, '.drawer')).join('|'));
   check('one "Record a payment" on the page', await ev(() => Array.from(document.querySelectorAll('.drawer button, .drawer a')).filter(b => b.offsetParent && /^Record a payment$/.test(b.innerText.trim())).length === 1));
   const secs = (await page.locator('.drawer .tn-sec-title').allTextContents()).map(s => s.trim());
-  check('sections in order', secs.join('|') === 'Payment history|Notes|Lease and rent|Contact', secs.join('|'));
+  check('sections in order', secs.join('|') === 'Payment history|Notes|Lease and rent|Repairs in this unit|Contact', secs.join('|'));
   check('"Repairs in this unit" appears once', await ev(() => Array.from(document.querySelectorAll('.drawer h2, .drawer h3, .drawer h4')).filter(e => e.textContent.trim() === 'Repairs in this unit').length) === 1);
   check('no buttons inside rows on the tenant page', await buttonsInRows(page, '.drawer') === 0);
   let hc = await historyCheck(page, del.id);
