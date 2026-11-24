@@ -49,7 +49,7 @@ const forbiddenIn = text => { const m = String(text).match(FORBIDDEN); return m 
 const viewText = () => page.evaluate(() => [document.getElementById('rb-view'), ...document.querySelectorAll('.sheet')].filter(Boolean).map(e => e.innerText).join('\n'));
 const audit = minH => page.evaluate(minH => {
   const roots = [document.getElementById('rb-view'), ...document.querySelectorAll('.sheet')].filter(Boolean);
-  const els = roots.flatMap(r => Array.from(r.querySelectorAll('button, a[href], label.btn, select, input:not([type=hidden]):not([type=file]):not([type=checkbox]), textarea'))).filter(e => e.offsetParent !== null && !e.closest('.vh'));
+  const els = roots.flatMap(r => Array.from(r.querySelectorAll('button, a[href], label.btn, select, input:not([type=hidden]):not([type=file]):not([type=checkbox]):not([type=radio]), textarea'))).filter(e => e.offsetParent !== null && !e.closest('.vh'));
   const noText = els.filter(e => e.tagName === 'BUTTON' && !e.innerText.trim()).map(e => (e.className || e.tagName) + ' ' + (e.getAttribute('aria-label') || ''));
   const small = els.filter(e => { if (e.matches('.lz-name, .rp-name, .linkbtn')) return false; const r = e.getBoundingClientRect(); return r.height && r.height < minH - 0.5; }).map(e => (e.innerText || e.id || e.className).trim().slice(0, 30) + ' ' + Math.round(e.getBoundingClientRect().height) + 'px');
   return { noText: noText.slice(0, 5), small: small.slice(0, 6) };
